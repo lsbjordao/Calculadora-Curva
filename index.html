@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Curva — calculadora gráfica</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <aside id="side">
+    <div id="brand">
+      <div class="brand-top">
+        <h1>
+          <svg class="mark" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round">
+            <path d="M3 21 Q 8 3 12 12 T 21 9"/>
+          </svg>
+          Curva
+        </h1>
+        <button id="preset-clear" class="top-clear" title="Limpar funções, aula aplicada e estado salvo" aria-label="Limpar funções, aula aplicada e estado salvo">
+          <svg class="clear-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M4 7h16"/>
+            <path d="M10 11v6"/>
+            <path d="M14 11v6"/>
+            <path d="M6 7l1 14h10l1-14"/>
+            <path d="M9 7V4h6v3"/>
+          </svg>
+        </button>
+      </div>
+      <p>Calculadora Gráfica</p>
+    </div>
+    <div id="rows"></div>
+    <button id="add">+ nova função</button>
+
+    <div id="pad">
+      <div id="tabs">
+        <button class="tab active" data-tab="num" title="Aba de números, operadores e raízes">123</button>
+        <button class="tab" data-tab="fn" title="Aba de funções: sin(x), ln(x), piecewise(...)">ƒ(x)</button>
+        <button class="tab" data-tab="adv" title="Aba de curvas: r = f(theta), (x(t), y(t)), intersec: f(x), g(x)">curvas</button>
+        <button class="tab" data-tab="stats" title="Aba de dados e ajustes: points:, stats:, hist:, fit:, compare:, resid:">stats</button>
+        <button class="tab" data-tab="geo" title="Aba de geometria: ponto, vetor, reta, conica, matriz">geo</button>
+      </div>
+
+      <div id="grid-num" class="grid">
+        <button data-ins="7" title="Sintaxe: 7">7</button>
+        <button data-ins="8" title="Sintaxe: 8">8</button>
+        <button data-ins="9" title="Sintaxe: 9">9</button>
+        <button class="op" data-ins="(" title="Sintaxe: (expressão)">(</button>
+        <button class="op" data-ins=")" title="Sintaxe: (expressão)">)</button>
+
+        <button data-ins="4" title="Sintaxe: 4">4</button>
+        <button data-ins="5" title="Sintaxe: 5">5</button>
+        <button data-ins="6" title="Sintaxe: 6">6</button>
+        <button class="op" data-ins="*" title="Sintaxe: a*b">×</button>
+        <button class="op" data-ins="/" title="Sintaxe: a/b">÷</button>
+
+        <button data-ins="1" title="Sintaxe: 1">1</button>
+        <button data-ins="2" title="Sintaxe: 2">2</button>
+        <button data-ins="3" title="Sintaxe: 3">3</button>
+        <button class="op" data-ins="+" title="Sintaxe: a+b">+</button>
+        <button class="op" data-ins="-" title="Sintaxe: a-b">−</button>
+
+        <button data-ins="0" title="Sintaxe: 0">0</button>
+        <button data-ins="." title="Sintaxe: 1.5">.</button>
+        <button data-ins="x" title="Sintaxe: x">x</button>
+        <button class="util" data-act="back" title="Apaga o caractere anterior">⌫</button>
+        <button class="util" data-act="clear" title="Limpa a expressão atual">C</button>
+
+        <button class="fn" data-ins="^2" title="Sintaxe: x^2">x²</button>
+        <button class="fn" data-ins="^" title="Sintaxe: x^n">xⁿ</button>
+        <button class="fn" data-ins="sqrt(" title="Sintaxe: sqrt(x)">√</button>
+        <button class="fn" data-ins="()/()" data-caret="4" title="Sintaxe: a/b">a∕b</button>
+        <button class="fn" data-ins="pi" title="Sintaxe: pi ou π">π</button>
+
+        <button class="fn" data-ins="cbrt(" title="Sintaxe: cbrt(x)">∛</button>
+        <button class="fn" data-ins="root(,x)" data-caret="3" title="Sintaxe: root(n,x), por exemplo root(3,x)">ⁿ√</button>
+        <button class="fn" data-ins="abs(" title="Sintaxe: abs(x) ou |x|">|x|</button>
+        <button class="fn" data-ins="e" title="Sintaxe: e">e</button>
+        <button class="fn" data-ins="exp(" title="Sintaxe: exp(x)">eˣ</button>
+      </div>
+
+      <div id="grid-fn" class="grid hidden">
+        <button class="fn" data-ins="sin(" title="Sintaxe: sin(x)">sin</button>
+        <button class="fn" data-ins="cos(" title="Sintaxe: cos(x)">cos</button>
+        <button class="fn" data-ins="tan(" title="Sintaxe: tan(x)">tan</button>
+        <button class="fn" data-ins="asin(" title="Sintaxe: asin(x)">sin⁻¹</button>
+        <button class="fn" data-ins="acos(" title="Sintaxe: acos(x)">cos⁻¹</button>
+
+        <button class="fn" data-ins="atan(" title="Sintaxe: atan(x)">tan⁻¹</button>
+        <button class="fn" data-ins="sec(" title="Sintaxe: sec(x)">sec</button>
+        <button class="fn" data-ins="csc(" title="Sintaxe: csc(x)">csc</button>
+        <button class="fn" data-ins="cot(" title="Sintaxe: cot(x)">cot</button>
+        <button class="fn" data-ins="pi" title="Sintaxe: pi ou π">π</button>
+
+        <button class="fn" data-ins="sinh(" title="Sintaxe: sinh(x)">sinh</button>
+        <button class="fn" data-ins="cosh(" title="Sintaxe: cosh(x)">cosh</button>
+        <button class="fn" data-ins="tanh(" title="Sintaxe: tanh(x)">tanh</button>
+        <button class="fn" data-ins="atanh(" title="Sintaxe: atanh(x)">tanh⁻¹</button>
+        <button class="fn" data-ins="e" title="Sintaxe: e">e</button>
+
+        <button class="fn" data-ins="asinh(" title="Sintaxe: asinh(x)">sinh⁻¹</button>
+        <button class="fn" data-ins="acosh(" title="Sintaxe: acosh(x)">cosh⁻¹</button>
+        <button class="fn" data-ins="abs(" title="Sintaxe: abs(x) ou |x|">|x|</button>
+        <button class="fn" data-ins="sign(" title="Sintaxe: sign(x)">sign</button>
+        <button class="fn" data-ins="exp(" title="Sintaxe: exp(x)">eˣ</button>
+
+        <button class="fn" data-ins="ln(" title="Sintaxe: ln(x)">ln</button>
+        <button class="fn" data-ins="log(" title="Sintaxe: log(x)">log</button>
+        <button class="fn" data-ins="log2(" title="Sintaxe: log2(x)">log₂</button>
+        <button class="fn" data-ins="sqrt(" title="Sintaxe: sqrt(x)">√</button>
+        <button class="fn" data-ins="cbrt(" title="Sintaxe: cbrt(x)">∛</button>
+
+        <button class="fn" data-ins="floor(" title="Sintaxe: floor(x)">⌊x⌋</button>
+        <button class="fn" data-ins="ceil(" title="Sintaxe: ceil(x)">⌈x⌉</button>
+        <button class="op" data-ins="(" title="Sintaxe: (expressão)">(</button>
+        <button class="op" data-ins=")" title="Sintaxe: (expressão)">)</button>
+        <button class="util" data-act="back" title="Apaga o caractere anterior">⌫</button>
+
+        <button class="fn" data-ins="piecewise(x &lt; 0, -1, 1)" title="Sintaxe: piecewise(condição, valor_se_verdadeiro, valor_se_falso)">partes</button>
+        <button class="op" data-ins="&lt;" title="Sintaxe: x &lt; a">&lt;</button>
+        <button class="op" data-ins="&gt;" title="Sintaxe: x &gt; a">&gt;</button>
+        <button class="op" data-ins="&lt;=" title="Sintaxe: x &lt;= a">≤</button>
+        <button class="op" data-ins="&gt;=" title="Sintaxe: x &gt;= a">≥</button>
+
+        <button class="fn" data-ins="sum(n,1,10," title="Sintaxe: sum(i, início, fim, expressão), por exemplo sum(i,1,n,i^2)">Σ</button>
+        <button class="fn" data-ins="seq: n,1,10," title="Sintaxe: seq: i, início, fim, expressão, por exemplo seq: i,1,n,i^2">seq</button>
+        <button class="fn" data-ins="det([" title="Sintaxe: det([[a,b],[c,d]]) ou det([a,b; c,d])">det</button>
+        <button class="fn" data-ins="cross([" title="Sintaxe: cross([x1,y1,z1],[x2,y2,z2])">cross</button>
+        <button class="fn" data-ins="linsolve([[1,0],[0,1]]," title="Sintaxe: linsolve([[a,b],[c,d]],[e,f])">linsolve</button>
+        <button class="fn" data-ins="histogram: " title="Sintaxe: hist: 1,2,2,3 ou histogram: seq(i,1,n,expr)">hist</button>
+      </div>
+
+      <div id="grid-adv" class="grid hidden">
+        <button class="fn" data-ins="y" title="Sintaxe: y em equações implícitas, por exemplo x^2 + y^2 = 1">y</button>
+        <button class="fn" data-ins="t" title="Sintaxe: t em paramétricas, por exemplo (cos(t), sin(t))">t</button>
+        <button class="fn" data-ins="θ" title="Sintaxe: θ ou theta em polares, por exemplo r = cos(2θ)">θ</button>
+        <button class="op" data-ins="{" title="Sintaxe: expressão {condição}, por exemplo x^2 {0 &lt; x &lt; 5}">{</button>
+        <button class="op" data-ins="}" title="Sintaxe: expressão {condição}, por exemplo x^2 {0 &lt; x &lt; 5}">}</button>
+
+        <button class="fn" data-ins="r = " title="Sintaxe: r = f(theta), por exemplo r = 1 + cos(theta)">r =</button>
+        <button class="fn" data-ins="(,)" data-caret="2" title="Sintaxe: (x(t), y(t)), por exemplo (cos(t), sin(t))">( , )</button>
+        <button class="op" data-ins=": " title="Sintaxe: comando: corpo, por exemplo points: (0,1),(1,2)">:</button>
+        <button class="op" data-ins="=" title="Sintaxe: f(x)=expr ou x^2 + y^2 = 1">=</button>
+        <button class="op" data-ins=", " title="Sintaxe: separa argumentos, por exemplo sum(i,1,n,i^2)">,</button>
+
+        <button class="op" data-ins="&lt;" title="Sintaxe: y &lt; f(x) ou condição x &lt; a">&lt;</button>
+        <button class="op" data-ins="&gt;" title="Sintaxe: y &gt; f(x) ou condição x &gt; a">&gt;</button>
+        <button class="op" data-ins="&lt;=" title="Sintaxe: y &lt;= f(x) ou condição x &lt;= a">≤</button>
+        <button class="op" data-ins="&gt;=" title="Sintaxe: y &gt;= f(x) ou condição x &gt;= a">≥</button>
+        <button class="fn" data-ins="x" title="Sintaxe: x">x</button>
+
+        <button class="fn" data-ins="intersec: sin(x), cos(x)" title="Sintaxe: intersec: f(x), g(x), por exemplo intersec: sin(x), cos(x)">intersec</button>
+      </div>
+
+      <div id="grid-stats" class="grid hidden">
+        <button class="fn" data-ins="points: (0,1),(1,2),(2,3)" title="Sintaxe: points: (x1,y1),(x2,y2), por exemplo points: (0,1),(1,2)">points</button>
+        <button class="fn" data-ins="stats: 4,8,15,16,23,42" title="Sintaxe: stats: 4,8,15 ou stats: (0,1),(1,3)">stats</button>
+        <button class="fn" data-ins="seq: i,1,n," title="Sintaxe: seq: i, início, fim, expressão, por exemplo seq: i,1,n,i^2">seq</button>
+        <button class="fn" data-ins="hist: " title="Sintaxe: hist: 1,2,2,3 ou hist: seq(i,1,n,expr)">hist</button>
+        <button class="fn" data-ins="sum(i,1,n," title="Sintaxe: sum(i, início, fim, expressão), por exemplo sum(i,1,n,i^2)">Σ</button>
+        <button class="fn" data-ins="n" title="Sintaxe: use n como parâmetro, por exemplo seq: i,1,n,i^2">n</button>
+
+        <button class="fn" data-ins="fit: " title="Sintaxe: fit: (x1,y1),(x2,y2) ou fit: seq(i,1,n,expr)">fit</button>
+        <button class="fn" data-ins="fit2: " title="Sintaxe: fit2: (x1,y1),(x2,y2),(x3,y3) ou fit2: seq(i,1,n,expr)">fit2</button>
+        <button class="fn" data-ins="fit3: " title="Sintaxe: fit3: pontos ou seq(i,1,n,expr)">fit3</button>
+        <button class="fn" data-ins="fit4: " title="Sintaxe: fit4: pontos ou seq(i,1,n,expr)">fit4</button>
+        <button class="fn" data-ins="fitexp: " title="Sintaxe: fitexp: pontos com y&gt;0, por exemplo fitexp: (0,1),(1,2),(2,4)">fitexp</button>
+
+        <button class="fn" data-ins="fitpow: " title="Sintaxe: fitpow: pontos com x&gt;0 e y&gt;0">fitpow</button>
+        <button class="fn" data-ins="fitlog: " title="Sintaxe: fitlog: pontos com x&gt;0">fitlog</button>
+        <button class="fn" data-ins="fitsig: " title="Sintaxe: fitsig: pontos de uma curva sigmoidal">fitsig</button>
+        <button class="fn" data-ins="fit2: seq(i,1,n," title="Sintaxe: fit2: seq(i,1,n,expressão)">fit2 seq</button>
+        <button class="fn" data-ins="hist: seq(i,1,n," title="Sintaxe: hist: seq(i,1,n,expressão)">hist seq</button>
+
+        <button class="fn" data-ins="fit(seq(i,1,n,2i+1),x)" title="Sintaxe: fit(dados, x), por exemplo fit(seq(i,1,n,2i+1),x)">fit(...)</button>
+        <button class="fn" data-ins="fit2(seq(i,1,n,i^2),x)" title="Sintaxe: fit2(dados, x), por exemplo fit2(seq(i,1,n,i^2),x)">fit2(...)</button>
+        <button class="fn" data-ins="compare: seq(i,1,n,i^2+sin(i)/3)" title="Sintaxe: compare: pontos ou compare: seq(i,1,n,expr)">compare</button>
+        <button class="fn" data-ins="resid: fit2, seq(i,1,n,i^2+sin(i)/3)" title="Sintaxe: resid: modelo, dados, por exemplo resid: fit2, seq(i,1,n,i^2)">resid</button>
+        <button class="fn" data-ins="sum(i,1,n,(i^2-fit2(seq(j,1,n,j^2),i))^2)" title="Sintaxe: sum(i,1,n,(y_i-fit2(dados,i))^2)">SSE</button>
+        <button class="op" data-ins=", " title="Sintaxe: separa argumentos, por exemplo resid: fit2, dados">,</button>
+        <button class="util" data-act="back" title="Apaga o caractere anterior">⌫</button>
+      </div>
+
+      <div id="grid-geo" class="grid hidden">
+        <button class="fn" data-geo-tool="point" title="Sintaxe visual: clique no plano para criar A = ponto(x,y)">+ ponto</button>
+        <button class="fn" data-ins="ponto: A=(0,0), B=(3,4)" title="Sintaxe: ponto: A=(x,y), B=(x,y)">ponto</button>
+        <button class="fn" data-ins="vetor: A,B" title="Sintaxe: vetor: A,B">vetor</button>
+        <button class="fn" data-ins="dist: A,B" title="Sintaxe: dist: A,B">dist</button>
+        <button class="fn" data-ins="M = medio(A,B)" title="Sintaxe: M = medio(A,B)">médio</button>
+        <button class="fn" data-ins="r = reta(A,B)" title="Sintaxe: r = reta(A,B)">reta</button>
+
+        <button class="fn" data-ins="angulo: A,B,C" title="Sintaxe: angulo: A,B,C, com vértice em B">ângulo</button>
+        <button class="fn" data-ins="produto: A,B; C,D" title="Sintaxe: produto: A,B; C,D">u·v</button>
+        <button class="fn" data-ins="proj: A,B; C,D" title="Sintaxe: proj: A,B; C,D">proj</button>
+        <button class="fn" data-ins="triangulo: A,B,C" title="Sintaxe: triangulo: A,B,C">triâng</button>
+        <button class="fn" data-ins="quadrilatero: A,B,C,D" title="Sintaxe: quadrilatero: A,B,C,D">quad</button>
+        <button class="fn" data-ins="poligono: A,B,C,D,E" title="Sintaxe: poligono: A,B,C,D,E">políg</button>
+        <button class="fn" data-ins="convexo: A,B,C,D,E" title="Sintaxe: convexo: A,B,C,D,E">convexo</button>
+
+        <button class="fn" data-ins="intersecao: line((0,0),(1,1)); line((0,1),(1,0))" title="Sintaxe: intersecao: line((x1,y1),(x2,y2)); line((x3,y3),(x4,y4))">∩ retas</button>
+        <button class="fn" data-ins="intersecao: line((-3,0),(3,0)); conic(x^2 + y^2 = 4)" title="Sintaxe: intersecao: line((x1,y1),(x2,y2)); conic(equação)">∩ cônica</button>
+        <button class="fn" data-ins="conica: x^2 + y^2 = 4" title="Sintaxe: conica: x^2 + y^2 = r^2">círculo</button>
+        <button class="fn" data-ins="conica: x^2/4 + y^2 = 1" title="Sintaxe: conica: x^2/a^2 + y^2/b^2 = 1">elipse</button>
+        <button class="fn" data-ins="conica: x^2 - y^2 = 1" title="Sintaxe: conica: x^2/a^2 - y^2/b^2 = 1">hipérbole</button>
+
+        <button class="fn" data-ins="conica: y = x^2" title="Sintaxe: conica: y = ax^2 + bx + c">parábola</button>
+        <button class="fn" data-ins="matriz: [a,b; c,d]" title="Sintaxe: matriz: [a,b; c,d]">matriz</button>
+        <button class="fn" data-ins="matriz: [1,b; 0,1]" title="Sintaxe: matriz: [1,b; 0,1]">cisalhar</button>
+        <button class="fn" data-ins="matriz: [0,-1; 1,0]" title="Sintaxe: matriz: [0,-1; 1,0]">girar</button>
+        <button class="fn" data-ins="matriz: [2,0; 0,1]" title="Sintaxe: matriz: [sx,0; 0,sy]">escala</button>
+      </div>
+      <div id="geo-builder" class="geo-builder hidden">
+        <div class="geo-builder-head">
+          <span id="geo-builder-status">geo visual</span>
+          <button id="geo-builder-clear" type="button" title="Limpa a seleção visual de pontos">limpar</button>
+        </div>
+        <div class="geo-builder-actions">
+          <button id="geo-build-vector" type="button" title="Sintaxe gerada: vetor: A,B" disabled>vetor</button>
+          <button id="geo-build-distance" type="button" title="Sintaxe gerada: dist: A,B" disabled>dist</button>
+          <button id="geo-build-midpoint" type="button" title="Sintaxe gerada: M = medio(A,B)" disabled>médio</button>
+          <button id="geo-build-line" type="button" title="Sintaxe gerada: r = reta(A,B)" disabled>reta</button>
+          <button id="geo-build-triangle" type="button" title="Sintaxe gerada: triangulo: A,B,C" disabled>triâng</button>
+          <button id="geo-build-quadrilateral" type="button" title="Sintaxe gerada: quadrilatero: A,B,C,D" disabled>quad</button>
+          <button id="geo-build-polygon" type="button" title="Sintaxe gerada: poligono: A,B,C,..." disabled>políg</button>
+          <button id="geo-build-convex-hull" type="button" title="Sintaxe gerada: convexo: A,B,C,D,..." disabled>convexo</button>
+        </div>
+      </div>
+    </div>
+
+    <section id="presets" aria-label="Presets" data-collapsed="1">
+      <div class="preset-head">
+        <div class="preset-titlebar">
+          <strong>presets</strong>
+          <span id="preset-summary"></span>
+        </div>
+        <button id="preset-toggle" class="panel-toggle" type="button" title="Expandir presets" aria-label="Expandir presets" aria-expanded="false">
+          <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </button>
+      </div>
+      <select id="preset-list" aria-label="Presets"></select>
+      <div class="preset-actions">
+        <button id="preset-load" title="Substituir as funções pelo preset selecionado">carregar</button>
+        <button id="preset-add" title="Adicionar o preset selecionado às funções atuais">adicionar</button>
+      </div>
+      <div id="preset-preview"></div>
+    </section>
+    <section id="lessons" aria-label="Aulas guiadas" data-collapsed="1">
+      <div class="lesson-head">
+        <div class="lesson-titlebar">
+          <strong>aulas</strong>
+          <span id="lesson-progress"></span>
+        </div>
+        <button id="lesson-toggle" class="panel-toggle" type="button" title="Expandir aulas" aria-label="Expandir aulas" aria-expanded="false">
+          <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </button>
+      </div>
+      <select id="lesson-list" aria-label="Aulas"></select>
+      <div id="lesson-card">
+        <div id="lesson-title"></div>
+        <p id="lesson-text"></p>
+        <div id="lesson-focus"></div>
+        <div id="lesson-checkpoint" hidden>
+          <span>checkpoint</span>
+          <div id="lesson-checkpoint-text"></div>
+          <button id="lesson-checkpoint-action" class="lesson-checkpoint-action" type="button" hidden>confirmar observação</button>
+        </div>
+        <div id="lesson-toast" hidden></div>
+        <div id="lesson-next-instruction" hidden></div>
+        <div class="lesson-actions">
+          <button id="lesson-prev" type="button">anterior</button>
+          <button id="lesson-apply" type="button">aplicar</button>
+          <button id="lesson-next" type="button">próxima</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="help" aria-label="Ajuda" data-collapsed="1">
+      <div class="help-head">
+        <div class="help-titlebar">
+          <strong>ajuda</strong>
+          <span id="help-summary">sintaxe e exemplos</span>
+        </div>
+        <button id="help-toggle" class="panel-toggle" type="button" title="Expandir ajuda" aria-label="Expandir ajuda" aria-expanded="false">
+          <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </button>
+      </div>
+      <div id="help-card">
+        <div class="help-block">
+          <strong>expressões</strong>
+          <p>Use <code>sin(x)</code>, <code>f(x)=x^2</code> ou multiplicação implícita como <code>2x</code>. Operadores: <code>+ - * / ^</code>, parênteses e potências sobrescritas como <code>x²</code>. Constantes: <code>pi</code>, <code>π</code>, <code>e</code>, <code>tau</code>, <code>phi</code>. Parâmetros com slider: <code>a b c d i j k m n p q r</code>.</p>
+        </div>
+        <div class="help-block">
+          <strong>funções</strong>
+          <p>Trigonométricas: <code>sin</code>, <code>cos</code>, <code>tan</code>, <code>sec</code>, <code>csc</code>, <code>cot</code>; aliases <code>sen</code>, <code>seno</code>, <code>tg</code>. Inversas: <code>asin</code>, <code>acos</code>, <code>atan</code>, <code>arcsen</code>, <code>arccos</code>, <code>arctg</code>. Hiperbólicas: <code>sinh</code>, <code>cosh</code>, <code>tanh</code>, <code>asinh</code>, <code>acosh</code>, <code>atanh</code>.</p>
+          <p>Logs e raízes: <code>ln</code>, <code>log</code>, <code>log2</code>, <code>sqrt</code>, <code>cbrt</code>, <code>root(3,x)</code>. Outras: <code>abs</code>, <code>|x|</code>, <code>exp</code>, <code>floor</code>, <code>ceil</code>, <code>round</code>, <code>sign</code>.</p>
+        </div>
+        <div class="help-block">
+          <strong>partes, domínio e limites</strong>
+          <p>Por partes: <code>piecewise(x &lt; 0, -x, x)</code> ou <code>{x &lt; 0: 0, x &gt;= 0: 1}</code>. Restrição: <code>x^2 {0 &lt; x &lt; 5}</code>. Limite no campo: <code>lim(sin(x)/x, 0)</code>. Comparações aceitas: <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code>, <code>==</code>, <code>!=</code>.</p>
+        </div>
+        <div class="help-block">
+          <strong>derivadas</strong>
+          <p>O botão <code>f′</code> mostra a derivada algébrica (ex.: <code>f′(x) = 2x*cos(x^2)</code>) quando a expressão permite, e avisa onde f não é diferenciável (bicos como <code>|x|</code> em 0). No campo: <code>deriv(x^2)</code> ou <code>d/dx(x^2)</code> plota a derivada; para funções nomeadas use <code>g'(x)</code> e <code>g''(x)</code>. Com <code>f′</code> ou <code>f″</code> ligados, o card ganha um <em>passo a passo</em> que resolve a derivada linha por linha, nomeando cada regra (produto, quociente, cadeia, potência…).</p>
+        </div>
+        <div class="help-block">
+          <strong>primitivas (∫ algébrica)</strong>
+          <p>Com <code>∫</code> ligado, quando o integrando está no repertório (linearidade, regra da potência, tabela de <code>sin</code>/<code>cos</code>/<code>tan</code>/<code>exp</code>/<code>ln</code>/…, substituição linear <code>u = ax+b</code>), o card mostra a primitiva <code>F(x) = … + C</code>, o valor exato pelo Teorema Fundamental do Cálculo e um <em>passo a passo</em> da integração. Fora do repertório (ex.: <code>x*e^x</code>, <code>sin(x^2)</code>) a integral segue calculada numericamente, como antes.</p>
+        </div>
+        <div class="help-block">
+          <strong>curvas</strong>
+          <p>Inequação explícita: <code>y &lt; x^2</code>. Implícita: <code>x^2 + y^2 = 1</code>. Região implícita: <code>x^2 + y^2 &lt; 1</code>. Paramétrica: <code>(cos(t), sin(t))</code>. Polar: <code>r = 1 + cos(theta)</code> ou <code>r = cos(2θ)</code>. Funções nomeadas: <code>f(x)=sin(x)</code> e <code>g(x)=f(x)+1</code>.</p>
+        </div>
+        <div class="help-block">
+          <strong>dados e geometria</strong>
+          <p>Dados: <code>points: (0,1),(1,3)</code>, <code>hist: 1,2,2,3</code>, <code>stats: 4,8,15</code>, <code>seq: i,1,n,i^2</code>. Ajustes: <code>fit:</code>, <code>fit2:</code>, <code>fitexp:</code>, <code>fitpow:</code>, <code>fitlog:</code>, <code>fitsig:</code>, <code>fit2: seq(i,1,n,i^2)</code>, <code>compare: seq(i,1,n,i^2)</code>, <code>resid: fit2, seq(i,1,n,i^2)</code> e <code>sum(i,1,n,(i^2-fit2(seq(j,1,n,j^2),i))^2)</code>. Álgebra: <code>sum(i,1,n,i)</code>, <code>det([[1,2],[3,4]])</code>, <code>cross([1,0,0],[0,1,0])</code>, <code>linsolve([[2,1],[1,3]],[5,10])</code>. Geometria: <code>A = ponto(0,0)</code>, <code>vetor: A,B</code>, <code>dist: A,B</code>, <code>M = medio(A,B)</code>, <code>r = reta(A,B)</code>, <code>angulo: A,B,C</code>, <code>triangulo: A,B,C</code>, <code>quadrilatero: A,B,C,D</code>, <code>poligono: A,B,C,D,E</code>, <code>convexo: A,B,C,D,E</code>, <code>produto: A,B; C,D</code>, <code>proj: A,B; C,D</code>, <code>intersecao: line((0,0),(1,1)); line((0,1),(1,0))</code>, <code>intersec: sin(x), cos(x)</code>, <code>conica: x^2 + y^2 = 4</code>, <code>matriz: [1,b; 0,1]</code>.</p>
+        </div>
+        <div class="help-block">
+          <strong>controles</strong>
+          <p>Por função: <code>f′</code>, <code>f″</code>, <code>∫</code>, <code>Σ</code>, <code>lim</code> e <code>⌕</code>. Arraste para mover, use scroll para zoom, <code>▦</code> abre a tabela de valores; em linhas <code>stats:</code>, <code>hist:</code>, <code>fit:</code>, <code>compare:</code> e <code>resid:</code>, use o botão <code>tabela</code> da própria linha. <code>#</code> alterna entre malha cartesiana, logarítmica e polar.</p>
+        </div>
+      </div>
+    </section>
+  </aside>
+
+  <div id="side-resizer" role="separator" aria-orientation="vertical" aria-label="Redimensionar barra lateral" tabindex="0"></div>
+
+  <main id="stage">
+    <canvas id="cv" role="img" tabindex="0" aria-describedby="canvas-description">
+      O gráfico é descrito no texto acessível logo após o canvas.
+    </canvas>
+    <p id="canvas-description" class="sr-only">Gráfico ainda não carregado.</p>
+    <div id="readout"></div>
+    <div id="lesson-graph-toast" role="status" aria-live="polite" hidden></div>
+    <div id="analysis"></div>
+    <section id="value-table" hidden>
+      <div class="table-head">
+        <strong>tabela</strong>
+        <button id="table-close" title="Fechar tabela">×</button>
+      </div>
+      <div class="table-controls">
+        <label>x0 <input id="table-center" type="number" step="0.5" value="0"></label>
+        <label>h <input id="table-step" type="number" step="0.1" min="0.0001" value="1"></label>
+      </div>
+      <div id="table-wrap"></div>
+    </section>
+    <div id="tools">
+      <button id="theme" title="Ativar tema escuro" aria-label="Alternar tema">◐</button>
+      <button id="undo" class="small" title="Desfazer (Ctrl+Z)" aria-label="Desfazer" disabled>↶</button>
+      <button id="redo" class="small" title="Refazer (Ctrl+Y)" aria-label="Refazer" disabled>↷</button>
+      <button id="table-toggle" class="small" title="Tabela de valores" aria-label="Tabela de valores">▦</button>
+      <button id="grid-mode" class="small" title="Alternar grade cartesiana/log/polar" aria-label="Grade cartesiana">#</button>
+      <button id="annotate" class="small" title="Modo anotação" aria-label="Anotação" aria-pressed="false">T</button>
+      <button id="zin" title="Aproximar" aria-label="Aproximar">+</button>
+      <button id="zout" title="Afastar" aria-label="Afastar">−</button>
+      <button id="reset" class="small" title="Restaurar vista" aria-label="Restaurar vista">⟲</button>
+      <button id="fit" class="small" title="Enquadrar todas as curvas" aria-label="Zoom to fit">⊡</button>
+    </div>
+  </main>
+
+<script type="module" src="src/app.js"></script>
+</body>
+</html>

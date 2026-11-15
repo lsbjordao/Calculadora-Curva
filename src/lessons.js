@@ -1,5 +1,7 @@
 "use strict";
 
+import { ALGEBRA_LESSONS } from './algebra-lessons.js';
+
 const BASE_LESSONS=[
   {
     id:'integral-area',
@@ -1653,6 +1655,7 @@ export const LESSONS=[
       }
     ]
   },
+  ...ALGEBRA_LESSONS,
   baseLesson('implicit-regions'),
   baseLesson('riemann-methods'),
   baseLesson('modeling-growth')
@@ -1784,7 +1787,11 @@ function checkSatisfied(check,equations,context={}){
   if(check.type==='number-param'){
     return checkNumber(eq.params?.[check.param],check);
   }
+  if(check.type==='computed-equals'){
+    return !eq.error && getPathValue(eq,check.path)===check.value;
+  }
   if(check.type==='computed-field'){
+    if(eq.error) return false;
     return checkNumber(getPathValue(eq,check.path),check);
   }
   if(check.type==='geometry-distance'){

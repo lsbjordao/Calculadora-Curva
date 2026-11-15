@@ -8,14 +8,19 @@ import { compile, extractParams, parseEquationInput, compileCondition, compilePi
 import { PRESETS } from '../src/presets.js';
 import { addGeometryDefinitions, parseGeometryInput } from '../src/geometry.js';
 import { describe as statDescribe, pearson } from '../src/stats.js';
+import { algebraDeclaration, createAlgebraSymbols } from '../src/algebra-symbols.js';
+import { resultInfo } from '../src/algebra-ui.js';
 
 // Validate any preset equation regardless of kind (function, inequality, domain,
 // brace piecewise, parametric, polar, points/regression). Mirrors recompileEq.
-function equationValid(text, geometryRegistry=null, params={}){
+function equationValid(text, geometryRegistry=null, params={}, symbols=null){
   const raw=String(text).trim();
+  const declaration=algebraDeclaration(raw), calc=raw.match(/^calc\s*:\s*(.+)$/i);
+  if(declaration) return !!resultInfo(symbols(declaration.name));
+  if(calc) return !!resultInfo(compile(calc[1],params,{},symbols)(0));
   const fm=raw.match(/^(points|fit\d*|fitexp|fitpow|fitlog|fitsig|histogram|hist|seq|intersec|stats|compare|comparar|resid|residual)\s*:\s*(.+)$/i);
   if(!fm){
-    const geometry=parseGeometryInput(raw,{registry:geometryRegistry,params});
+    const geometry=parseGeometryInput(raw,{registry:geometryRegistry,params,symbols});
     if(geometry){
       if(!geometry.error) addGeometryDefinitions(geometryRegistry,geometry);
       return !geometry.error;
@@ -434,6 +439,7 @@ test('all presets contain valid expressions',()=>{
   const signatures=new Set();
   for(const preset of PRESETS){
     const geometryRegistry=new Map();
+    const symbols=createAlgebraSymbols(preset.equations).resolve;
     assert.ok(preset.equations.length>=3, preset.id);
     assert.ok(preset.category, preset.id);
     assert.ok(preset.description, preset.id);
@@ -443,7 +449,7 @@ test('all presets contain valid expressions',()=>{
     assert.equal(signatures.has(signature),false, `duplicated preset: ${preset.id}`);
     signatures.add(signature);
     for(const equation of preset.equations){
-      assert.ok(equationValid(equation.text,geometryRegistry,equation.params||{}), `${preset.id}: ${equation.text}`);
+      assert.ok(equationValid(equation.text,geometryRegistry,equation.params||{},symbols), `${preset.id}: ${equation.text}`);
     }
   }
 });

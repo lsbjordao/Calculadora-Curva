@@ -31,6 +31,10 @@ import {
 import { addGeometryDefinitions, extractGeometryParams, parseGeometryInput } from './geometry.js';
 import { choosePointSourceIndex, constructionExpression, formatPointCommand, nextPointLabel, normalizePoint, updatePoint, usedGeometryNames } from './geometry-builder.js';
 import { describeCanvas, formatMathVisual } from './accessibility.js';
+import { isStructuredResult, resultInfo, renderAlgebraResult } from './algebra-ui.js';
+import { matrixInfo } from './linear-algebra.js';
+import { algebraDeclaration, createAlgebraSymbols } from './algebra-symbols.js';
+import { createTransformControls, buildSystemScene } from './linear-transform-view.js';
 
 const PALETTES={
   light:["#c0492f","#2d70b3","#2f7d5b","#6042a6","#d98324","#1d1d1f","#0a8aa6","#a8336e"],
@@ -63,6 +67,9 @@ function eqColor(eq){ return eq.colorOverride || PAL()[eq.ci % PAL().length]; }
 
 let nextId=1;
 const equations=[];
+let algebraSymbols=createAlgebraSymbols([]);
+const resultRefreshers=new Map();
+const transformControllers=new Map();
 let selectedEquationId=null;
 const view={cx:0, cy:0, scale:38};
 let W=0,H=0,dpr=1;
@@ -161,6 +168,8 @@ function serializeEq(eq){
     histDensity:eq.histDensity,
     histNormal:eq.histNormal,
     statsPop:eq.statsPop,
+    showAlgebraTransform:!!eq.showAlgebraTransform,
+    showAlgebraSystem:!!eq.showAlgebraSystem,
     showResultTable:eq.showResultTable
   };
 }
@@ -730,6 +739,7 @@ function eqDeriv2Fn(eq){
 function recompileEq(eq, geometryRegistry=null){
   eq.analysisCache=null;
   eq.intCache=null;
+  eq.algebraResult=null; eq.algebraInput=null; eq.errorMessage=null; eq.systemScene=null;
   eq.kind='function'; eq.ineqOp=null; eq.domain=null;
   eq.fn=null; eq.xFn=null; eq.yFn=null; eq.rFn=null; eq.points=null; eq.pointSource=null; eq.pointLabel=null; eq.histSource=null; eq.valueFn=null; eq.fitInfo=null; eq.fitSpec=null; eq.fitSource=null; eq.regInfo=null; eq.defName=null; eq.geometry=null;
   eq.deriv1=null; eq.deriv2=null; eq.antider=null;
@@ -739,12 +749,24 @@ function recompileEq(eq, geometryRegistry=null){
   const defM=raw.match(/^([a-zA-Z][a-zA-Z0-9]*)\s*\(\s*[a-zA-Z][a-zA-Z0-9]*\s*\)\s*=\s*.+$/);
   if(defM && isDefinitionLhs(raw.slice(0,raw.indexOf('=')).trim())) eq.defName=defM[1].toLowerCase();
   try{
+    const declaration=algebraDeclaration(raw);
+    const calculation=raw.match(/^calc\s*:\s*(.*)$/i);
+    if(declaration || calculation){
+      eq.kind='result';
+      const source=declaration ? declaration.body : calculation[1];
+      setupParams(eq,extractParams(source));
+      if(!source.trim()) throw new Error('Digite uma expressão após calc:.');
+      const fn=compile(source,eq.params,{},algebraSymbols.resolve);
+      const value=declaration ? algebraSymbols.resolve(declaration.name) : fn(0);
+      setComputedResult(eq,value,fn);
+      return;
+    }
     // Data points / regression: points:/fit:/fitN:/fitexp:/fitpow:/fitlog:/fitsig:/histogram:/hist:/seq:/intersec:
     const fm=raw.match(DATA_COMMAND_RE);
     if(!fm){
       const geometryNames=extractGeometryParams(raw);
       if(geometryNames.length) setupParams(eq, geometryNames);
-      const geometry=parseGeometryInput(raw,{params:eq.params,registry:geometryRegistry});
+      const geometry=parseGeometryInput(raw,{params:eq.params,registry:geometryRegistry,symbols:algebraSymbols.resolve});
       if(geometry){
         setupParams(eq, geometryNames);
         eq.kind='geometry';
@@ -912,7 +934,7 @@ function recompileEq(eq, geometryRegistry=null){
         }
       }
     }
-  }catch(e){ eq.fn=null; eq.error=true; eq.paramNames=[]; return; }
+  }catch(e){ eq.fn=null; eq.error=true; eq.errorMessage=e.message; return; }
 
   const parsed=parseEquationInput(eq.text);
   const isPiecewise=parsed.domainSrc && parsed.domainSrc.includes(':');
@@ -927,14 +949,11 @@ function recompileEq(eq, geometryRegistry=null){
     if(!body){ eq.fn=null; eq.error=false; eq.paramNames=[]; return; }
     const names=[...new Set([...extractParams(body), ...(parsed.domainSrc?extractBraceParams(parsed.domainSrc):[])])];
     setupParams(eq, names);
-    const baseFn=compile(body, eq.params);
+    const baseFn=compile(body, eq.params,{},algebraSymbols.resolve);
     if(!baseFn){ eq.fn=null; eq.error=false; eq.paramNames=[]; return; }
     const sample=baseFn(0);
-    if(Array.isArray(sample)){
-      eq.kind='result';
-      eq.valueFn=baseFn;
-      eq.regInfo={label:'resultado = '+formatCalcValue(sample), r2:null};
-      eq.error=false;
+    if(Array.isArray(sample)||isStructuredResult(sample)){
+      setComputedResult(eq,sample,baseFn);
       return;
     }
     let fn=baseFn;
@@ -951,10 +970,32 @@ function recompileEq(eq, geometryRegistry=null){
       setupSymbolicIntegral(eq, body);
     }
   }
-  catch(e){ eq.fn=null; eq.error=true; }
+  catch(e){ eq.fn=null; eq.error=true; eq.errorMessage=e.message; }
+}
+
+function setComputedResult(eq,value,fn){
+  eq.kind='result'; eq.valueFn=fn;
+  eq.algebraResult=resultInfo(value,fn?.inputShapes);
+  eq.algebraInput=fn?.inputValues?.find(v=>Array.isArray(v)&&Array.isArray(v[0])) || null;
+  if(eq.algebraInput && /\b(inv|linsolve)\s*\(/i.test(eq.text)){
+    const warnings=matrixInfo(eq.algebraInput).warnings;
+    eq.algebraResult.warnings=[...new Set([...eq.algebraResult.warnings,...warnings])];
+  }
+  if(eq.algebraResult.kind==='solveinfo' && fn?.inputValues?.length===2){
+    const [A,b]=fn.inputValues;
+    eq.systemScene=buildSystemScene(A,b,eq.algebraResult.metadata.classification==='unique'?eq.algebraResult.value:null);
+  }
+  eq.regInfo={label:'resultado = '+formatCalcValue(isStructuredResult(value)?value.value:value),r2:null};
+  eq.error=false;
 }
 
 function recompileAllEquations(){
+  // Parameter objects must exist before evaluating forward references.
+  for(const eq of equations){
+    const declaration=algebraDeclaration(eq.text);
+    if(declaration) try{setupParams(eq,extractParams(declaration.body));}catch(_){}
+  }
+  algebraSymbols=createAlgebraSymbols(equations);
   const geometryRegistry=new Map();
   equations.forEach(eq=>{
     recompileEq(eq, geometryRegistry);
@@ -977,7 +1018,6 @@ function toggleAnim(eq,name,limits,range,number){
 function animTick(){
   animRaf=null;
   if(!animations.size) return;
-  let geometryDirty=false;
   for(const a of animations.values()){
     const span=(a.max-a.min)||1;
     const cur=Number.isFinite(a.eq.params[a.name]) ? a.eq.params[a.name] : a.min;
@@ -985,11 +1025,11 @@ function animTick(){
     if(v>=a.max){ v=a.max; a.dir=-1; } else if(v<=a.min){ v=a.min; a.dir=1; }
     a.eq.params[a.name]=v;
     a.eq.analysisCache=null; a.eq.intCache=null;
-    if(a.eq.kind==='geometry') geometryDirty=true;
     if(a.range) a.range.value=v;
     if(a.number) a.number.value=v;
   }
-  if(geometryDirty) recompileAllEquations();
+  recompileAllEquations();
+  resultRefreshers.forEach(refresh=>refresh());
   render();
   notifyLessonAction('animation');
   animRaf=requestAnimationFrame(animTick);
@@ -1265,6 +1305,8 @@ function renderContextActions(eq, target){
 }
 
 function renderRows(){
+  transformControllers.forEach(controller=>controller.dispose()); transformControllers.clear();
+  resultRefreshers.clear();
   rowsEl.innerHTML='';
   equations.forEach((eq,index)=>{
     const row=document.createElement('div');
@@ -1390,6 +1432,7 @@ function renderRows(){
       renderContextActions(eq, contextActions);
       draw();
       scheduleSave();
+      resultRefreshers.forEach((refresh,id)=>{if(id!==eq.id)refresh();});
       notifyLessonAction('input');
     };
     input.oninput=()=>{ applyTextChange(input.value); refreshDataTable(); };
@@ -1456,15 +1499,51 @@ function renderRows(){
     paramControls.className='param-tools';
     const opTools=document.createElement('div');
     opTools.className='op-tools';
+    const transformZone=document.createElement('details');
+    const transformSummary=document.createElement('summary'); transformSummary.textContent='transformação 2D';
+    const transformHost=document.createElement('div'); transformZone.append(transformSummary,transformHost);
+    let matrixSignature='';
+    const getTransformMatrix=()=>{
+      const value=eq.geometry?.matrix?.values || (eq.algebraResult?.kind==='svd' ? eq.algebraInput : eq.algebraResult?.value);
+      return Array.isArray(value)&&value.length===2&&value.every(row=>Array.isArray(row)&&row.length===2) ? value : null;
+    };
+    const refreshTransform=()=>{
+      const matrix=!eq.error&&getTransformMatrix();
+      transformZone.hidden=!matrix;
+      if(!matrix){transformControllers.get(eq.id)?.dispose();transformControllers.delete(eq.id);eq.transformScene=null;return;}
+      const active=eq.kind==='geometry'||!!eq.showAlgebraTransform;
+      transformZone.open=active;
+      if(!active){transformControllers.get(eq.id)?.dispose();transformControllers.delete(eq.id);eq.transformScene=null;return;}
+      const signature=JSON.stringify(matrix), controller=transformControllers.get(eq.id);
+      if(controller){if(signature!==matrixSignature)controller.refresh();}
+      else {
+        transformHost.replaceChildren();
+        transformControllers.set(eq.id,createTransformControls(transformHost,{
+          getMatrix:getTransformMatrix,
+          onScene:scene=>{eq.transformScene=scene;draw();},
+          onChange:t=>{eq.transformT=t;notifyLessonAction('transform');}
+        }));
+      }
+      matrixSignature=signature;
+    };
+    transformZone.addEventListener('toggle',()=>{
+      if(eq.kind==='geometry') return;
+      eq.showAlgebraTransform=transformZone.open; refreshTransform(); draw(); scheduleSave();
+    });
     const refreshMathInfo=()=>{
-      if(eq.kind==='stats' && eq.showResultTable) renderStatsGrid(eq, info);
+      info.classList.remove('algebra-result');
+      if(eq.error){info.replaceChildren();info.textContent=eq.errorMessage||eq.geometry?.error||'Expressão inválida.';}
+      else if(eq.kind==='result' && eq.algebraResult) renderAlgebraResult(info,eq.algebraResult);
+      else if(eq.kind==='stats' && eq.showResultTable) renderStatsGrid(eq, info);
       else if(eq.kind==='histogram' && eq.showResultTable) renderHistogramGrid(eq, info);
       else if(eq.kind==='regression' && eq.showResultTable) renderFitParameterGrid(eq, info);
       else if(eq.kind==='fitcompare' && eq.showResultTable) renderCompareGrid(eq, info);
       else if(eq.kind==='points' && eq.pointLabel==='resid' && eq.showResultTable) renderResidualGrid(eq, info);
       else info.textContent=formatMathVisual(mathInfo(eq));
       renderStepsZone(eq, stepsZone);
+      refreshTransform();
     };
+    resultRefreshers.set(eq.id,()=>{row.dataset.err=eq.error?'1':'0';row.dataset.kind=eq.kind;refreshMathInfo();renderCurveSummary(summary,eq);});
     const refreshOps=()=>opControls.render(eq, opTools, ()=>{
       refreshMathInfo();
       renderCurveSummary(summary,eq);
@@ -1500,8 +1579,8 @@ function renderRows(){
           range.value=clamped;
           number.value=clamped;
           eq.analysisCache=null;
-          if(eq.kind==='geometry') recompileAllEquations();
-          refreshMathInfo();
+          recompileAllEquations();
+          resultRefreshers.forEach(refresh=>refresh());
           draw();
           scheduleSave();
           notifyLessonAction('param');
@@ -1726,6 +1805,15 @@ function renderRows(){
     };
     refreshControls=()=>{
       controls.innerHTML='';
+      if(eq.kind==='result'){
+        if(eq.systemScene){
+          const show=document.createElement('button');show.type='button';show.className='calc';show.textContent='ver retas';
+          show.dataset.on=eq.showAlgebraSystem?'1':'0';
+          show.onclick=()=>{eq.showAlgebraSystem=!eq.showAlgebraSystem;show.dataset.on=eq.showAlgebraSystem?'1':'0';draw();scheduleSave();};
+          controls.appendChild(show);
+        }
+        return;
+      }
       if(eq.kind==='geometry') refreshGeometryControls();
       else if(hasResultTable(eq)){
         resultTableBtn.dataset.on=eq.showResultTable?'1':'0';
@@ -1744,7 +1832,7 @@ function renderRows(){
     refreshParamControls();
     refreshOps();
     refreshDataTable();
-    body.append(wrap,contextActions,controls,info,stepsZone,paramControls,opTools,tableZone);
+    body.append(wrap,contextActions,controls,info,stepsZone,paramControls,transformZone,opTools,tableZone);
     row.append(head,summary,body);
     rowsEl.appendChild(row);
   });
@@ -1756,6 +1844,8 @@ function renderRows(){
 
 
 function formatCalcValue(value){
+  if(isStructuredResult(value)) return value.kind;
+  if(value==null) return '';
   if(Array.isArray(value)) return '['+value.map(formatCalcValue).join(', ')+']';
   return Number.isFinite(value) ? fmt(value) : 'indefinido';
 }
@@ -2055,7 +2145,8 @@ function mathInfo(eq){
     if(!eq.regInfo) return '';
     return eq.regInfo.label + (eq.regInfo.r2!=null ? '  ·  R² = '+fmt(eq.regInfo.r2) : '');
   }
-  if(eq.kind==='result') return eq.valueFn ? 'resultado = '+formatCalcValue(eq.valueFn(0)) : '';
+  if(eq.error) return eq.errorMessage || 'Expressão inválida.';
+  if(eq.kind==='result') return eq.algebraResult ? 'resultado = '+formatCalcValue(eq.algebraResult.value ?? eq.algebraResult) : '';
   if(!eq.fn) return '';
   const parts=[];
   if(eq.showD){
@@ -2197,6 +2288,8 @@ function addEquation(text){
 document.getElementById('add').onclick=()=>addEquation('');
 
 function applyEquationOptions(eq, options={}){
+  eq.showAlgebraTransform=!!options.showAlgebraTransform;
+  eq.showAlgebraSystem=!!options.showAlgebraSystem;
   eq.name=typeof options.name==='string' ? options.name.trim().slice(0,80) : '';
   eq.collapsed=!!options.collapsed;
   eq.visible=options.visible!==false;
@@ -2610,6 +2703,7 @@ document.getElementById('pad').addEventListener('click',ev=>{
     document.getElementById('grid-adv').classList.toggle('hidden',tab.dataset.tab!=='adv');
     document.getElementById('grid-stats').classList.toggle('hidden',tab.dataset.tab!=='stats');
     document.getElementById('grid-geo').classList.toggle('hidden',tab.dataset.tab!=='geo');
+    document.getElementById('grid-algebra').classList.toggle('hidden',tab.dataset.tab!=='algebra');
     const builder=document.getElementById('geo-builder');
     if(builder) builder.classList.toggle('hidden',tab.dataset.tab!=='geo');
     refreshGeoBuilder();
@@ -2620,6 +2714,7 @@ document.getElementById('pad').addEventListener('click',ev=>{
   if(b.dataset.geoTool) setGeoTool(b.dataset.geoTool);
   else if(b.dataset.act==='back') backspaceFocused();
   else if(b.dataset.act==='clear') clearFocused();
+  else if(b.dataset.algebra){const field=targetField();if(field){field.setSelectionRange(0,field.value.length);insertAtFocused(b.dataset.ins,0);}}
   else if(b.dataset.ins!==undefined) insertAtFocused(b.dataset.ins, b.dataset.caret?+b.dataset.caret:0);
 });
 
@@ -4178,7 +4273,7 @@ function drawGeometrySegment(seg,color,showLength=false,index=0,eq){
   ctx.save();
   ctx.lineWidth=1.4;
   ctx.strokeStyle=color;
-  ctx.globalAlpha=seg.style ? 0.55 : 0.82;
+  ctx.globalAlpha=seg.opacity ?? (seg.style ? 0.55 : 0.82);
   setDash(seg.style);
   ctx.beginPath();
   ctx.moveTo(ax,ay);
@@ -4482,7 +4577,7 @@ function drawGeometryPolygon(poly,color,showCaption=true,eq){
 
 function drawGeometry(eq){
   if(!eq.visible||!eq.geometry) return;
-  const g=eq.geometry;
+  const g=eq.transformScene || eq.geometry;
   const color=eqColor(eq);
   g.polygons?.forEach(poly=>drawGeometryPolygon(poly,color,eq.showGeoTriangleClass!==false,eq));
   g.conics?.forEach(conic=>{
@@ -4807,6 +4902,7 @@ function render(){
     else if(eq.kind==='implicit') drawImplicit(eq);
     else if(eq.kind==='implicit-ineq') drawImplicitRegion(eq);
     else if(eq.kind==='geometry') drawGeometry(eq);
+    else if(eq.kind==='result'){const scene=eq.transformScene||(eq.showAlgebraSystem?eq.systemScene:null);if(scene) drawGeometry({...eq,geometry:scene});}
     else drawCurve(eq);
   });
   // The window analysis (domain/extrema/asymptotes + canvas markers) is the

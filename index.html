@@ -47,6 +47,7 @@
         <button class="tab" data-tab="fn" title="Aba de funções: sin(x), ln(x), piecewise(...)">ƒ(x)</button>
         <button class="tab" data-tab="adv" title="Aba de curvas: r = f(theta), (x(t), y(t)), intersec: f(x), g(x)">curvas</button>
         <button class="tab" data-tab="stats" title="Aba de dados e ajustes: points:, stats:, hist:, fit:, compare:, resid:">stats</button>
+        <button class="tab" data-tab="algebra" title="Vetores, matrizes, sistemas e decomposições">álgebra</button>
         <button class="tab" data-tab="geo" title="Aba de geometria: ponto, vetor, reta, conica, matriz">geo</button>
       </div>
 
@@ -190,6 +191,47 @@
         <button class="util" data-act="back" title="Apaga o caractere anterior">⌫</button>
       </div>
 
+      <div id="grid-algebra" class="grid algebra-grid hidden">
+        <span class="algebra-group">Vetores</span>
+        <button class="fn" data-algebra="1" data-ins="calc: dot([1,2,3],[4,5,6])" title="Sintaxe: calc: dot([1,2,3],[4,5,6])">u·v</button>
+        <button class="fn" data-algebra="1" data-ins="calc: norm([3,4])" title="Sintaxe: calc: norm([3,4])">norma</button>
+        <button class="fn" data-algebra="1" data-ins="calc: vadd([1,2],[3,4])" title="Sintaxe: calc: vadd([1,2],[3,4])">u+v</button>
+        <button class="fn" data-algebra="1" data-ins="calc: vsub([3,4],[1,2])" title="Sintaxe: calc: vsub([3,4],[1,2])">u−v</button>
+        <button class="fn" data-algebra="1" data-ins="calc: scale(2,[3,4])" title="Sintaxe: calc: scale(2,[3,4])">escala</button>
+        <button class="fn" data-algebra="1" data-ins="calc: angle([1,0],[0,1])" title="Sintaxe: calc: angle([1,0],[0,1])">ângulo</button>
+        <button class="fn" data-algebra="1" data-ins="calc: proj([3,4],[1,0])" title="Sintaxe: calc: proj([3,4],[1,0])">projeção</button>
+        <button class="fn" data-algebra="1" data-ins="calc: cross([1,0,0],[0,1,0])" title="Sintaxe: calc: cross([1,0,0],[0,1,0])">u×v</button>
+        <span class="algebra-group">Matrizes</span>
+        <button class="fn" data-algebra="1" data-ins="calc: matadd([[1,2],[3,4]],eye(2))" title="Sintaxe: calc: matadd([[1,2],[3,4]],eye(2))">A+B</button>
+        <button class="fn" data-algebra="1" data-ins="calc: matsub([[1,2],[3,4]],eye(2))" title="Sintaxe: calc: matsub([[1,2],[3,4]],eye(2))">A−B</button>
+        <button class="fn" data-algebra="1" data-ins="calc: matmul([[1,2],[3,4]],[[2,0],[1,2]])" title="Sintaxe: calc: matmul([[1,2],[3,4]],[[2,0],[1,2]])">A B</button>
+        <button class="fn" data-algebra="1" data-ins="calc: transpose([[1,2,3],[4,5,6]])" title="Sintaxe: calc: transpose([[1,2,3],[4,5,6]])">Aᵀ</button>
+        <button class="fn" data-algebra="1" data-ins="calc: det([[1,2],[3,4]])" title="Sintaxe: calc: det([[1,2],[3,4]])">det</button>
+        <button class="fn" data-algebra="1" data-ins="calc: trace([[1,2],[3,4]])" title="Sintaxe: calc: trace([[1,2],[3,4]])">traço</button>
+        <button class="fn" data-algebra="1" data-ins="calc: inv([[1,2],[3,4]])" title="Sintaxe: calc: inv([[1,2],[3,4]])">inversa</button>
+        <button class="fn" data-algebra="1" data-ins="calc: rank([[1,2],[2,4]])" title="Sintaxe: calc: rank([[1,2],[2,4]])">posto</button>
+        <button class="fn" data-algebra="1" data-ins="calc: rref([[1,2],[2,4]])" title="Sintaxe: calc: rref([[1,2],[2,4]])">escalonar</button>
+        <button class="fn" data-algebra="1" data-ins="calc: eye(3)" title="Sintaxe: calc: eye(3)">identidade</button>
+        <button class="fn" data-algebra="1" data-ins="calc: zeros(2,3)" title="Sintaxe: calc: zeros(2,3)">zeros</button>
+        <button class="fn" data-algebra="1" data-ins="calc: frobenius([[1,2],[3,4]])" title="Sintaxe: calc: frobenius([[1,2],[3,4]])">Frobenius</button>
+        <span class="algebra-group">Sistemas</span>
+        <button class="fn" data-algebra="1" data-ins="calc: linsolve([[2,1],[1,3]],[5,10])" title="Sintaxe: calc: linsolve([[2,1],[1,3]],[5,10])">resolver</button>
+        <button class="fn" data-algebra="1" data-ins="calc: solveinfo([[1,1],[2,2]],[1,2])" title="Sintaxe: calc: solveinfo([[1,1],[2,2]],[1,2])">analisar</button>
+        <button class="fn" data-algebra="1" data-ins="calc: lstsq([[1,0],[1,1],[1,2]],[1,2,2])" title="Sintaxe: calc: lstsq([[1,0],[1,1],[1,2]],[1,2,2])">mín. quadrados</button>
+        <span class="algebra-group">Decomposições</span>
+        <button class="fn" data-algebra="1" data-ins="calc: eig([[2,0],[0,3]])" title="Sintaxe: calc: eig([[2,0],[0,3]])">autovalores</button>
+        <button class="fn" data-algebra="1" data-ins="calc: eigenvectors([[2,1],[0,3]])" title="Sintaxe: calc: eigenvectors([[2,1],[0,3]])">autovetores</button>
+        <button class="fn" data-algebra="1" data-ins="calc: eiginfo([[2,1],[0,2]])" title="Sintaxe: calc: eiginfo([[2,1],[0,2]])">análise própria</button>
+        <button class="fn" data-algebra="1" data-ins="calc: lu([[0,2],[1,3]])" title="Sintaxe: calc: lu([[0,2],[1,3]])">LU</button>
+        <button class="fn" data-algebra="1" data-ins="calc: qr([[1,2],[3,4],[5,6]])" title="Sintaxe: calc: qr([[1,2],[3,4],[5,6]])">QR</button>
+        <button class="fn" data-algebra="1" data-ins="calc: svd([[2,1],[0,1]])" title="Sintaxe: calc: svd([[2,1],[0,1]])">SVD</button>
+        <button class="fn" data-algebra="1" data-ins="calc: pinv([[1,2],[2,4]])" title="Sintaxe: calc: pinv([[1,2],[2,4]])">pseudoinversa</button>
+        <span class="algebra-group">Visualização e variáveis</span>
+        <button class="fn" data-algebra="1" data-ins="matriz: [a,b; c,d]" title="Sintaxe: Transformação interativa 2×2">plano 2D</button>
+        <button class="fn" data-algebra="1" data-ins="let M = [[a,b],[c,d]]" title="Sintaxe: Declare M; use @M em outra linha">definir M</button>
+        <button class="fn" data-algebra="1" data-ins="calc: matmul(@M,eye(2))" title="Sintaxe: Reutilizar a variável M">usar M</button>
+      </div>
+
       <div id="grid-geo" class="grid hidden">
         <button class="fn" data-geo-tool="point" title="Sintaxe visual: clique no plano para criar A = ponto(x,y)">+ ponto</button>
         <button class="fn" data-ins="ponto: A=(0,0), B=(3,4)" title="Sintaxe: ponto: A=(x,y), B=(x,y)">ponto</button>
@@ -327,7 +369,7 @@
         </div>
         <div class="help-block">
           <strong>dados e geometria</strong>
-          <p>Dados: <code>points: (0,1),(1,3)</code>, <code>hist: 1,2,2,3</code>, <code>stats: 4,8,15</code>, <code>seq: i,1,n,i^2</code>. Ajustes: <code>fit:</code>, <code>fit2:</code>, <code>fitexp:</code>, <code>fitpow:</code>, <code>fitlog:</code>, <code>fitsig:</code>, <code>fit2: seq(i,1,n,i^2)</code>, <code>compare: seq(i,1,n,i^2)</code>, <code>resid: fit2, seq(i,1,n,i^2)</code> e <code>sum(i,1,n,(i^2-fit2(seq(j,1,n,j^2),i))^2)</code>. Álgebra: <code>sum(i,1,n,i)</code>, <code>det([[1,2],[3,4]])</code>, <code>cross([1,0,0],[0,1,0])</code>, <code>linsolve([[2,1],[1,3]],[5,10])</code>. Geometria: <code>A = ponto(0,0)</code>, <code>vetor: A,B</code>, <code>dist: A,B</code>, <code>M = medio(A,B)</code>, <code>r = reta(A,B)</code>, <code>angulo: A,B,C</code>, <code>triangulo: A,B,C</code>, <code>quadrilatero: A,B,C,D</code>, <code>poligono: A,B,C,D,E</code>, <code>convexo: A,B,C,D,E</code>, <code>produto: A,B; C,D</code>, <code>proj: A,B; C,D</code>, <code>intersecao: line((0,0),(1,1)); line((0,1),(1,0))</code>, <code>intersec: sin(x), cos(x)</code>, <code>conica: x^2 + y^2 = 4</code>, <code>matriz: [1,b; 0,1]</code>.</p>
+          <p>Dados: <code>points: (0,1),(1,3)</code>, <code>hist: 1,2,2,3</code>, <code>stats: 4,8,15</code>, <code>seq: i,1,n,i^2</code>. Ajustes: <code>fit:</code>, <code>fit2:</code>, <code>fitexp:</code>, <code>fitpow:</code>, <code>fitlog:</code>, <code>fitsig:</code>, <code>fit2: seq(i,1,n,i^2)</code>, <code>compare: seq(i,1,n,i^2)</code>, <code>resid: fit2, seq(i,1,n,i^2)</code> e <code>sum(i,1,n,(i^2-fit2(seq(j,1,n,j^2),i))^2)</code>. Álgebra: use a aba <strong>álgebra</strong> para inserir exemplos completos. <code>calc: dot([1,2],[3,4])</code> calcula sem traçar uma curva. Matrizes aceitam <code>[[1,2],[3,4]]</code> ou <code>[1,2;3,4]</code>. Use <code>let M = [[1,2],[3,4]]</code> e <code>calc: inv(@M)</code> para reutilizar valores. Ângulos são retornados em radianos. Em resultados 2×2, abra transformação 2D para animar a malha e as etapas da SVD. Limites: 20×20 para operações gerais, 12×12 para decomposições; autovalores reais 2×2. <code>sum(i,1,n,i)</code>, <code>det([[1,2],[3,4]])</code>, <code>cross([1,0,0],[0,1,0])</code>, <code>linsolve([[2,1],[1,3]],[5,10])</code>. Geometria: <code>A = ponto(0,0)</code>, <code>vetor: A,B</code>, <code>dist: A,B</code>, <code>M = medio(A,B)</code>, <code>r = reta(A,B)</code>, <code>angulo: A,B,C</code>, <code>triangulo: A,B,C</code>, <code>quadrilatero: A,B,C,D</code>, <code>poligono: A,B,C,D,E</code>, <code>convexo: A,B,C,D,E</code>, <code>produto: A,B; C,D</code>, <code>proj: A,B; C,D</code>, <code>intersecao: line((0,0),(1,1)); line((0,1),(1,0))</code>, <code>intersec: sin(x), cos(x)</code>, <code>conica: x^2 + y^2 = 4</code>, <code>matriz: [1,b; 0,1]</code>.</p>
         </div>
         <div class="help-block">
           <strong>controles</strong>

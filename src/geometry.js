@@ -1,6 +1,7 @@
 "use strict";
 
 import { compile, setImplicitY, splitTop } from './parser.js';
+import { det as matrixDet, trace as matrixTrace, eiginfo, dot as algebraDot, norm as algebraNorm, angle as algebraAngle, proj as algebraProjection, validateMatrix } from './linear-algebra.js';
 
 const EPS=1e-9;
 const GEOMETRY_PARAM_NAMES=new Set(['a','b','c','d','k','m','n','p','q','r']);
@@ -366,21 +367,18 @@ function vectorPair(body,ctx={}){
 
 function dotVectors(u,v){
   const a=vectorComponents(u), b=vectorComponents(v);
-  return a.x*b.x+a.y*b.y;
+  return algebraDot([a.x,a.y],[b.x,b.y]);
 }
 
 function vectorNorm(vec){
   const c=vectorComponents(vec);
-  return Math.hypot(c.x,c.y);
+  return algebraNorm([c.x,c.y]);
 }
 
 function vectorAngle(u,v){
-  const nu=vectorNorm(u), nv=vectorNorm(v);
-  if(nu<EPS||nv<EPS) throw new Error('angulo com vetor nulo indefinido');
-  const dot=dotVectors(u,v);
-  const cos=Math.min(1,Math.max(-1,dot/(nu*nv)));
-  const rad=Math.acos(cos);
-  return {rad, deg:rad*180/Math.PI, dot};
+  const a=vectorComponents(u), b=vectorComponents(v);
+  const rad=algebraAngle([a.x,a.y],[b.x,b.y]);
+  return {rad, deg:rad*180/Math.PI, dot:dotVectors(u,v)};
 }
 
 function parseAngleCommand(body,ctx={},definitionName=''){
@@ -636,17 +634,16 @@ function parseDotCommand(body,ctx={},definitionName=''){
 function parseProjectionCommand(body,ctx={},definitionName=''){
   const [u,v]=vectorPair(body,ctx);
   const uc=vectorComponents(u), vc=vectorComponents(v);
-  const denom=vc.x*vc.x+vc.y*vc.y;
-  if(denom<EPS) throw new Error('projecao sobre vetor nulo indefinida');
-  const coef=(uc.x*vc.x+uc.y*vc.y)/denom;
-  const proj={x:coef*vc.x,y:coef*vc.y};
+  const values=algebraProjection([uc.x,uc.y],[vc.x,vc.y]);
+  const proj={x:values[0],y:values[1]};
+  const coef=algebraDot([uc.x,uc.y],[vc.x,vc.y])/algebraDot([vc.x,vc.y],[vc.x,vc.y]);
   const r=result('projection','projecao');
   r.vectors=[
     vectorFromComponents(uc,'u'),
     vectorFromComponents(vc,'v'),
     vectorFromComponents(proj,definitionName || 'proj')
   ];
-  r.info=['proj_v(u) = ('+fmt(proj.x)+', '+fmt(proj.y)+')','coeficiente = '+fmt(coef),'u · v = '+fmt(uc.x*vc.x+uc.y*vc.y)];
+  r.info=['proj_v(u) = ('+fmt(proj.x)+', '+fmt(proj.y)+')','coeficiente = '+fmt(coef),'u · v = '+fmt(algebraDot([uc.x,uc.y],[vc.x,vc.y]))];
   if(definitionName) define(r,definitionName,'vector',r.vectors[2]);
   return r;
 }
@@ -785,35 +782,27 @@ function parseMatrixText(body,ctx={}){
   if(ref?.kind==='matrix') return ref.value.values;
   let text=String(body||'').trim();
   if(!text) throw new Error('matriz vazia');
-  let rows;
-  if(text.startsWith('[[')&&text.endsWith(']]')){
-    const inner=text.slice(1,-1);
-    rows=splitTopAny(inner,',').map(row=>row.trim().replace(/^\[/,'').replace(/\]$/,''));
-  } else {
-    if(text.startsWith('[')&&text.endsWith(']')) text=text.slice(1,-1);
-    rows=splitTopAny(text,';');
-  }
-  if(rows.length!==2) throw new Error('matriz 2x2 esperada');
-  const values=rows.map(row=>splitTopAny(row,',').map(value=>evalScalar(value,ctx)));
-  if(values.some(row=>row.length!==2)) throw new Error('cada linha precisa de dois valores');
+  if(!text.startsWith('[')&&!text.startsWith('@')) text='['+text+']';
+  const values=compile(text,ctx.params||{},{},ctx.symbols)(0);
+  validateMatrix(values);
+  if(values.length!==2||values[0].length!==2) throw new Error('matriz 2x2 esperada');
   return values;
 }
 
 function parseMatrixCommand(body,ctx={},definitionName=''){
   const m=parseMatrixText(body,ctx);
   const [[a,b],[c,d]]=m;
-  const det=a*d-b*c;
-  const tr=a+d;
-  const disc=tr*tr-4*det;
+  const det=matrixDet(m);
+  const tr=matrixTrace(m);
   const info=['A = ['+fmt(a)+' '+fmt(b)+'; '+fmt(c)+' '+fmt(d)+']','det = '+fmt(det),'traco = '+fmt(tr)];
-  if(disc>=-EPS){
-    const root=Math.sqrt(Math.max(0,disc));
-    info.push('autovalores = '+fmt((tr-root)/2)+', '+fmt((tr+root)/2));
-  } else {
-    info.push('autovalores complexos');
-  }
+  let eigen=null;
+  try {
+    eigen=eiginfo(m);
+    info.push('autovalores = '+eigen.value.map(fmt).join(', '));
+    info.push(...eigen.warnings);
+  } catch(e) { if(e.code!=='COMPLEX') throw e; info.push('autovalores complexos'); }
   const r=result('matrix','matriz 2x2');
-  r.matrix={values:m, det, trace:tr};
+  r.matrix={values:m, det, trace:tr, eigen};
   r.vectors=[
     {from:{x:0,y:0}, to:{x:a,y:c}, label:'A i'},
     {from:{x:0,y:0}, to:{x:b,y:d}, label:'A j'}

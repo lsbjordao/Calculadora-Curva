@@ -475,10 +475,10 @@ export const PRESETS=[
     label:'Álgebra linear expandida',
     view:{cx:0,cy:0,scale:60},
     equations:[
-      {text:'det([1,2;3,4])'},
+      {text:'calc: det([1,2;3,4])'},
       {text:'cross([1,0,0],[0,1,0])'},
       {text:'linsolve([[2,1],[1,3]],[5,10])'},
-      {text:'sum(i,1,n,i)',params:{n:10}},
+      {text:'calc: sum(i,1,n,i)',params:{n:10}},
       {text:'seq: i,1,n,i^2',params:{n:5}}
     ]
   },
@@ -554,8 +554,8 @@ export const PRESETS=[
     label:'Determinantes e sistemas',
     view:{cx:0,cy:0,scale:60},
     equations:[
-      {text:'det([[a,0],[0,d]])',params:{a:2,d:3}},
-      {text:'det([[1,2,3],[0,1,4],[5,6,0]])'},
+      {text:'calc: det([[a,0],[0,d]])',params:{a:2,d:3}},
+      {text:'calc: det([[1,2,3],[0,1,4],[5,6,0]])'},
       {text:'cross([1,0,0],[0,1,0])'},
       {text:'linsolve([[2,1],[1,3]],[5,10])'}
     ]
@@ -571,10 +571,61 @@ export const PRESETS=[
       {text:'hist: 1,1,2,2,2,3,3,4,5,5,5,5'},
       {text:'intersec: ln(x), 1',style:'dashed'}
     ]
+  },
+  {
+    id:'algebra-vectors',label:'Vetores e projeções',view:{cx:1,cy:1,scale:60},
+    equations:[
+      {text:'calc: dot([a,b],[1,2])',params:{a:3,b:4}},
+      {text:'calc: norm([a,b])',params:{a:3,b:4}},
+      {text:'calc: angle([1,0],[1,1])'},
+      {text:'calc: proj([3,4],[1,0])'},
+      {text:'produto: (0,0),(3,4); (0,0),(1,0)'}
+    ]
+  },
+  {
+    id:'algebra-matrices',label:'Calculadora matricial',view:{cx:0,cy:0,scale:60},
+    equations:[
+      {text:'let M = [[a,b],[c,d]]',params:{a:1,b:2,c:3,d:4}},
+      {text:'calc: matmul(@M,[[2,0],[1,2]])'},
+      {text:'calc: inv(@M)'},
+      {text:'calc: rref(@M)'},
+      {text:'calc: transpose([[1,2,3],[4,5,6]])'}
+    ]
+  },
+  {
+    id:'algebra-systems',label:'Sistemas: três classificações',view:{cx:1,cy:1,scale:70},
+    equations:[
+      {text:'calc: solveinfo([[1,1],[1,a]],[2,b])',params:{a:2,b:3},showAlgebraSystem:true},
+      {text:'calc: solveinfo([[1,1],[2,2]],[1,2])',visible:false},
+      {text:'calc: solveinfo([[1,1],[2,2]],[1,3])',visible:false}
+    ]
+  },
+  {
+    id:'algebra-decompositions',label:'QR, SVD e mínimos quadrados',view:{cx:0,cy:0,scale:65},
+    equations:[
+      {text:'calc: qr([[1,2],[3,4],[5,6]])'},
+      {text:'calc: svd([[a,b],[0,d]])',params:{a:2,b:1,d:1},showAlgebraTransform:true},
+      {text:'calc: lu([[0,2],[1,3]])'},
+      {text:'calc: pinv([[1,2],[2,4]])'},
+      {text:'calc: lstsq([[1,0],[1,1],[1,2]],[1,2,2])'}
+    ]
+  },
+  {
+    id:'algebra-eigenvectors',label:'Direções próprias e multiplicidade',view:{cx:0,cy:0,scale:65},
+    equations:[
+      {text:'matriz: [a,b; c,d]',params:{a:2,b:1,c:0,d:3}},
+      {text:'calc: eiginfo([[2,1],[0,2]])'},
+      {text:'calc: eiginfo([[2,0],[0,2]])'}
+    ]
   }
 ];
 
 const PRESET_DETAILS={
+  'algebra-vectors':['Álgebra linear','Produto escalar, norma, ângulo em radianos e projeção.'],
+  'algebra-matrices':['Álgebra linear','Variáveis reativas, multiplicação, inversa, posto e transposta.'],
+  'algebra-systems':['Álgebra linear','Mova as retas pelos parâmetros e compare solução única, infinitas e inconsistência.'],
+  'algebra-decompositions':['Álgebra linear','Fatores ortogonais, resíduos, pseudoinversa e mínimos quadrados.'],
+  'algebra-eigenvectors':['Álgebra linear','Direções invariantes, autovalores repetidos e matrizes não diagonalizáveis.'],
   'fund-limits':['Fundamentos','Limites notáveis perto de zero e aproximações clássicas.'],
   'fund-continuity':['Fundamentos','Compara funções contínuas, cantos, saltos e furos removíveis.'],
   'fund-derivatives':['Fundamentos','Mostra inclinação local em funções elementares.'],

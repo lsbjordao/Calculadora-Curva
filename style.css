@@ -1471,3 +1471,39 @@
 .data-table .dt-del{ padding:0 6px; opacity:0.7; }
 .data-table .dt-del:hover{ opacity:1; }
 .data-table .dt-add{ align-self:flex-start; padding:2px 8px; font-size:12px; margin-top:2px; }
+
+/* Linear algebra uses the calculator's existing colors and compact rows. */
+.algebra-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.algebra-grid .algebra-group { grid-column: 1 / -1; font-size: .72rem; opacity: .7; padding: .6rem .2rem .2rem; }
+.algebra-grid button { min-width: 0; font-size: .72rem; }
+.algebra-result { white-space: normal; min-width: 0; user-select: text; }
+.algebra-result-title { display: block; margin-bottom: .35rem; }
+.algebra-shape { font-size: .7rem; opacity: .7; margin-bottom: .5rem; }
+.matrix-result { margin: .6rem 0; min-width: 0; }
+.matrix-scroll { max-width: 100%; overflow-x: auto; padding: .25rem; }
+.matrix-values { border-collapse: separate; border-spacing: .5rem .2rem; font-variant-numeric: tabular-nums; border-inline: 2px solid currentColor; margin: .25rem 0; }
+.matrix-values caption { text-align: left; font-size: .7rem; opacity: .75; padding-bottom: .4rem; }
+.matrix-values td { padding: .15rem .2rem; text-align: right; white-space: nowrap; }
+.algebra-copy { display: flex; gap: .3rem; flex-wrap: wrap; align-items: center; font-size: .7rem; }
+.algebra-copy .calc { font-size: .65rem; }
+.algebra-copy-fallback { width: 100%; min-height: 3rem; color: inherit; background: transparent; }
+.algebra-properties { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .35rem .5rem; font-size: .7rem; }
+.algebra-properties dt { opacity: .75; }
+.algebra-properties dd { margin: 0; overflow-wrap: anywhere; }
+.algebra-scalar { display: block; font-size: 1.1rem; margin: .5rem 0; }
+.algebra-warning { border-left: 2px solid var(--accent); padding-left: .5rem; font-size: .72rem; }
+.transform-controls { display: flex; flex-wrap: wrap; gap: .45rem; padding: .6rem 0; font-size: .7rem; }
+.transform-controls label { display: flex; align-items: center; gap: .25rem; }
+.transform-controls select, .transform-controls button { color: inherit; background: transparent; border: 1px solid currentColor; border-radius: 4px; padding: .3rem; font: inherit; }
+.transform-controls select { max-width: 100%; }
+.transform-controls p, .transform-controls output { flex-basis: 100%; margin: .2rem 0; }
+.transform-controls input[type='range'] { min-width: 0; max-width: 10rem; accent-color: var(--accent); }
+.row-body > details { font-size: .75rem; }
+.matrix-scroll:focus-visible, .algebra-copy button:focus-visible, .transform-controls :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+#grid-algebra { max-height: 320px; overflow-y: auto; }
+#rows:has(.algebra-result), #rows:has(.transform-controls) { max-height: min(55vh, 560px); }
+.matrix-values caption { white-space: nowrap; }
+@media (max-width: 720px) {
+  #grid-algebra { max-height: 240px; }
+  #rows:has(.algebra-result), #rows:has(.transform-controls) { max-height: 320px; }
+}

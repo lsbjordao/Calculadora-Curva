@@ -2,6 +2,7 @@
 
 import { derivAt, limitAt, secondDeriv } from './numeric.js';
 import { polyFit, expFit, powFit, logFit, sigmoidFit } from './regress.js';
+import { algebraFunctions, algebraArities, callAlgebra, AlgebraError, validateMatrix, validateVector, algebraLimits } from './linear-algebra.js';
 
 const FUNCS = {
   sin:Math.sin, cos:Math.cos, tan:Math.tan,
@@ -23,7 +24,7 @@ const FUNC_ALIASES = {
 };
 
 const CONSTS = { pi:Math.PI, "\u03c0":Math.PI, e:Math.E, tau:2*Math.PI, phi:(1+Math.sqrt(5))/2 };
-const SPECIAL_CALLS = new Set(['piecewise','if','root','raiz','lim','sum','det','cross','linsolve','seq','deriv']);
+const SPECIAL_CALLS = new Set(['piecewise','if','root','raiz','lim','sum','det','cross','linsolve','seq','deriv', ...Object.keys(algebraFunctions)]);
 const STAT_FIT_NAMES = new Set(['fitexp','fitpow','fitlog','fitsig']);
 
 function isFitName(name){
@@ -127,7 +128,7 @@ function enclosingCallName(str, commaIndex){
 }
 
 function normalizeDecimalCommas(str){
-  const multiArgCalls=new Set(['root','raiz','lim','sum','seq','cross','linsolve','piecewise','if']);
+  const multiArgCalls=new Set(['root','raiz','lim','sum','seq','cross','linsolve','piecewise','if', ...Object.keys(algebraFunctions)]);
   let out='';
   let squareDepth=0;
   for(let i=0;i<str.length;i++){
@@ -193,7 +194,7 @@ function stripBrackets(str){
   return isBracketed(s) ? s.slice(1,-1) : s;
 }
 
-function compileMatrixLiteral(inner, params, locals){
+function compileMatrixLiteral(inner, params, locals, symbols){
   const text=String(inner||'').trim();
   if(!text) return ()=>[];
   const semicolonRows=splitTopLevel(text, ';');
@@ -201,89 +202,26 @@ function compileMatrixLiteral(inner, params, locals){
   if(semicolonRows.length>1){
     rows=semicolonRows;
   } else {
-    const commaParts=splitTopLevel(text, ',').map(part=>part.trim()).filter(Boolean);
-    if(commaParts.length>1 && commaParts.every(isBracketed)) rows=commaParts.map(stripBrackets);
+    const commaParts=splitTopLevel(text, ',').map(part=>part.trim());
+    if(commaParts.length && commaParts.every(isBracketed)) rows=commaParts.map(stripBrackets);
   }
   if(rows){
+    if(rows.length>algebraLimits().maxSize) throw new AlgebraError('SIZE', 'Matriz excede o limite de tamanho.');
     const compiledRows=rows.map(row=>{
       const cells=splitTopLevel(stripBrackets(row), ',').map(cell=>cell.trim());
       if(!cells.length || cells.some(cell=>!cell)) throw new Error("matriz inválida");
-      return cells.map(cell=>compile(cell, params, locals));
+      if(cells.length>algebraLimits().maxSize) throw new AlgebraError('SIZE', 'Matriz excede o limite de tamanho.');
+      return cells.map(cell=>compile(cell, params, locals, symbols));
     });
     const width=compiledRows[0]?.length ?? 0;
     if(!width || compiledRows.some(row=>row.length!==width)) throw new Error("linhas de tamanhos diferentes");
-    return x=>compiledRows.map(row=>row.map(fn=>fn(x)));
+    return x=>validateMatrix(compiledRows.map(row=>row.map(fn=>fn(x))));
   }
   const cells=splitTopLevel(text, ',').map(cell=>cell.trim());
   if(!cells.length || cells.some(cell=>!cell)) throw new Error("vetor inválido");
-  const compiled=cells.map(cell=>compile(cell, params, locals));
-  return x=>compiled.map(fn=>fn(x));
-}
-
-function asFiniteMatrix(value){
-  if(!Array.isArray(value)||!Array.isArray(value[0])||!value.length) return null;
-  const width=value[0].length;
-  if(!width) return null;
-  const matrix=value.map(row=>Array.isArray(row) ? row.map(Number) : null);
-  if(matrix.some(row=>!row || row.length!==width || row.some(cell=>!Number.isFinite(cell)))) return null;
-  return matrix;
-}
-
-function determinant(value){
-  const matrix=asFiniteMatrix(value);
-  if(!matrix || matrix.length!==matrix[0].length) return NaN;
-  const n=matrix.length;
-  const m=matrix.map(row=>row.slice());
-  let det=1, sign=1;
-  for(let col=0;col<n;col++){
-    let pivot=col;
-    for(let row=col+1;row<n;row++){
-      if(Math.abs(m[row][col])>Math.abs(m[pivot][col])) pivot=row;
-    }
-    if(Math.abs(m[pivot][col])<1e-12) return 0;
-    if(pivot!==col){ [m[col],m[pivot]]=[m[pivot],m[col]]; sign*=-1; }
-    const pv=m[col][col];
-    det*=pv;
-    for(let row=col+1;row<n;row++){
-      const f=m[row][col]/pv;
-      for(let c=col;c<n;c++) m[row][c]-=f*m[col][c];
-    }
-  }
-  return sign*det;
-}
-
-function asFiniteVector(value){
-  if(!Array.isArray(value)) return null;
-  if(Array.isArray(value[0])){
-    if(value.some(row=>!Array.isArray(row)||row.length!==1||!Number.isFinite(Number(row[0])))) return null;
-    return value.map(row=>Number(row[0]));
-  }
-  const vector=value.map(Number);
-  return vector.every(Number.isFinite) ? vector : null;
-}
-
-function solveLinearSystem(matrixValue, vectorValue){
-  const M=asFiniteMatrix(matrixValue);
-  const b=asFiniteVector(vectorValue);
-  if(!M||!b||!M.length||M.length!==M[0].length||M.length!==b.length) return null;
-  const n=M.length;
-  const aug=M.map((row,i)=>[...row,b[i]]);
-  for(let col=0;col<n;col++){
-    let pivot=col;
-    for(let row=col+1;row<n;row++){
-      if(Math.abs(aug[row][col])>Math.abs(aug[pivot][col])) pivot=row;
-    }
-    if(Math.abs(aug[pivot][col])<1e-12) return null;
-    if(pivot!==col) [aug[col],aug[pivot]]=[aug[pivot],aug[col]];
-    const div=aug[col][col];
-    for(let j=col;j<=n;j++) aug[col][j]/=div;
-    for(let row=0;row<n;row++){
-      if(row===col) continue;
-      const f=aug[row][col];
-      for(let j=col;j<=n;j++) aug[row][j]-=f*aug[col][j];
-    }
-  }
-  return aug.map(row=>row[n]);
+  if(cells.length>algebraLimits().maxSize) throw new AlgebraError('SIZE', 'Vetor excede o limite de tamanho.');
+  const compiled=cells.map(cell=>compile(cell, params, locals, symbols));
+  return x=>validateVector(compiled.map(fn=>fn(x)));
 }
 
 function isPointArray(value){
@@ -314,6 +252,11 @@ function tokenize(str){
       const value=Number(m[0]);
       if(!Number.isFinite(value)) throw new Error("número fora do alcance");
       t.push({type:'num',value}); i+=m[0].length; continue;
+    }
+    if(c==='@'){
+      const match=str.slice(i+1).match(/^[a-zA-Z][a-zA-Z0-9]*/);
+      if(!match) throw new AlgebraError('UNKNOWN_SYMBOL', 'Nome esperado após @.');
+      t.push({type:'symbol',name:match[0].toLowerCase()}); i+=match[0].length+1; continue;
     }
     if(c==='['){
       let depth=1, j=i+1, start=j;
@@ -377,8 +320,8 @@ function tokenize(str){
     out.push(t[k]);
     const a=t[k], b=t[k+1];
     if(!b) continue;
-    const aEnd = a.type==='num'||a.type==='const'||a.type==='var'||a.type==='vary'||a.type==='param'||a.type==='mat_lit'||(a.type==='op'&&a.value===')');
-    const bStart = b.type==='num'||b.type==='const'||b.type==='var'||b.type==='vary'||b.type==='param'||b.type==='func'||b.type==='piecewise'||b.type==='root'||b.type==='userfunc'||b.type==='userderiv'||b.type==='limfn'||b.type==='special'||b.type==='mat_lit'||(b.type==='op'&&b.value==='(');
+    const aEnd = a.type==='num'||a.type==='const'||a.type==='var'||a.type==='vary'||a.type==='param'||a.type==='mat_lit'||a.type==='symbol'||(a.type==='op'&&a.value===')');
+    const bStart = b.type==='num'||b.type==='const'||b.type==='var'||b.type==='vary'||b.type==='param'||b.type==='func'||b.type==='piecewise'||b.type==='root'||b.type==='userfunc'||b.type==='userderiv'||b.type==='limfn'||b.type==='special'||b.type==='mat_lit'||b.type==='symbol'||(b.type==='op'&&b.value==='(');
     if(aEnd&&bStart) out.push({type:'op',value:'*'});
   }
   return out;
@@ -408,7 +351,7 @@ export function extractParams(str){
       }
     }
     if(tk.type==='mat_lit'){
-      for(const name of extractParams(tk.value)){
+      for(const name of extractParams(tk.value.replace(/;/g,','))){
         if(!scopes.some(scope=>scope.name===name) && !names.includes(name)) names.push(name);
       }
     }
@@ -417,7 +360,13 @@ export function extractParams(str){
   return names;
 }
 
-export function compile(str, params={}, locals={}){
+function scalar(value){
+  if(typeof value!=='number') throw new AlgebraError('TYPE', 'Operadores e funções escalares exigem números. Use matadd, matsub, matmul, vadd, vsub ou scale para arrays.');
+  return value;
+}
+
+export function compile(str, params={}, locals={}, symbols=null){
+  let inputShapes=[], inputValues=[];
   const tokens=tokenize(normalizeInput(str));
   if(tokens.length===0) return null;
   let p=0;
@@ -427,6 +376,7 @@ export function compile(str, params={}, locals={}){
   const isComparison=()=>peek()&&peek().type==='op'&&COMPARISONS.has(peek().value);
 
   function compare(a,b,op){
+    a=scalar(a); b=scalar(b);
     if(op==='<') return a<b;
     if(op==='>') return a>b;
     if(op==='<=') return a<=b;
@@ -443,14 +393,14 @@ export function compile(str, params={}, locals={}){
       const right=expr();
       return x=>compare(left(x),right(x),op);
     }
-    return x=>left(x)!==0;
+    return x=>scalar(left(x))!==0;
   }
 
   function expr(){
     let f=term();
     while(peek()&&peek().type==='op'&&(peek().value==='+'||peek().value==='-')){
       const op=eat().value, g=term(), ff=f;
-      f = op==='+' ? x=>ff(x)+g(x) : x=>ff(x)-g(x);
+      f = op==='+' ? x=>scalar(ff(x))+scalar(g(x)) : x=>scalar(ff(x))-scalar(g(x));
     }
     return f;
   }
@@ -458,23 +408,26 @@ export function compile(str, params={}, locals={}){
     let f=unary();
     while(peek()&&peek().type==='op'&&(peek().value==='*'||peek().value==='/')){
       const op=eat().value, g=unary(), ff=f;
-      f = op==='*' ? x=>ff(x)*g(x) : x=>ff(x)/g(x);
+      f = op==='*' ? x=>scalar(ff(x))*scalar(g(x)) : x=>scalar(ff(x))/scalar(g(x));
     }
     return f;
   }
   function unary(){
-    if(isOp('-')){ eat(); const u=unary(); return x=>-u(x); }
-    if(isOp('+')){ eat(); return unary(); }
+    if(isOp('-')){ eat(); const u=unary(); return x=>-scalar(u(x)); }
+    if(isOp('+')){ eat(); const u=unary(); return x=>scalar(u(x)); }
     return power();
   }
   function power(){
     const base=primary();
-    if(isOp('^')){ eat(); const ex=unary(); return x=>Math.pow(base(x),ex(x)); }
+    if(isOp('^')){ eat(); const ex=unary(); return x=>Math.pow(scalar(base(x)),scalar(ex(x))); }
     return base;
   }
   function primary(){
     const tk=peek();
     if(!tk) throw new Error("expressão incompleta");
+    if(tk.type==='symbol'){
+      eat(); return ()=>{ if(!symbols) throw new AlgebraError('UNKNOWN_SYMBOL','Variável @'+tk.name+' não declarada.'); return symbols(tk.name); };
+    }
     if(tk.type==='num'){ eat(); const v=tk.value; return ()=>v; }
     if(tk.type==='const'){ eat(); const v=CONSTS[tk.name]; return ()=>v; }
     if(tk.type==='var'){
@@ -524,13 +477,13 @@ export function compile(str, params={}, locals={}){
       const fn=FUNCS[tk.name];
       if(!isOp('(')){
         const arg=unary();
-        return x=>fn(arg(x));
+        return x=>fn(scalar(arg(x)));
       }
       eat();
       const arg=expr();
       if(!isOp(')')) throw new Error("esperava )");
       eat();
-      return x=>fn(arg(x));
+      return x=>fn(scalar(arg(x)));
     }
     if(tk.type==='limfn'){
       eat();
@@ -604,7 +557,7 @@ export function compile(str, params={}, locals={}){
           let s=0;
           for(let n=from;n<=to;n++){
             cell.value=n;
-            s+=bodyFn(x);
+            s+=scalar(bodyFn(x));
           }
           return s;
         };
@@ -614,35 +567,20 @@ export function compile(str, params={}, locals={}){
         if(!isOp(')')) throw new Error("esperava )"); eat();
         return x=>derivAt(inner,x);
       }
-      if(sname==='det'){
-        const arg=expr();
+      if(Object.hasOwn(algebraFunctions,sname)){
+        const args=[];
+        if(!isOp(')')){
+          args.push(expr());
+          while(isOp(',')){ eat(); args.push(expr()); }
+        }
         if(!isOp(')')) throw new Error("esperava )"); eat();
+        if(args.length!==algebraArities[sname]) throw new AlgebraError('ARGUMENTS', sname+': esperados '+algebraArities[sname]+' argumentos.');
         return x=>{
-          const m=arg(x);
-          return determinant(m);
-        };
-      }
-      if(sname==='cross'){
-        const a=expr(); if(!isOp(',')) throw new Error("esperava ,"); eat();
-        const b=expr();
-        if(!isOp(')')) throw new Error("esperava )"); eat();
-        return x=>{
-          const va=a(x), vb=b(x);
-          if(!Array.isArray(va)||!Array.isArray(vb)) return NaN;
-          if(va.length===2 && vb.length===2) return va[0]*vb[1]-va[1]*vb[0];
-          if(va.length===3 && vb.length===3){
-            return [va[1]*vb[2]-va[2]*vb[1], va[2]*vb[0]-va[0]*vb[2], va[0]*vb[1]-va[1]*vb[0]];
-          }
-          return NaN;
-        };
-      }
-      if(sname==='linsolve'){
-        const Aexpr=expr(); if(!isOp(',')) throw new Error("esperava ,"); eat();
-        const bexpr=expr();
-        if(!isOp(')')) throw new Error("esperava )"); eat();
-        return x=>{
-          const M=Aexpr(x), bb=bexpr(x);
-          return solveLinearSystem(M, bb) ?? NaN;
+          const values=args.map(fn=>fn(x));
+          const result=callAlgebra(sname,values);
+          inputValues=values;
+          inputShapes=values.map(v=>Array.isArray(v)?(Array.isArray(v[0])?[v.length,v[0].length]:[v.length]):[]);
+          return result;
         };
       }
       throw new Error("função especial não suportada: "+sname);
@@ -650,9 +588,7 @@ export function compile(str, params={}, locals={}){
     if(tk.type==='mat_lit'){
       eat();
       const inner=tk.value;
-      try{
-        return compileMatrixLiteral(inner, params, locals);
-      }catch(_){ return x=>NaN; }
+      return compileMatrixLiteral(inner, params, locals, symbols);
     }
     if(tk.type==='userfunc'||tk.type==='userderiv'){
       eat();
@@ -684,6 +620,8 @@ export function compile(str, params={}, locals={}){
   }
   const fn=expr();
   if(p<tokens.length) throw new Error("sobrou expressão");
+  Object.defineProperty(fn,'inputShapes',{get:()=>inputShapes});
+  Object.defineProperty(fn,'inputValues',{get:()=>inputValues});
   return fn;
 }
 
@@ -725,8 +663,11 @@ export function compileCondition(str, params={}){
   if(ops.length<1||ops.length>2) throw new Error("condição inválida");
   const fns=parts.map(part=>compile(part, params));
   if(fns.some(f=>f===null)) throw new Error("condição incompleta");
-  const cmp=(a,b,op)=> op==='<'?a<b : op==='>'?a>b : op==='<='?a<=b
-    : op==='>='?a>=b : op==='=='?Math.abs(a-b)<=1e-12 : Math.abs(a-b)>1e-12;
+  const cmp=(a,b,op)=>{
+    a=scalar(a); b=scalar(b);
+    return op==='<'?a<b : op==='>'?a>b : op==='<='?a<=b
+      : op==='>='?a>=b : op==='=='?Math.abs(a-b)<=1e-12 : Math.abs(a-b)>1e-12;
+  };
   if(ops.length===1){
     const [A,B]=fns, op=ops[0];
     return x=>cmp(A(x),B(x),op);

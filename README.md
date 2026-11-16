@@ -28,6 +28,10 @@ Vetores usam `[1,2,3]`; matrizes usam `[[1,2],[3,4]]` ou `[1,2;3,4]`. Uma matriz
 | Autovalores | `eig(A)`, `eigenvectors(A)`, `eiginfo(A)` |
 | Decomposições | `lu(A)`, `qr(A)`, `svd(A)`, `pinv(A)` |
 
+`scale(k,A)` também aceita matrizes: `scale(2,inv(M))` calcula 2M⁻¹. Em `matmul`, um vetor à direita é lido como coluna (`matmul(A,[3,4])` = A·v) e à esquerda como linha; o produto volta como vetor. Dois vetores em `matmul` geram erro: use `dot(u,v)`.
+
+Resultados matriciais informam o **tipo** da matriz quando ele se aplica: linha, coluna, nula, identidade, diagonal, triangular superior ou inferior, simétrica, antissimétrica e ortogonal (A Aᵀ = I), com tolerância relativa ao maior elemento.
+
 `angle` retorna radianos; multiplique por `180/pi` para converter em graus. `proj(u,v)` projeta **u sobre v**. Ângulos com vetor nulo e projeções sobre vetor nulo apresentam erro. `cross` retorna um escalar em 2D e um vetor em 3D.
 
 Os resultados exibem dimensões e propriedades disponíveis. **copiar texto** exporta matrizes como linhas e colunas separadas por tabulação; **copiar Curva** conserva a precisão numérica em sintaxe reutilizável. Decomposições oferecem cópia de cada fator. Se o navegador não permitir acesso à área de transferência, aparece um campo selecionável para cópia por teclado.
@@ -42,6 +46,12 @@ matriz: @M
 ```
 
 Declarações `let` aceitam vetores e matrizes. Referências `@nome` são independentes dos parâmetros escalares e das definições geométricas existentes. Os nomes não diferenciam maiúsculas e minúsculas. Referências futuras são permitidas; nomes duplicados, referências ausentes e ciclos produzem erros. Alterar os parâmetros, editar, remover ou reordenar linhas recalcula os dependentes. O formato de estado permanece na versão 1 e preserva estados anteriores.
+
+## Cônicas
+
+`conica: equação` identifica circunferência, elipse, hipérbole e parábola e mostra centro ou vértice, semieixos, focos e diretrizes. Para elipse e hipérbole, informa também a orientação do eixo maior ou real, a semidistância focal `c` com a relação notável e a excentricidade `e = c/a`; a circunferência tem `e = 0` e a parábola, `e = 1`, com a direção de abertura. Toda cônica recebe o indicador `b^2 - 4ac` e o gênero (elíptico, parabólico ou hiperbólico).
+
+Com termo `xy` (escreva `x*y`), a cônica é rotacionada: a análise mostra o tipo pelo discriminante e pelo determinante da matriz 3×3 da cônica (hipérbole, par de retas concorrentes, elipse, cônica sem pontos reais, parábola ou retas paralelas) e o ângulo de rotação dos eixos, `cot 2θ = (a − c)/b`. Focos e eixos de cônicas rotacionadas não são desenhados.
 
 ## Transformações e aulas
 

@@ -69,14 +69,14 @@ export function MatrixResultView(value, label = 'Resultado') {
   table.appendChild(tbody); scroll.appendChild(table); root.append(scroll,copyButtons(value,label));
   return root;
 }
-const labels = {rank:'Posto numérico',determinant:'Determinante',trace:'Traço',invertible:'Invertível',condition:'Condicionamento',eigenvalues:'Autovalores',
+const labels = {types:'Tipo',rank:'Posto numérico',determinant:'Determinante',trace:'Traço',invertible:'Invertível',condition:'Condicionamento',eigenvalues:'Autovalores',
   eigenvalueNote:'Autovalores',diagonalizable:'Base completa de autovetores',repeated:'Autovalor repetido',residual:'Resíduo',relativeResidual:'Resíduo relativo',
   augmentedRank:'Posto aumentado',threshold:'Tolerância de posto',classification:'Classificação',consistent:'Sistema consistente',compatibilityResidual:'Resíduo de compatibilidade',method:'Método',order:'Ordem',identity:'Identidade'};
 const classifications = {unique:'Solução única',infinite:'Infinitas soluções',inconsistent:'Sistema inconsistente','ill-conditioned':'Sistema numericamente mal condicionado'};
 function metadataText(key, value) {
   if (typeof value === 'boolean') return value ? 'sim' : 'não';
   if (typeof value === 'number') return formatAlgebraNumber(value);
-  if (Array.isArray(value)) return value.map(formatAlgebraNumber).join(', ');
+  if (Array.isArray(value)) return value.map(x => typeof x === 'string' ? x : formatAlgebraNumber(x)).join(', ');
   return classifications[value] || String(value);
 }
 export function renderAlgebraResult(host, result) {

@@ -151,3 +151,30 @@ test('ill-conditioned Hilbert matrices retain orthogonal factors and reconstruct
     assert.equal(scaled.metadata.rank,f.metadata.rank);assert.ok(scaled.metadata.residual<1e-12);
   }
 });
+test('scale accepts matrices and matmul accepts vector operands',()=>{
+  close(la.scale(2,[[1,-2],[0,3]]),[[2,-4],[0,6]]);
+  close(la.det(la.scale(2,la.inv([[2,1],[1,-2]]))),-0.8);
+  assert.throws(()=>la.scale(2,[[1,2],[3]]),{code:'SHAPE'});
+  assert.deepEqual(la.matmul([[2,-1],[1,1]],[3,4]),[2,7]);
+  assert.deepEqual(la.matmul([1,2],[[1,0],[0,1]]),[1,2]);
+  assert.deepEqual(la.matmul([[2,-1],[1,1]],[[3],[4]]),[[2],[7]]);
+  assert.throws(()=>la.matmul([1,2],[3,4]),{code:'DIMENSION'});
+  assert.throws(()=>la.matmul([[1,2,3]],[3,4]),{code:'DIMENSION'});
+  assert.throws(()=>la.matmul([1,2,3],[[1,0],[0,1]]),{code:'DIMENSION'});
+});
+test('matrixInfo classifies structural matrix types',()=>{
+  const types=A=>la.matrixInfo(A).metadata.types||[];
+  assert.deepEqual(types([[0,-1,-4],[1,0,2],[4,-2,0]]),['antissimétrica']);
+  assert.deepEqual(types([[0,-1],[1,0]]),['antissimétrica','ortogonal']);
+  assert.deepEqual(types([[3,1,0],[1,3,2],[0,2,3]]),['simétrica']);
+  assert.deepEqual(types([[2,5,1],[0,3,4],[0,0,6]]),['triangular superior']);
+  assert.deepEqual(types([[2,0],[7,3]]),['triangular inferior']);
+  assert.deepEqual(types([[2,0],[0,3]]),['diagonal','simétrica']);
+  assert.deepEqual(types(la.eye(3)),['identidade','simétrica','ortogonal']);
+  assert.deepEqual(types([[1,2,3]]),['linha']);
+  assert.deepEqual(types([[1],[2]]),['coluna']);
+  assert.deepEqual(types(la.zeros(2,2)),['nula']);
+  assert.deepEqual(types([[1,2],[3,4]]),[]);
+  const c=Math.cos(0.3), s=Math.sin(0.3);
+  assert.ok(types([[c,-s],[s,c]]).includes('ortogonal'));
+});

@@ -821,14 +821,51 @@ function lineY(y,label,style='dotted'){
   return {a:0,b:1,c:-y,label,style};
 }
 
+const coeffScale=q=>Math.max(1,...['A','B','C','D','E','F'].map(key=>Math.abs(q[key])));
+
+// Genus by the quadratic part a x^2 + b xy + c y^2 (course notation b^2 - 4ac).
+function conicGenus(q){
+  const disc=q.B*q.B-4*q.A*q.C;
+  const tol=1e-9*Math.max(1,q.B*q.B,Math.abs(4*q.A*q.C));
+  const sign=Math.abs(disc)<=tol ? 0 : Math.sign(disc);
+  const genus=sign<0 ? 'eliptico' : sign>0 ? 'hiperbolico' : 'parabolico';
+  const value=sign===0 ? '0' : fmt(disc)+(sign<0?' < 0':' > 0');
+  return {disc:sign===0?0:disc,sign,label:'b^2 - 4ac = '+value+' (genero '+genus+')'};
+}
+
+// Determinant of the 3x3 matrix of the conic: zero means a degenerate conic.
+function conicDelta(q){
+  const a=q.A,b=q.B/2,c=q.C,d=q.D/2,e=q.E/2,f=q.F;
+  return a*(c*f-e*e)-b*(b*f-e*d)+d*(b*e-c*d);
+}
+
+function analyzeRotatedConic(q){
+  const genus=conicGenus(q);
+  const delta=conicDelta(q);
+  const degenerate=Math.abs(delta)<=1e-9*coeffScale(q)**3;
+  let type;
+  if(genus.sign>0) type=degenerate ? 'par de retas concorrentes' : 'hiperbole';
+  else if(genus.sign<0) type=degenerate ? 'ponto (elipse degenerada)' : (q.A+q.C)*delta>0 ? 'conica sem pontos reais' : 'elipse';
+  else type=degenerate ? 'retas paralelas ou coincidentes (parabola degenerada)' : 'parabola';
+  const theta=0.5*Math.atan2(q.B,q.A-q.C)*180/Math.PI;
+  return {
+    info:['conica rotacionada',type,genus.label,'rotacao dos eixos = '+fmt(theta)+'°','termo xy detectado: desenho implicito sem focos/eixos'],
+    points:[],lines:[],segments:[]
+  };
+}
+
 function analyzeConic(q){
+  if(Math.abs(q.B)>EPS) return analyzeRotatedConic(q);
+  const result=analyzeAlignedConic(q);
+  result.info.push(conicGenus(q).label);
+  return result;
+}
+
+function analyzeAlignedConic(q){
   const info=[];
   const points=[];
   const lines=[];
   const segments=[];
-  if(Math.abs(q.B)>EPS){
-    return {info:['conica rotacionada','termo xy detectado: desenho implicito sem focos/eixos'],points,lines,segments};
-  }
   const hasX2=Math.abs(q.A)>EPS;
   const hasY2=Math.abs(q.C)>EPS;
   if(hasX2&&hasY2){
@@ -845,12 +882,17 @@ function analyzeConic(q){
         info.push('circunferencia');
         info.push('centro C = '+fmtPoint({x:h,y:k}));
         info.push('raio = '+fmt(rx));
+        info.push('excentricidade e = 0');
         segments.push({a:{x:h,y:k},b:{x:h+rx,y:k},label:'r',style:'dotted'});
         return {info,points,lines,segments};
       }
       info.push('elipse');
       info.push('centro C = '+fmtPoint({x:h,y:k}));
       info.push('semieixos = '+fmt(Math.max(rx,ry))+' e '+fmt(Math.min(rx,ry)));
+      const major=Math.max(rx,ry), focal=Math.sqrt(Math.max(0,major*major-Math.min(rx,ry)**2));
+      info.push('eixo maior '+(rx>=ry?'horizontal':'vertical'));
+      info.push('semidistancia focal c = '+fmt(focal)+' (a^2 = b^2 + c^2)');
+      info.push('excentricidade e = c/a = '+fmt(focal/major));
       if(rx>=ry){
         const c=Math.sqrt(Math.max(0,rx*rx-ry*ry));
         points.push({x:h-c,y:k,label:'F1'},{x:h+c,y:k,label:'F2'});
@@ -884,6 +926,9 @@ function analyzeConic(q){
       info.push('hiperbole');
       info.push('centro C = '+fmtPoint({x:h,y:k}));
       info.push('semieixos = '+fmt(a)+' e '+fmt(b));
+      info.push('eixo real '+(horizontal?'horizontal':'vertical'));
+      info.push('semidistancia focal c = '+fmt(c)+' (c^2 = a^2 + b^2)');
+      info.push('excentricidade e = c/a = '+fmt(e));
       if(horizontal){
         points.push({x:h-c,y:k,label:'F1'},{x:h+c,y:k,label:'F2'});
         segments.push({a:{x:h-a,y:k},b:{x:h+a,y:k},label:'eixo real',style:'dotted'});
@@ -911,6 +956,8 @@ function analyzeConic(q){
     info.push('vertice V = '+fmtPoint(vertex));
     info.push('foco F = '+fmtPoint(focus));
     info.push('diretriz y = '+fmt(k-p));
+    info.push('eixo vertical, abertura para '+(p>0?'cima':'baixo'));
+    info.push('excentricidade e = 1');
     return {info,points,lines,segments};
   }
   if(hasY2&&!hasX2&&Math.abs(q.D)>EPS){
@@ -926,6 +973,8 @@ function analyzeConic(q){
     info.push('vertice V = '+fmtPoint(vertex));
     info.push('foco F = '+fmtPoint(focus));
     info.push('diretriz x = '+fmt(h-p));
+    info.push('eixo horizontal, abertura para a '+(p>0?'direita':'esquerda'));
+    info.push('excentricidade e = 1');
     return {info,points,lines,segments};
   }
   return {info:['conica degenerada ou incompleta'],points,lines,segments};

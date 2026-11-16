@@ -191,3 +191,37 @@ test('unknown commands are ignored and invalid geometry reports errors',()=>{
   assert.equal(bad.type,'error');
   assert.equal(bad.error.includes('coincidentes'),true);
 });
+
+test('conic analysis reports orientation, eccentricity and genus',()=>{
+  const hyperbola=parseGeometryInput('conica: (y-3)^2/9 - (x+2)^2/16 = 1');
+  assert.ok(hyperbola.info.includes('eixo real vertical'));
+  assert.ok(hyperbola.info.includes('semidistancia focal c = 5 (c^2 = a^2 + b^2)'));
+  assert.ok(hyperbola.info.includes('excentricidade e = c/a = 1.66667'));
+  assert.ok(hyperbola.info.some(line=>line.includes('genero hiperbolico')));
+
+  const ellipse=parseGeometryInput('conica: x^2/9 + y^2/25 = 1');
+  assert.ok(ellipse.info.includes('eixo maior vertical'));
+  assert.ok(ellipse.info.includes('excentricidade e = c/a = 0.8'));
+  assert.ok(ellipse.info.some(line=>line.includes('genero eliptico')));
+
+  const circle=parseGeometryInput('conica: (x-4)^2 + (y+2)^2 = 49');
+  assert.ok(circle.info.includes('excentricidade e = 0'));
+
+  const parabola=parseGeometryInput('conica: y^2 = 12x');
+  assert.ok(parabola.info.includes('eixo horizontal, abertura para a direita'));
+  assert.ok(parabola.info.includes('excentricidade e = 1'));
+  assert.ok(parabola.info.includes('b^2 - 4ac = 0 (genero parabolico)'));
+});
+
+test('rotated conics are classified by discriminant and degeneracy',()=>{
+  const info=text=>parseGeometryInput('conica: '+text).info;
+  const hyperbola=info('2x^2 - y^2 - 4x*y - 5x + 4y + 10 = 0');
+  assert.equal(hyperbola[0],'conica rotacionada');
+  assert.equal(hyperbola[1],'hiperbole');
+  assert.ok(hyperbola.includes('b^2 - 4ac = 24 > 0 (genero hiperbolico)'));
+  assert.equal(info('x*y = 0')[1],'par de retas concorrentes');
+  assert.equal(info('x^2 + x*y + y^2 = 3')[1],'elipse');
+  assert.equal(info('x^2 + x*y + y^2 = -3')[1],'conica sem pontos reais');
+  assert.equal(info('2x^2 + 2y^2 - 4x*y - 4y + 10 = 0')[1],'parabola');
+  assert.ok(info('x*y = 1').includes('rotacao dos eixos = 45°'));
+});

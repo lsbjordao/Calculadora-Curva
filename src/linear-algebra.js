@@ -57,8 +57,10 @@ export function dot(u, v) { pair(u, v); return rawDot(u, v); }
 export function norm(v) { validateVector(v); return Math.hypot(...v); }
 export function vadd(u, v) { pair(u, v); return u.map((x, i) => x + v[i]); }
 export function vsub(u, v) { pair(u, v); return u.map((x, i) => x - v[i]); }
+// Scalar multiple of a vector or, elementwise, of a matrix: scale(2,A) = 2A.
 export function scale(k, v) {
   if (!finite(k)) fail('FINITE', 'O fator de escala deve ser um número finito.');
+  if (Array.isArray(v) && Array.isArray(v[0])) { validateMatrix(v); return v.map(row => row.map(x => k * x)); }
   validateVector(v); return v.map(x => k * x);
 }
 export function angle(u, v) {
@@ -84,7 +86,21 @@ function sameShape(A, B) {
 }
 export function matadd(A, B) { sameShape(A, B); return A.map((r, i) => r.map((x, j) => x + B[i][j])); }
 export function matsub(A, B) { sameShape(A, B); return A.map((r, i) => r.map((x, j) => x - B[i][j])); }
+const isVector = X => Array.isArray(X) && X.length > 0 && !Array.isArray(X[0]);
+// A vector operand is read as a column on the right (A v) and as a row on the
+// left (v A); the product is then returned as a vector.
 export function matmul(A, B) {
+  if (isVector(A) && isVector(B)) fail('DIMENSION', 'matmul exige ao menos uma matriz. Para dois vetores, use dot(u,v).');
+  if (isVector(B)) {
+    validateMatrix(A, 'A'); validateVector(B, 'B');
+    if (A[0].length !== B.length) fail('DIMENSION', `Multiplicação incompatível: ${A.length}×${A[0].length} e vetor de ${B.length} componentes.`);
+    return A.map(row => rawDot(row, B));
+  }
+  if (isVector(A)) {
+    validateVector(A, 'A'); validateMatrix(B, 'B');
+    if (A.length !== B.length) fail('DIMENSION', `Multiplicação incompatível: vetor de ${A.length} componentes e ${B.length}×${B[0].length}.`);
+    return B[0].map((_, j) => A.reduce((s, x, k) => s + x * B[k][j], 0));
+  }
   validateMatrix(A, 'A'); validateMatrix(B, 'B');
   if (A[0].length !== B.length) fail('DIMENSION', `Multiplicação incompatível: ${A.length}×${A[0].length} e ${B.length}×${B[0].length}.`);
   return rawMul(A, B);
@@ -178,9 +194,36 @@ function conditionInfinity(A, inverse) {
   const normB = Math.max(...inverse.map(row => row.reduce((s,x) => s+Math.abs(x/b),0)));
   return (a*b)*normA*normB;
 }
+// Structural classes, with a tolerance relative to the largest entry.
+export function matrixTypes(A) {
+  validateMatrix(A);
+  const m = A.length, n = A[0].length, types = [], tol = 1e-12 * Math.max(1, maxAbs(A));
+  const zero = x => Math.abs(x) <= tol;
+  if (m !== n) {
+    if (m === 1) types.push('linha');
+    if (n === 1) types.push('coluna');
+  }
+  if (A.every(row => row.every(zero))) return [...types, 'nula'];
+  if (m !== n) return types;
+  let upper = true, lower = true, symmetric = true, antisymmetric = true;
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    if (i > j && !zero(A[i][j])) upper = false;
+    if (i < j && !zero(A[i][j])) lower = false;
+    if (!zero(A[i][j] - A[j][i])) symmetric = false;
+    if (!zero(A[i][j] + A[j][i])) antisymmetric = false;
+  }
+  if (upper && lower) types.push(A.every((row, i) => Math.abs(row[i] - 1) <= tol) ? 'identidade' : 'diagonal');
+  else { if (upper) types.push('triangular superior'); if (lower) types.push('triangular inferior'); }
+  if (symmetric) types.push('simétrica');
+  if (antisymmetric) types.push('antissimétrica');
+  const product = rawMul(A, rawTranspose(A));
+  if (product.every((row, i) => row.every((x, j) => Math.abs(x - +(i === j)) <= 1e-10))) types.push('ortogonal');
+  return types;
+}
 export function matrixInfo(A) {
   validateMatrix(A);
   const shape = [A.length, A[0].length], metadata = {rank:rank(A)}, warnings = [];
+  const types = matrixTypes(A); if (types.length) metadata.types = types;
   if (shape[0] === shape[1]) {
     metadata.determinant = det(A); metadata.trace = trace(A);
     try { const inverse = inv(A); metadata.invertible = true; metadata.condition = conditionInfinity(A, inverse); warnings.push(...illWarning(metadata.condition)); }

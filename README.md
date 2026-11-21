@@ -34,8 +34,10 @@ Cada linha continua editável; erros aparecem na linha correspondente sem impedi
 as demais. A edição recalcula as referências e salva a sessão como de costume.
 
 Quando há comandos não vazios, a URL define uma cena nova com a vista padrão,
-sem misturar a sessão salva. Valores `cmd` vazios ou compostos apenas de espaços
-são ignorados. Sem comandos úteis, a aplicação restaura a sessão anterior ou
+sem misturar as linhas da sessão salva. O tema claro ou escuro escolhido pelo
+usuário é preservado, inclusive nos links com `cmd`. Sem tema salvo, a Curva
+segue a preferência de cores do sistema ao abrir. Valores `cmd` vazios ou
+compostos apenas de espaços são ignorados. Sem comandos úteis, a aplicação restaura a sessão anterior ou
 abre o exemplo inicial. Não concatene comandos diretamente na URL: um `+` sem
 codificação é interpretado como espaço; use `URLSearchParams` ou `%2B`.
 

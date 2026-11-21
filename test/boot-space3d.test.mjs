@@ -25,8 +25,18 @@ let ctx=recordingCtx();
 
 function makeEl(id){
   const listeners={};
+  const classes=new Set();
   const store={ id, dataset:{}, style:{}, listeners, children:[],
-    classList:{toggle(){},add(){},remove(){},contains(){return false;}},
+    classList:{
+      toggle(name,force){
+        const active=force===undefined ? !classes.has(name) : force;
+        if(active) classes.add(name); else classes.delete(name);
+        return active;
+      },
+      add(...names){ names.forEach(name=>classes.add(name)); },
+      remove(...names){ names.forEach(name=>classes.delete(name)); },
+      contains(name){ return classes.has(name); }
+    },
     addEventListener(type,fn){ (listeners[type]||=[]).push(fn); },
     removeEventListener(){},
     fire(type,ev={}){ (listeners[type]||[]).forEach(fn=>fn({preventDefault(){},stopPropagation(){},pointerId:1,clientX:0,clientY:0,target:proxy,...ev})); }
@@ -74,9 +84,11 @@ globalThis.localStorage={
 const mk=(ci,text)=>({ci,text,visible:true,showD:false,showI:false,showL:false,showA:false,colorOverride:null,style:'solid',lw:2,params:{}});
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 let bootN=0;
-async function boot(state, search=''){
+async function boot(state, search='', prefersDark=false){
   calls=[]; elements=new Map(); created=[]; saved=null; stored=state; ctx=recordingCtx();
+  document.body=makeEl('body');
   window.location={search};
+  window.matchMedia=query=>({matches:query==='(prefers-color-scheme: dark)'&&prefersDark});
   await import('../src/app.js?boot='+(++bootN));
   await wait(20);
 }
@@ -89,6 +101,39 @@ const fields=()=>created.filter(el=>el.className==='field');
 const scalars=()=>created.filter(el=>el.className==='row-info')
   .flatMap(el=>el.children.filter(child=>child.className==='algebra-scalar').map(child=>child.textContent));
 const urlFor=commands=>'?'+new URLSearchParams(commands.map(cmd=>['cmd',cmd]));
+
+test('URL respeita o tema salvo mesmo quando o sistema prefere outro tema',async()=>{
+  for(const theme of ['dark','light']){
+    await boot({version:1,theme,equations:[mk(0,'sin(x)')]},urlFor(['calc: 2+3']),theme==='light');
+    assert.equal(document.body.classList.contains('dark'),theme==='dark');
+    assert.equal(byId('theme').title,theme==='dark' ? 'Ativar tema claro' : 'Ativar tema escuro');
+    assert.deepEqual(fields().map(el=>el.value),['calc: 2+3']);
+    assert.deepEqual(scalars(),['5']);
+  }
+});
+
+test('sem tema salvo a inicialização segue o tema do sistema, com e sem URL',async()=>{
+  for(const prefersDark of [true,false]){
+    for(const search of ['',urlFor(['calc: 2+3'])]){
+      await boot(null,search,prefersDark);
+      assert.equal(document.body.classList.contains('dark'),prefersDark);
+    }
+  }
+  await boot({version:1,theme:'invalid',equations:[mk(0,'sin(x)')]},urlFor(['calc: 2+3']),true);
+  assert.equal(document.body.classList.contains('dark'),true);
+});
+
+test('tema escolhido em uma URL é salvo e respeitado ao abrir outro link',async()=>{
+  await boot(null,urlFor(['calc: 2+3']));
+  byId('theme').onclick();
+  assert.equal(document.body.classList.contains('dark'),true);
+  await settle();
+  assert.equal(saved.theme,'dark');
+  await boot(saved,urlFor(['calc: 6+1']));
+  assert.equal(document.body.classList.contains('dark'),true);
+  assert.deepEqual(fields().map(el=>el.value),['calc: 6+1']);
+  assert.deepEqual(scalars(),['7']);
+});
 
 test('URL executa os comandos na ordem, resolve referências e substitui a cena salva',async()=>{
   const commands=[

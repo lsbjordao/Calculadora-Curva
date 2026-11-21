@@ -27,4 +27,8 @@ sessão salva. Reutilizar `makeEq` e a recompilação global existente para reso
 referências entre linhas. Não criar servidor ou dependências. Links muito longos
 continuam sujeitos aos limites do navegador e da hospedagem.
 
+O tema é uma preferência independente da cena: preservar o tema salvo também
+ao abrir links com `cmd`. Na ausência de um tema válido salvo, usar a preferência
+de cores do sistema, com tema claro quando ela não estiver disponível.
+
 O usuário aprovou a abordagem e solicitou a implementação na conversa.

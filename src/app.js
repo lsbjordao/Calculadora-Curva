@@ -329,10 +329,8 @@ function applyTheme(){
   invalidateCssCache();
 }
 
-function restoreState(){
-  const state=loadState();
+function restoreState(state){
   if(!state) return false;
-  if(state.theme==='dark'||state.theme==='light') theme=state.theme;
   gridMode=normalizeGridMode(state.gridMode);
   restoreAnnotations(state.annotations);
   applySideWidth(state.sideWidth);
@@ -5318,13 +5316,19 @@ document.getElementById('theme').onclick=function(){
   scheduleSave();
 };
 
+// Theme is a user preference, independent of the scene supplied by a URL.
+const initialState=loadState();
+const savedTheme=initialState?.theme;
+theme=savedTheme==='dark'||savedTheme==='light' ? savedTheme
+  : window.matchMedia?.('(prefers-color-scheme: dark)')?.matches ? 'dark' : 'light';
+
 // URL commands define the initial scene; reuse the normal compilation below
 // so geometry and algebra references resolve just like manually entered rows.
 const initialCommands=new URLSearchParams(window.location?.search || '')
   .getAll('cmd').filter(command=>command.trim());
 if(initialCommands.length){
   initialCommands.forEach(command=>equations.push(makeEq(command)));
-}else if(!restoreState()) equations.push(makeEq('sin(x)'));
+}else if(!restoreState(initialState)) equations.push(makeEq('sin(x)'));
 initPresets();
 initLessons();
 initHelp();

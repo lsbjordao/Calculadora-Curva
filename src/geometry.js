@@ -2,7 +2,7 @@
 
 import { compile, setImplicitY, splitTop } from './parser.js';
 import { det as matrixDet, trace as matrixTrace, eiginfo, dot as algebraDot, norm as algebraNorm, angle as algebraAngle, proj as algebraProjection, validateMatrix } from './linear-algebra.js';
-import { involves3d, parse3dCommand } from './space3d/geometry3d.js';
+import { wants3d, parse3dCommand } from './space3d/geometry3d.js';
 
 const EPS=1e-9;
 const GEOMETRY_PARAM_NAMES=new Set(['a','b','c','d','k','m','n','p','q','r']);
@@ -25,6 +25,8 @@ const COMMAND_ALIASES={
   line:'line', reta:'line',
   intersect:'intersect', intersection:'intersect', intersecao:'intersect',
   conic:'conic', conica:'conic',
+  plane:'plane', plano:'plane',
+  position:'position', posicao:'position',
   matrix:'matrix', matriz:'matrix',
   transform:'matrix', transformacao:'matrix'
 };
@@ -1003,8 +1005,13 @@ function definitionInput(text){
   const ei=findTopLevelEquals(text);
   if(ei<0) return null;
   const lhs=text.slice(0,ei).trim();
-  if(!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(lhs)) return null;
   const rhs=text.slice(ei+1).trim();
+  // π, π1… name objects built by a command call (planes, §7).
+  if(/^\u03c0[a-zA-Z0-9_]*$/.test(lhs)){
+    const call=commandCall(rhs);
+    return call ? {name:lhs, ...call} : null;
+  }
+  if(!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(lhs)) return null;
   const call=commandCall(rhs);
   if(call) return {name:lhs, ...call};
   if(rhs.startsWith('(')&&rhs.endsWith(')')) return {name:lhs, command:'point', body:rhs};
@@ -1022,11 +1029,11 @@ const COMMAND_NAMES_PT={
   angle:'angulo', dot:'produto escalar', projection:'projecao', triangle:'triangulo',
   quadrilateral:'quadrilatero', polygon:'poligono', convexHull:'poligono convexo',
   distance:'distancia', midpoint:'ponto medio', line:'reta', intersect:'intersecao',
-  conic:'conica', matrix:'matriz'
+  conic:'conica', matrix:'matriz', plane:'plano', position:'posicao'
 };
 
 function runCommand(command,body,ctx,definitionName=''){
-  if(involves3d(body,ctx)){
+  if(wants3d(command,body,ctx)){
     const r3=parse3dCommand(command,body,ctx,definitionName);
     if(r3) return r3;
     throw new Error((COMMAND_NAMES_PT[command]||command)+': objetos 3D ainda não são aceitos neste comando');

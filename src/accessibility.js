@@ -54,7 +54,18 @@ function number(value){
   return new Intl.NumberFormat('pt-BR',{maximumFractionDigits:3}).format(value);
 }
 
-export function describeCanvas({gridMode='linear',view={},width=0,height=0,equations=[]}={}){
+function describe3d(view3d,scene3dObjects,equations){
+  const objects=Array.isArray(scene3dObjects) ? scene3dObjects.map(String)
+    : equations.filter(eq=>eq?.visible && !eq?.error && eq?.kind==='geometry' && eq?.geometry && eq?.text?.trim())
+      .map(eq=>formatMathVisual(eq.text));
+  const cam=view3d.camera||{};
+  const list=objects.length ? ` (${objects.join('; ')})` : '';
+  return `Vista 3D: ${objects.length} ${objects.length===1?'objeto':'objetos'}${list}; câmera azimute ${number(cam.azimuth)}°, elevação ${number(cam.elevation)}°, `+
+    `projeção ${cam.projection==='perspective'?'perspectiva':'ortográfica'}.`;
+}
+
+export function describeCanvas({gridMode='linear',view={},width=0,height=0,equations=[],view3d=null,scene3dObjects=null}={}){
+  if(view3d?.mode==='3d') return describe3d(view3d,scene3dObjects,equations);
   const scale=Number(view.scale)||1;
   const halfX=(Number(width)||0)/(2*scale);
   const halfY=(Number(height)||0)/(2*scale);

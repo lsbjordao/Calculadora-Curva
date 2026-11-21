@@ -1094,6 +1094,32 @@
   #tools button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
   #tools button:disabled{opacity:.4;cursor:default}
   #tools button:disabled:hover{border-color:var(--panel-edge);color:var(--ink)}
+  #view3d-bar{
+    position:absolute;top:12px;left:12px;
+    display:flex;flex-wrap:wrap;gap:6px;
+    max-width:calc(100% - 70px);
+  }
+  #view3d-controls{display:flex;flex-wrap:wrap;gap:6px}
+  #view3d-bar [hidden]{display:none}
+  #view3d-bar button{
+    min-width:34px;height:34px;padding:0 8px;
+    border:1px solid var(--panel-edge);
+    background:var(--glass);
+    backdrop-filter:blur(4px);
+    border-radius:8px;
+    cursor:pointer;color:var(--ink);
+    font-family:var(--mono);font-size:11px;font-weight:600;line-height:1;
+    display:flex;align-items:center;justify-content:center;gap:4px;
+    box-shadow:0 1px 2px rgba(20,25,35,.06);
+  }
+  #view3d-bar button:hover{border-color:var(--accent);color:var(--accent)}
+  #view3d-bar button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+  #view-mode span{padding:2px 4px;border-radius:5px;color:var(--muted)}
+  #view-mode[data-mode="2d"] span[data-m="2d"],
+  #view-mode[data-mode="3d"] span[data-m="3d"]{background:var(--accent);color:#fff}
+  body[data-view-toggle="1"] #readout{top:54px}
+  body[data-view="3d"] #annotate{display:none}
+  .view-notice{color:var(--muted);font-style:italic}
   #readout{
     position:absolute;top:12px;left:12px;
     font-family:var(--mono);

@@ -35,6 +35,10 @@ import { isStructuredResult, resultInfo, renderAlgebraResult } from './algebra-u
 import { matrixInfo } from './linear-algebra.js';
 import { algebraDeclaration, createAlgebraSymbols } from './algebra-symbols.js';
 import { createTransformControls, buildSystemScene } from './linear-transform-view.js';
+import { createCamera, zoomCamera, presetView, fitCameraScale } from './space3d/camera.js';
+import { defaultBox, axesPrimitives } from './space3d/scene3d.js';
+import { buildDrawList, drawScene3d, colorsFromTheme } from './space3d/render3d.js';
+import { attachCameraControls, decideViewMode, has3dObjects, normalizeView3d, scenePrimitives, serializeView3d, viewNotice } from './space3d/view3d.js';
 
 const PALETTES={
   light:["#c0492f","#2d70b3","#2f7d5b","#6042a6","#d98324","#1d1d1f","#0a8aa6","#a8336e"],
@@ -72,6 +76,13 @@ const resultRefreshers=new Map();
 const transformControllers=new Map();
 let selectedEquationId=null;
 const view={cx:0, cy:0, scale:38};
+// 3D view (§5.1, §7a.10): mode, orbital camera and floor grid. view3dFit is the
+// camera scale that fits the box in the current viewport (zoom is saved relative
+// to it); has3dSeen is null until the first render after a load, so the saved
+// mode wins there and only later "no 3D" → "some 3D" transitions switch to 3D.
+let view3d=normalizeView3d(null);
+let view3dFit=0;
+let has3dSeen=null;
 let W=0,H=0,dpr=1;
 let mouse={inside:false, px:0, py:0};
 let saveTimer=null;
@@ -193,6 +204,7 @@ function plainState(){
     gridMode,
     annotations: annotations.map(a => ({id:a.id, x:a.x, y:a.y, text:a.text, color:a.color, noBorder:a.noBorder})),
     view:{cx:view.cx, cy:view.cy, scale:view.scale},
+    view3d:serializeView3d(view3d, view3dFit),
     equations:equations.map(serializeEq),
     lessonProgress:normalizeLessonProgress(lessonProgress)
   };
@@ -244,6 +256,7 @@ function applyState(snap){
     if(Number.isFinite(state.view.cy)) view.cy=state.view.cy;
     if(Number.isFinite(state.view.scale)) view.scale=Math.min(Math.max(state.view.scale,0.02),50000);
   }
+  restoreView3d(state.view3d);
   equations.splice(0,equations.length);
   nextId=1;               // rebuild ids deterministically for this state
   (Array.isArray(state.equations)?state.equations:[]).forEach(saved=>{
@@ -258,6 +271,27 @@ function applyState(snap){
   refreshLessonUi();
   draw();
   saveNow();              // persist without committing a new history entry
+}
+
+function restoreView3d(saved){
+  view3d=normalizeView3d(saved);
+  view3dFit=0;
+  has3dSeen=null;
+  fitCameraToViewport();
+}
+
+// Keeps the camera's zoom relative to the scale that fits the ±5 box, so the box
+// fits at any viewport size (390 px included) and resizing keeps the framing.
+function fitCameraToViewport(){
+  if(!(W>0&&H>0)) return;
+  const fit=fitCameraScale({width:W,height:H});
+  const zoom=view3dFit>0 ? view3d.camera.scale/view3dFit : view3d.zoom;
+  view3d.camera={...createCamera({...view3d.camera,scale:fit*zoom}),dragging:!!view3d.camera.dragging};
+  view3dFit=fit;
+}
+
+function defaultCamera3d(keep={}){
+  return createCamera({projection:keep.projection,scale:fitCameraScale({width:W||1,height:H||1})});
 }
 
 function flushPending(){
@@ -307,6 +341,7 @@ function restoreState(){
     if(Number.isFinite(state.view.cy)) view.cy=state.view.cy;
     if(Number.isFinite(state.view.scale)) view.scale=Math.min(Math.max(state.view.scale,0.02),50000);
   }
+  restoreView3d(state.view3d);
   const savedEquations=Array.isArray(state.equations) ? state.equations : [];
   savedEquations.forEach(saved=>{
     const eq=hydrateEq(saved);
@@ -1540,6 +1575,14 @@ function renderRows(){
       else if(eq.kind==='fitcompare' && eq.showResultTable) renderCompareGrid(eq, info);
       else if(eq.kind==='points' && eq.pointLabel==='resid' && eq.showResultTable) renderResidualGrid(eq, info);
       else info.textContent=formatMathVisual(mathInfo(eq));
+      const notice=viewNotice(eq,view3d.mode);
+      if(notice){
+        const note=document.createElement('span');
+        note.className='view-notice';
+        note.textContent=notice;
+        if(String(info.textContent||'').trim()) info.append(' · ');
+        info.append(note);
+      }
       renderStepsZone(eq, stepsZone);
       refreshTransform();
     };
@@ -2750,14 +2793,16 @@ function geometryPointItems(){
   const items=[];
   const seen=new Set();
   equations.forEach(eq=>{
-    if(eq.kind!=='geometry'||eq.error||!eq.geometry) return;
+    // 3D points are neither drawn nor selectable in the 2D view: dragging them
+    // would rewrite the line with two coordinates and lose z.
+    if(eq.kind!=='geometry'||eq.error||!eq.geometry||eq.geometry.dim===3) return;
     const defined=new Set((eq.geometry.definitions||[])
       .filter(def=>def.kind==='point')
       .map(def=>String(def.name||'').toLowerCase()));
     const points=Array.isArray(eq.geometry.points) ? eq.geometry.points : [];
     points.forEach(point=>{
       const p=normalizePoint(point);
-      if(!p.label||!Number.isFinite(p.x)||!Number.isFinite(p.y)) return;
+      if(point?.dim===3||!p.label||!Number.isFinite(p.x)||!Number.isFinite(p.y)) return;
       const key=p.label.toLowerCase();
       const draggable=eq.geometry.type==='point';
       const selectable=draggable||defined.has(key);
@@ -2772,7 +2817,7 @@ function geometryPointItems(){
 function pointSourceEquation(){
   const items=equations.map(eq=>({
     text:eq.text,
-    type:eq.kind==='geometry'&&!eq.error ? eq.geometry?.type : ''
+    type:eq.kind==='geometry'&&!eq.error&&eq.geometry?.dim!==3 ? eq.geometry?.type : ''
   }));
   const index=choosePointSourceIndex(items,equations.indexOf(focusedEquation));
   return index>=0 ? equations[index] : null;
@@ -2998,6 +3043,7 @@ function resize(){
   W=r.width; H=r.height;
   cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
   ctx.setTransform(dpr,0,0,dpr,0,0);
+  fitCameraToViewport();
   draw();
 }
 function initSideResizer(){
@@ -3300,10 +3346,14 @@ function restoreAnnotations(saved){
 }
 
 function fitToView(){
+  if(view3d.mode==='3d'){
+    view3d.camera=createCamera({...view3d.camera,target:[0,0,0],scale:fitCameraScale({width:W,height:H})});
+    draw(); scheduleSave(); return;
+  }
   const pad=60;
   let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity,any=false;
   equations.forEach(eq=>{
-    if(!eq.visible || !eq.fn) return;
+    if(!eq.visible || !eq.fn || eq.geometry?.dim===3) return;
     any=true;
     for(let px=0;px<=W;px+=Math.max(1,Math.floor(W/400))){
       const wx=px2wx(px);
@@ -3340,6 +3390,7 @@ function fitToView(){
 }
 
 function toggleGridMode(){
+  if(view3d.mode==='3d'){ view3d.grid=!view3d.grid; draw(); scheduleSave(); return; }
   const idx=GRID_MODES.indexOf(gridMode);
   gridMode=GRID_MODES[(idx+1)%GRID_MODES.length] || 'linear';
   updateGridModeButton();
@@ -4576,7 +4627,7 @@ function drawGeometryPolygon(poly,color,showCaption=true,eq){
 }
 
 function drawGeometry(eq){
-  if(!eq.visible||!eq.geometry) return;
+  if(!eq.visible||!eq.geometry||eq.geometry.dim===3) return;
   const g=eq.transformScene || eq.geometry;
   const color=eqColor(eq);
   g.polygons?.forEach(poly=>drawGeometryPolygon(poly,color,eq.showGeoTriangleClass!==false,eq));
@@ -4889,9 +4940,72 @@ function syncUserFunctions(){
   setUserFunctions(map);
 }
 
+function syncViewMode(){
+  const now=has3dObjects(equations);
+  let mode=view3d.mode;
+  if(has3dSeen===null){ if(!view3d.savedMode) mode=now?'3d':'2d'; }
+  else mode=decideViewMode({previousHas3d:has3dSeen,nowHas3d:now,current:mode});
+  has3dSeen=now;
+  const changed=mode!==view3d.mode;
+  view3d.mode=mode;
+  updateView3dUi(now);
+  if(changed) resultRefreshers.forEach(refresh=>refresh());
+}
+
+let view3dUiSignature='';
+function updateView3dUi(has3d){
+  const on=view3d.mode==='3d';
+  const signature=[on,has3d,view3d.camera.projection,view3d.grid].join();
+  if(signature===view3dUiSignature) return;
+  view3dUiSignature=signature;
+  document.body.dataset.view=on?'3d':'2d';
+  const toggle=document.getElementById('view-mode');
+  if(toggle){
+    toggle.hidden=!(has3d||on);
+    toggle.dataset.mode=on?'3d':'2d';
+    toggle.setAttribute('aria-pressed',on?'true':'false');
+    toggle.title=on?'Voltar para a vista 2D':'Abrir a vista 3D';
+  }
+  document.body.dataset.viewToggle=toggle&&!toggle.hidden?'1':'0';
+  const controls=document.getElementById('view3d-controls');
+  if(controls) controls.hidden=!on;
+  const proj=document.getElementById('view-proj');
+  if(proj){
+    const persp=view3d.camera.projection==='perspective';
+    proj.textContent=persp?'persp':'orto';
+    proj.title=persp?'Projeção em perspectiva (alternar para ortográfica)':'Projeção ortográfica (alternar para perspectiva)';
+  }
+  const gridBtn=document.getElementById('grid-mode');
+  if(gridBtn) gridBtn.dataset.on=on&&view3d.grid?'1':'0';
+}
+
+function setViewMode(mode){
+  view3d.mode=mode==='3d'?'3d':'2d';
+  updateView3dUi(has3dObjects(equations));
+  resultRefreshers.forEach(refresh=>refresh());
+  draw(); scheduleSave();
+}
+
+function render3d(){
+  const colors=colorsFromTheme(getCss);
+  ctx.save();
+  ctx.fillStyle=colors.bg;
+  ctx.fillRect(0,0,W,H);
+  ctx.restore();
+  const primitives=[...axesPrimitives(defaultBox(),{grid:view3d.grid}),...scenePrimitives(equations,{colorOf:eqColor})];
+  drawScene3d(ctx,buildDrawList(primitives,view3d.camera,{width:W,height:H}),colors);
+  readout.style.display='none';
+  const card=document.getElementById('analysis');
+  if(card) card.style.display='none';
+  valueTable.update();
+  if(canvasDescription) canvasDescription.textContent=describeCanvas({view3d,width:W,height:H,equations});
+}
+
 function render(){
   syncUserFunctions();
+  syncViewMode();
   ctx.clearRect(0,0,W,H);
+  if(view3d.mode==='3d'){ render3d(); return; }
   drawGrid();
   equations.forEach(eq=>{
     if(eq.kind==='parametric') drawParametric(eq);
@@ -4945,6 +5059,7 @@ function updateMouseFromEvent(e){
   mouse.py=e.clientY-r.top;
 }
 cv.addEventListener('pointerdown',e=>{
+  if(view3d.mode==='3d') return;
   updateMouseFromEvent(e);
   last={x:e.clientX,y:e.clientY};
   const hit=hitGeometryPoint(mouse.px,mouse.py);
@@ -4993,6 +5108,7 @@ cv.addEventListener('pointerdown',e=>{
   cv.setPointerCapture(e.pointerId); cv.style.cursor='grabbing';
 });
 cv.addEventListener('pointermove',e=>{
+  if(view3d.mode==='3d') return;
   updateMouseFromEvent(e);
   const moved=Math.hypot(e.clientX-last.x,e.clientY-last.y);
   if(pointerIntent?.type==='geo-hit'&&pointerIntent.draggable&&moved>=6){
@@ -5046,6 +5162,7 @@ cv.addEventListener('pointermove',e=>{
   draw();
 });
 cv.addEventListener('pointerup',e=>{
+  if(view3d.mode==='3d') return;
   updateMouseFromEvent(e);
   const moved=Math.hypot(e.clientX-last.x,e.clientY-last.y);
   if(pointerIntent==='geo-point'&&moved<6){
@@ -5072,6 +5189,7 @@ cv.addEventListener('pointerup',e=>{
   draw();
 });
 cv.addEventListener('pointerleave',()=>{
+  if(view3d.mode==='3d'){ mouse.inside=false; return; }
   if(pointerIntent?.type==='geo-hit'&&pointerIntent.dragging){
     const point=pointerIntent.lastWorld || pointerWorldPoint(false);
     updateVisualPoint(pointerIntent.label,point.x,point.y,{final:true});
@@ -5087,6 +5205,7 @@ cv.addEventListener('pointerleave',()=>{
   draw();
 });
 cv.addEventListener('wheel',e=>{
+  if(view3d.mode==='3d') return;
   e.preventDefault();
   const r=cv.getBoundingClientRect();
   const mx=e.clientX-r.left, my=e.clientY-r.top;
@@ -5099,23 +5218,46 @@ cv.addEventListener('wheel',e=>{
   scheduleSave();
 },{passive:false});
 cv.addEventListener('dblclick',e=>{
+  if(view3d.mode==='3d') return;
   updateMouseFromEvent(e);
   if(annotationMode){ editAnnotationAt(mouse.px, mouse.py); return; }
 });
 cv.addEventListener('contextmenu',e=>{
+  if(view3d.mode==='3d') return;
   e.preventDefault();
   updateMouseFromEvent(e);
   if(annotationMode) deleteAnnotationAt(mouse.px, mouse.py);
 });
 
 function zoomBy(f){
+  if(view3d.mode==='3d'){ view3d.camera=zoomCamera(view3d.camera,f); draw(); scheduleSave(); return; }
   const wx=px2wx(W/2), wy=py2wy(H/2);
   view.scale=Math.min(Math.max(view.scale*f,0.02),50000);
   view.cx=wx; view.cy=wy; draw(); scheduleSave();
 }
 document.getElementById('zin').onclick=()=>zoomBy(1.4);
 document.getElementById('zout').onclick=()=>zoomBy(1/1.4);
-document.getElementById('reset').onclick=()=>{ view.cx=0;view.cy=0;view.scale=38; draw(); scheduleSave(); };
+document.getElementById('reset').onclick=()=>{
+  if(view3d.mode==='3d') view3d.camera=defaultCamera3d(view3d.camera);
+  else { view.cx=0;view.cy=0;view.scale=38; }
+  draw(); scheduleSave();
+};
+attachCameraControls(cv,()=>view3d.camera,camera=>{ view3d.camera=camera; },draw,{
+  isActive:()=>view3d.mode==='3d',
+  onCommit:scheduleSave,
+  defaultCamera:()=>defaultCamera3d(view3d.camera)
+});
+const viewModeBtn=document.getElementById('view-mode');
+if(viewModeBtn) viewModeBtn.onclick=()=>setViewMode(view3d.mode==='3d'?'2d':'3d');
+['xy','xz','yz','iso'].forEach(name=>{
+  const button=document.getElementById('view-'+name);
+  if(button) button.onclick=()=>{ view3d.camera=createCamera({...view3d.camera,...presetView(name)}); draw(); scheduleSave(); };
+});
+const viewProjBtn=document.getElementById('view-proj');
+if(viewProjBtn) viewProjBtn.onclick=()=>{
+  view3d.camera=createCamera({...view3d.camera,projection:view3d.camera.projection==='perspective'?'ortho':'perspective'});
+  draw(); scheduleSave();
+};
 const fitBtn=document.getElementById('fit');
 if(fitBtn) fitBtn.onclick=fitToView;
 const gridBtn=document.getElementById('grid-mode');

@@ -24,3 +24,25 @@ test('descreve janela, grade e apenas equações visíveis válidas',()=>{
   assert.match(text,/Raiz: √x/);
   assert.doesNotMatch(text,/x²|bad/);
 });
+
+test('descreve a vista 3D com objetos e câmera',async()=>{
+  const { createCamera }=await import('../src/space3d/camera.js');
+  const text=describeCanvas({
+    view3d:{mode:'3d',camera:createCamera()}, width:400, height:300,
+    equations:[
+      {text:'ponto: A=(1,2,3)',visible:true,error:false,kind:'geometry',geometry:{dim:3}},
+      {text:'sin(x)',visible:true,error:false,kind:'function'}
+    ]
+  });
+  assert.match(text,/Vista 3D/);
+  assert.match(text,/1 objeto/);
+  assert.match(text,/ponto: A=\(1,2,3\)/);
+  assert.match(text,/azimute -60°, elevação 25°/);
+  assert.match(text,/ortográfica/);
+  assert.doesNotMatch(text,/x de /);
+  const flat=describeCanvas({view3d:{mode:'2d',camera:createCamera()},view:{cx:0,cy:0,scale:10},width:200,height:100,equations:[]});
+  assert.doesNotMatch(flat,/Vista 3D/);
+  const custom=describeCanvas({view3d:{mode:'3d',camera:createCamera({projection:'perspective'})},scene3dObjects:['A','u','plano z = 0']});
+  assert.match(custom,/Vista 3D: 3 objetos \(A; u; plano z = 0\)/);
+  assert.match(custom,/perspectiva/);
+});

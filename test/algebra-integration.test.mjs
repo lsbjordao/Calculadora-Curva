@@ -108,9 +108,9 @@ test('all new lesson scenes execute and checkpoints inspect computed values',()=
 
 test('result view exposes accessible matrices, factor labels and both copy formats',async()=>{
   function element(tag){return {tag,children:[],attributes:{},classList:{add(){}},append(...nodes){this.children.push(...nodes);},appendChild(node){this.children.push(node);return node;},replaceChildren(){this.children=[];},setAttribute(name,value){this.attributes[name]=value;}};}
-  const previousDocument=globalThis.document, previousNavigator=globalThis.navigator;
+  const previousDocument=globalThis.document;
   const copied=[];
-  globalThis.document={createElement:element};globalThis.navigator={clipboard:{writeText:async text=>copied.push(text)}};
+  globalThis.document={createElement:element};const navigatorDescriptor=Object.getOwnPropertyDescriptor(globalThis,'navigator');Object.defineProperty(globalThis,'navigator',{value:{clipboard:{writeText:async text=>copied.push(text)}},configurable:true,writable:true});
   try{
     const host=element('div');renderAlgebraResult(host,resultInfo([[1/3,2],[3,4]]));
     const all=node=>[node,...node.children.flatMap(all)], nodes=all(host);
@@ -120,5 +120,5 @@ test('result view exposes accessible matrices, factor labels and both copy forma
     renderAlgebraResult(host,compile('svd([[1,2],[3,4]])')(0));
     assert.equal(all(host).filter(node=>node.tag==='table').length,3);
     assert.ok(all(host).some(node=>node.textContent==='A = U Σ Vᵀ'));
-  }finally{globalThis.document=previousDocument;globalThis.navigator=previousNavigator;}
+  }finally{globalThis.document=previousDocument;if(navigatorDescriptor) Object.defineProperty(globalThis,"navigator",navigatorDescriptor); else delete globalThis.navigator;}
 });

@@ -153,12 +153,13 @@ function styled(prim, eq, color) {
     if (prim.kind === 'label') return null;
     delete out.label;
   }
-  if (prim.kind === 'polygon' || prim.kind === 'mesh') out.alpha = Number.isFinite(prim.alpha) ? prim.alpha : FACE_ALPHA;
-  if (prim.kind === 'segment' || prim.kind === 'arrow') {
+  // plane/line: infinite objects, clipped to the visible box by buildDrawList.
+  if (prim.kind === 'polygon' || prim.kind === 'mesh' || prim.kind === 'plane') out.alpha = Number.isFinite(prim.alpha) ? prim.alpha : FACE_ALPHA;
+  if (prim.kind === 'segment' || prim.kind === 'arrow' || prim.kind === 'line') {
     if (prim.role === 'aux') out.dash = true;
     else {
       if (!prim.weight && Number.isFinite(eq.lw) && eq.lw > 0) out.weight = eq.lw;
-      if (prim.kind === 'segment' && isDashed(eq.style)) out.dash = true;
+      if (prim.kind !== 'arrow' && isDashed(eq.style)) out.dash = true;
     }
   }
   return out;

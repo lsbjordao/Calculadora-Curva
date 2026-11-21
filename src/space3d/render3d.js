@@ -1,6 +1,7 @@
 "use strict";
 
-import { cameraBasis, projectPoint, nearDepth } from './camera.js';
+import { cameraBasis, projectPoint, nearDepth, visibleBox } from './camera.js';
+import { clipLineToBox, clipPlaneToBox } from './scene3d.js';
 
 // Painter's algorithm on Canvas 2D. buildDrawList is pure: it projects the
 // primitives, sorts surfaces (polygons and mesh faces) back to front by centroid
@@ -9,13 +10,19 @@ import { cameraBasis, projectPoint, nearDepth } from './camera.js';
 // (float noise, e.g. an axis lying on the plane z = 0); on a tie surfaces come
 // first, so an edge lying on a plane stays on top. With perspective, segments,
 // polygons and mesh faces are clipped to the near plane instead of dropped.
+// Infinite objects ({kind:'plane', n, d, alpha} with n·X = d, {kind:'line', p, v})
+// are clipped here against opts.box, by default visibleBox(camera, viewport), so
+// they follow the zoom; their label sits inside a smaller on-screen box.
 
 const finiteVec = p => Array.isArray(p) && p.length === 3 && p.every(Number.isFinite);
 const TIE = 1e-9;
 const MIN_TICK_PX = 6, TICK_LABEL_PX = 28, THIN = [1, 2, 5, 10, 20, 50, 100];
 
-export function buildDrawList(primitives, camera, viewport) {
+export function buildDrawList(primitives, camera, viewport, opts = {}) {
   if (!Array.isArray(primitives) || !camera || !viewport) return [];
+  const box = opts.box || visibleBox(camera, viewport);
+  const labelHalf = .8*Math.min(viewport.width, viewport.height)/(2*camera.scale);
+  const labelBox = labelHalf > 0 ? {min:camera.target.map(c => c-labelHalf), max:camera.target.map(c => c+labelHalf)} : box;
   const basis = cameraBasis(camera), body = [], labels = [], {forward} = basis, t = camera.target;
   // Keep a small margin inside the near plane so clipped vertices project finitely.
   const near = camera.projection === 'perspective' ? nearDepth(camera)+camera.distance*1e-6 : -Infinity;
@@ -95,6 +102,30 @@ export function buildDrawList(primitives, camera, viewport) {
         if (arrow && seg[2]) item.headless = true; // tip cut by the near plane
         body.push(item);
         if (arrow) pushLabel(prim, {x:(a.x+b.x)/2, y:(a.y+b.y)/2, depth:item.depth}, prim.label, {anchor:'mid', dx:b.x-a.x, dy:b.y-a.y});
+        break;
+      }
+      case 'line': {
+        if (!finiteVec(prim.p) || !finiteVec(prim.v)) break;
+        const seg = clipLineToBox(prim.p, prim.v, box), cut = seg && clipSeg(seg[0], seg[1]);
+        const a = cut && proj(cut[0]), b = cut && proj(cut[1]);
+        if (!a || !b) break;
+        const item = {...style(prim), kind:'segment', a:xy(a), b:xy(b), depth:(a.depth+b.depth)/2};
+        if (prim.dash) item.dash = true;
+        if (prim.weight) item.weight = prim.weight;
+        body.push(item);
+        const at = clipLineToBox(prim.p, prim.v, labelBox)?.[1], q = at && proj(at);
+        pushLabel(prim, q || b, prim.label);
+        break;
+      }
+      case 'plane': {
+        if (!finiteVec(prim.n) || !Number.isFinite(prim.d)) break;
+        const pts = clipPlaneToBox(prim.n, prim.d, box);
+        if (pts.length < 3) break;
+        const before = body.length;
+        surface(prim, pts);
+        if (body.length === before) break;
+        const at = clipPlaneToBox(prim.n, prim.d, labelBox)[0], q = (at && proj(at)) || proj(pts[0]);
+        if (q) pushLabel(prim, q, prim.label);
         break;
       }
       case 'polygon': surface(prim, prim.points); break;

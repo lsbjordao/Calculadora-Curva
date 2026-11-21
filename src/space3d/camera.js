@@ -66,6 +66,18 @@ export function fitCameraScale(viewport, box = {min:[-5,-5,-5], max:[5,5,5]}, ma
   return clamp(side*margin/(2*r), MIN_SCALE, MAX_SCALE);
 }
 
+// View-dependent clipping box for infinite objects (planes, lines): a cube
+// centered on camera.target whose half-size is the viewport's half-diagonal in
+// world units at the current scale (so it covers the screen in any orientation,
+// at the target depth), never smaller than the default ±5 box.
+export const MIN_VISIBLE_HALF = 5;
+export function visibleBox(camera, viewport) {
+  const t = Array.isArray(camera?.target) && camera.target.every(Number.isFinite) ? camera.target : [0,0,0];
+  const w = finite(viewport?.width, 0), h = finite(viewport?.height, 0), s = finite(camera?.scale, DEFAULT_CAMERA.scale);
+  const half = Math.max(MIN_VISIBLE_HALF, s > 0 ? Math.hypot(w, h)/(2*s) : 0);
+  return {min:t.map(c => c-half), max:t.map(c => c+half)};
+}
+
 // Returns {x, y, depth}; larger depth = farther from the viewer. With perspective,
 // points closer than the near plane (see nearDepth) get `behind: true`; their x, y
 // are meaningless and must not be drawn (buildDrawList clips to that plane first).

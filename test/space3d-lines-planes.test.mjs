@@ -9,6 +9,9 @@ import {
   distancePointPlane, distancePointLine, distanceLines, distancePlanes,
   angleBetween, relativePosition, involves3d, wants3d
 } from '../src/space3d/geometry3d.js';
+import { createCamera, presetView, visibleBox } from '../src/space3d/camera.js';
+import { buildDrawList } from '../src/space3d/render3d.js';
+import { scenePrimitives } from '../src/space3d/view3d.js';
 
 const close=(a,b,tol=1e-9)=>assert.ok(Math.abs(a-b)<=tol,`${a} ≉ ${b}`);
 const closeVec=(a,b,tol)=>{ assert.equal(a.length,b.length); a.forEach((c,i)=>close(c,b[i],tol)); };
@@ -17,7 +20,8 @@ const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]]
 const parallel=(a,b)=>cross(a,b).every(c=>Math.abs(c)<1e-9);
 const onPlane=(P,pl)=>close(pl.n[0]*P[0]+pl.n[1]*P[1]+pl.n[2]*P[2],pl.d);
 const finiteScene=r=>JSON.stringify(r.scene3d||[]).includes('null')===false
-  && (r.scene3d||[]).every(p=>[p.p,p.a,p.b,p.from,p.to,...(p.points||[])].filter(Boolean).flat().every(Number.isFinite));
+  && (r.scene3d||[]).every(p=>[p.p,p.a,p.b,p.from,p.to,p.n,p.v,...(p.points||[])].filter(Boolean).flat().every(Number.isFinite)
+    && (p.kind!=='plane'||Number.isFinite(p.d)));
 
 function registryWith(...lines){
   const registry=new Map();
@@ -68,11 +72,15 @@ test('plano: command forms, names and scene', ()=>{
   const r=parseGeometryInput('plano: 2x - y + z = 3');
   assert.equal(r.type,'plane');
   assert.equal(r.dim,3);
-  const polys=prims(r,'polygon');
-  assert.equal(polys.length,1);
-  assert.equal(polys[0].alpha,0.25);
-  assert.ok(polys[0].points.length>=3);
-  polys[0].points.forEach(P=>onPlane(P,{n:[2,-1,1],d:3}));
+  const planes=prims(r,'plane');
+  assert.equal(planes.length,1);
+  assert.equal(planes[0].alpha,0.25);
+  assert.equal(planes[0].role,'main');
+  assert.equal(planes[0].label,'π');
+  assert.deepEqual(planes[0].n,[2,-1,1]);
+  assert.equal(planes[0].d,3);
+  const drawn=buildDrawList(r.scene3d,createCamera(),{width:400,height:300}).filter(i=>i.kind==='polygon');
+  assert.equal(drawn.length,1,'the plane is clipped and drawn by buildDrawList');
   assert.ok(r.info.some(line=>line.includes('2x - y + z = 3')),r.info.join(' | '));
   const def=r.definitions.find(d=>d.kind==='plane');
   assert.ok(def);
@@ -160,8 +168,9 @@ test('reta: command, 3D routing and the null direction slider', ()=>{
   const r=parseGeometryInput('reta: (1,2,3) + t*(1,0,-1)');
   assert.equal(r.type,'line');
   assert.equal(r.dim,3);
-  const segs=prims(r,'segment');
+  const segs=prims(r,'line');
   assert.equal(segs.length,1);
+  assert.deepEqual([segs[0].p,segs[0].v,segs[0].label],[[1,2,3],[1,0,-1],'r']);
   const def=r.definitions.find(d=>d.kind==='line3');
   assert.ok(def);
   assert.equal(def.value.dim,3);
@@ -178,10 +187,13 @@ test('reta: command, 3D routing and the null direction slider', ()=>{
   assert.equal(zero.type,'error');
   assert.match(zero.error,/vetor diretor nulo/);
 
+  // Far lines still parse to an infinite line; whether it shows depends on the zoom.
   const far=parseGeometryInput('reta: (20,20,20) + t*(1,0,0)');
   assert.equal(far.type,'line');
-  assert.equal(prims(far,'segment').length,0,'a line outside the box draws nothing');
-  assert.ok(far.info.some(line=>line.includes('caixa')));
+  assert.equal(prims(far,'line').length,1);
+  const view={width:400,height:300};
+  assert.equal(buildDrawList(far.scene3d,createCamera({scale:50}),view).length,0,'outside the visible box: nothing drawn');
+  assert.ok(buildDrawList(far.scene3d,createCamera({scale:5}),view).some(i=>i.kind==='segment'),'zoomed out: drawn');
 });
 
 test('reta: through registered 3D points and with a registered vector as direction', ()=>{
@@ -249,7 +261,8 @@ test('intersecao: line and plane, two planes, three planes and empty cases', ()=
 
   const pp=parseGeometryInput('intersecao: x + y + z = 1, x - y = 0');
   assert.equal(pp.type,'intersect');
-  assert.ok(prims(pp,'segment').some(s=>s.role==='main'));
+  const cut=prims(pp,'line').find(s=>s.role==='main'&&!s.label);
+  assert.ok(cut&&parallel(cut.v,[1,1,-2]),'intersection line is an infinite primitive');
 
   const three=parseGeometryInput('I = intersecao(x + y + z = 6, x - y = 0, z = 2)');
   assert.equal(three.type,'intersect');
@@ -433,4 +446,63 @@ test('unknown names and wrong object kinds give Portuguese errors', ()=>{
   assert.equal(bad.type,'error');
   const one=parseGeometryInput('intersecao: x + y + z = 1, (1,2,3)');
   assert.equal(one.type,'error');
+});
+
+// ── CR3: infinite lines and planes are clipped by the visible box ─────────
+
+test('visibleBox covers the viewport at the current scale, centered on the target, at least ±5', ()=>{
+  const view={width:400,height:300};   // half-diagonal 250 px
+  assert.deepEqual(visibleBox(createCamera({scale:50}),view),{min:[-5,-5,-5],max:[5,5,5]});
+  assert.deepEqual(visibleBox(createCamera({scale:12.5}),view),{min:[-20,-20,-20],max:[20,20,20]});
+  assert.deepEqual(visibleBox(createCamera({scale:500}),view),{min:[-5,-5,-5],max:[5,5,5]},'never smaller than ±5');
+  const moved=visibleBox(createCamera({scale:25,target:[1,2,3]}),view);
+  assert.deepEqual(moved,{min:[-9,-8,-7],max:[11,12,13]});
+});
+
+test('plane z = 0 grows with the zoom: corners near ±5 at zoom 1 and ±20 at zoom 0.25', ()=>{
+  const r=parseGeometryInput('plano: z = 0');
+  const view={width:400,height:300};
+  const extent=scale=>{
+    const cam=createCamera({...presetView('xy'),scale});
+    const poly=buildDrawList(r.scene3d,cam,view).find(i=>i.kind==='polygon');
+    // Top view: world x = (screen x − W/2)/scale.
+    return Math.max(...poly.points.map(q=>Math.abs((q.x-view.width/2)/scale)));
+  };
+  close(extent(50),5,1e-6);
+  close(extent(12.5),20,1e-6);
+});
+
+test('parsing does not depend on the view', ()=>{
+  const a=parseGeometryInput('plano: z = 0');
+  const b=parseGeometryInput('plano: z = 0',{box:{min:[-50,-50,-50],max:[50,50,50]}});
+  assert.deepEqual(a,b);
+  assert.deepEqual(a.scene3d,[{kind:'plane',n:[0,0,1],d:0,alpha:0.25,role:'main',label:'π'}]);
+  assert.equal(a.info.some(line=>line.includes('caixa')),false);
+});
+
+test('buildDrawList skips a line that misses the box and bad infinite primitives without throwing', ()=>{
+  const cam=createCamera(), view={width:400,height:300};
+  assert.deepEqual(buildDrawList([{kind:'line',p:[100,100,100],v:[1,0,0],label:'r'}],cam,view),[]);
+  assert.deepEqual(buildDrawList([{kind:'plane',n:[0,0,1],d:100,label:'π'}],cam,view),[]);
+  assert.deepEqual(buildDrawList([{kind:'line',p:[0,0,0],v:[0,0,0]},{kind:'plane',n:[0,0,0],d:1},{kind:'plane',n:[NaN,0,1],d:0}],cam,view),[]);
+  const persp=createCamera({projection:'perspective',distance:3});
+  const items=buildDrawList([{kind:'plane',n:[0,0,1],d:0},{kind:'line',p:[0,0,0],v:[1,1,0]}],persp,view);
+  assert.ok(items.every(i=>JSON.stringify(i,(k,v)=>k==='source'?undefined:v).match(/null|NaN/)===null));
+});
+
+test('line style (color, width, dash, labels) applies to plane and line primitives', ()=>{
+  const eq=text=>({kind:'geometry',visible:true,text,geometry:parseGeometryInput(text),lw:3,style:'dashed'});
+  const prims3=scenePrimitives([eq('plano: z = 0'),eq('reta: (0,0,0) + t*(1,0,0)')],{colorOf:()=>'#c00'});
+  const pl=prims3.find(p=>p.kind==='plane'), ln=prims3.find(p=>p.kind==='line');
+  assert.equal(pl.color,'#c00');
+  assert.equal(pl.alpha,0.25);
+  assert.equal(ln.color,'#c00');
+  assert.equal(ln.weight,3);
+  assert.equal(ln.dash,true);
+  const items=buildDrawList(prims3,createCamera(),{width:400,height:300});
+  assert.ok(items.some(i=>i.kind==='polygon'&&i.color==='#c00'));
+  assert.ok(items.some(i=>i.kind==='segment'&&i.color==='#c00'&&i.weight===3&&i.dash));
+  assert.deepEqual(items.filter(i=>i.kind==='label').map(i=>i.text).sort(),['r','π']);
+  const hidden=scenePrimitives([{...eq('plano: z = 0'),showGeoLabels:false}],{colorOf:()=>'#c00'});
+  assert.equal(buildDrawList(hidden,createCamera(),{width:400,height:300}).some(i=>i.kind==='label'),false);
 });

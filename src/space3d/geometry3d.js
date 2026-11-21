@@ -9,7 +9,6 @@
 
 import { _geometryCore as core } from '../geometry.js';
 import { compile, setImplicitY } from '../parser.js';
-import { defaultBox, clipLineToBox, clipPlaneToBox } from './scene3d.js';
 
 const EPS=1e-9;
 // Object names: identifiers, plus π, π1… for planes (§7).
@@ -768,36 +767,26 @@ function fmtLine(l){
   return 'X = '+fmtVec(l.p)+' + t·'+fmtVec(l.v);
 }
 
-function lineScene(l,label,role,box){
-  const seg=clipLineToBox(l.p,l.v,box);
-  if(!seg) return [];
-  const out=[{kind:'segment', a:seg[0], b:seg[1], role}];
-  if(label) out.push({kind:'label', p:seg[1], text:label, role});
-  return out;
+// Lines and planes are infinite primitives: render3d.js clips them against the
+// visible box at draw time, so parsing does not depend on the view.
+function lineScene(l,label,role){
+  const prim={kind:'line', p:[...l.p], v:[...l.v], role};
+  if(label) prim.label=label;
+  return [prim];
 }
 
-function planeScene(pl,label,role,box,alpha=0.25){
-  const pts=clipPlaneToBox(pl.n,pl.d,box);
-  if(pts.length<3) return [];
-  const out=[{kind:'polygon', points:pts, alpha, role}];
-  if(label) out.push({kind:'label', p:pts[0], text:label, role});
-  return out;
+function planeScene(pl,label,role,alpha=0.25){
+  const prim={kind:'plane', n:[...pl.n], d:pl.d, alpha, role};
+  if(label) prim.label=label;
+  return [prim];
 }
 
-function objectScene(o,box,role='main'){
-  if(o.kind==='line') return lineScene(o.line,o.label,role,box);
-  if(o.kind==='plane') return planeScene(o.plane,o.label,role,box);
+function objectScene(o,role='main'){
+  if(o.kind==='line') return lineScene(o.line,o.label,role);
+  if(o.kind==='plane') return planeScene(o.plane,o.label,role);
   if(o.kind==='point') return [{kind:'point', p:o.point, label:o.label, role}];
   const from=o.from||[0,0,0];
   return [{kind:'arrow', from, to:add(from,o.vec), label:o.label, role}];
-}
-
-function boxOf(ctx){
-  return ctx.box||defaultBox();
-}
-
-function outsideWarning(r,what,drawn){
-  if(!drawn.length) r.info.push('aviso: '+what+' não cruza a caixa de desenho');
 }
 
 function mainPoint(p,label){
@@ -816,9 +805,7 @@ function planeCommand(body,ctx,definitionName){
   const label=definitionName||spec.label||'\u03c0';
   const r=result3('plane','plano');
   r.info=[label+': '+fmtPlane(spec.plane),'normal n = '+fmtVec(spec.plane.n),...promotionWarning(state.promoted)];
-  const drawn=planeScene(spec.plane,label,'main',boxOf(ctx));
-  outsideWarning(r,'o plano',drawn);
-  r.scene3d=[...spec.extras,...drawn];
+  r.scene3d=[...spec.extras,...planeScene(spec.plane,label,'main')];
   core.define(r,label,'plane',{n:spec.plane.n, d:spec.plane.d, label, dim:3});
   return r;
 }
@@ -831,9 +818,7 @@ function lineCommand(body,ctx,definitionName){
   r.info=[label+': '+fmtLine(spec.line),'vetor diretor v = '+fmtVec(spec.line.v)];
   if(spec.through?.every(Boolean)) r.info.unshift('reta por '+spec.through.join(' e '));
   r.info.push(...promotionWarning(state.promoted));
-  const drawn=lineScene(spec.line,label,'main',boxOf(ctx));
-  outsideWarning(r,'a reta',drawn);
-  r.scene3d=[...spec.extras,...drawn];
+  r.scene3d=[...spec.extras,...lineScene(spec.line,label,'main')];
   core.define(r,label,'line3',{p:spec.line.p, v:spec.line.v, label, dim:3});
   return r;
 }
@@ -847,7 +832,6 @@ function intersectCommand(body,ctx,definitionName){
   const objs=objectList(body,ctx,state);
   if(objs.length<2||objs.length>3) throw new Error('interseção: use duas retas/planos, ou três planos');
   requireKinds(objs,['line','plane'],'interseção: use retas e planos');
-  const box=boxOf(ctx);
   const r=result3('intersect','intersecao');
   const names=objs.map(o=>o.label).join(', ');
   let out;
@@ -877,7 +861,7 @@ function intersectCommand(body,ctx,definitionName){
         : {kind:'empty', text:'a reta é paralela ao plano'};
     }
   }
-  r.scene3d=objs.flatMap(o=>objectScene(o,box));
+  r.scene3d=objs.flatMap(o=>objectScene(o));
   r.info=[names+': '+out.text];
   if(out.kind==='point'){
     const label=definitionName||'P';
@@ -888,7 +872,7 @@ function intersectCommand(body,ctx,definitionName){
   } else if(out.kind==='line'){
     const label=definitionName||'';
     r.info.push('interseção: reta '+fmtLine(out.line));
-    r.scene3d.push(...lineScene(out.line,label,'main',box));
+    r.scene3d.push(...lineScene(out.line,label,'main'));
     if(definitionName) core.define(r,definitionName,'line3',{p:out.line.p, v:out.line.v, label, dim:3});
   } else if(out.kind==='plane'){
     r.info.push('interseção: o próprio plano');
@@ -918,11 +902,10 @@ function distanceCommand(body,ctx,definitionName){
   requireKinds(objs,['point','line','plane'],'distância: use pontos, retas e planos');
   // Point–point keeps the 2D names A, B.
   if(objs.every(o=>o.kind==='point')) objs.forEach((o,i)=>{ if(!core.refFromRegistry(parts[i],ctx)&&!partLabel(parts[i]).label) o.label='AB'[i]; });
-  const box=boxOf(ctx);
   const order={point:0,line:1,plane:2};
   const [a,b]=[...objs].sort((x,y)=>order[x.kind]-order[y.kind]);
   const r=result3('distance','distancia');
-  r.scene3d=objs.flatMap(o=>objectScene(o,box));
+  r.scene3d=objs.flatMap(o=>objectScene(o));
   const notes=[];
   let value;
   if(a.kind==='point'&&b.kind==='point'){
@@ -969,7 +952,6 @@ function distanceCommand(body,ctx,definitionName){
 function angleCommand(body,ctx,definitionName){
   const state={promoted:[]};
   const objs=objectList(body,ctx,state);
-  const box=boxOf(ctx);
   const r=result3('angle','angulo');
   let deg, extra=[];
   const asVector=o=>o.kind==='vector' ? o : o.kind==='point' ? {...o, vec:o.point, from:[0,0,0]} : null;
@@ -986,12 +968,12 @@ function angleCommand(body,ctx,definitionName){
     const [u,v]=objs.map(asVector);
     if(nullVector(u.vec)||nullVector(v.vec)) throw new Error('ângulo: vetor nulo');
     deg=toDeg(Math.acos(Math.max(-1,Math.min(1,dot3(u.vec,v.vec)/(len(u.vec)*len(v.vec))))));
-    r.scene3d=[u,v].flatMap(o=>objectScene({...o, kind:'vector'},box));
+    r.scene3d=[u,v].flatMap(o=>objectScene({...o, kind:'vector'}));
     extra=['produto escalar = '+core.fmt(dot3(u.vec,v.vec))];
   } else if(objs.length===2&&objs.every(o=>o.kind==='line'||o.kind==='plane')){
     const [a,b]=objs.map(o=>o.kind==='line' ? o.line : o.plane);
     deg=angleBetween(a,b);
-    r.scene3d=objs.flatMap(o=>objectScene(o,box));
+    r.scene3d=objs.flatMap(o=>objectScene(o));
     extra=['posição: '+relativePosition(a,b)];
   } else {
     throw new Error('ângulo: use duas retas, reta e plano, dois planos, dois vetores ou três pontos');
@@ -1007,9 +989,8 @@ function positionCommand(body,ctx){
   const objs=objectList(body,ctx,state);
   if(objs.length!==2) throw new Error('posição: use dois objetos (retas ou planos)');
   requireKinds(objs,['point','line','plane'],'posição: use pontos, retas e planos');
-  const box=boxOf(ctx);
   const r=result3('position','posicao');
-  r.scene3d=objs.flatMap(o=>objectScene(o,box));
+  r.scene3d=objs.flatMap(o=>objectScene(o));
   const [a,b]=objs;
   const names=a.label+' e '+b.label;
   const notes=[];
@@ -1029,7 +1010,7 @@ function positionCommand(body,ctx){
       if(res.kind==='parallel'||res.kind==='skew') notes.push('distância = '+core.fmt(distanceLines(A,B).value));
     } else if(isPlane3(A)&&isPlane3(B)){
       const res=intersectPlanes(A,B);
-      if(res.kind==='line'){ notes.push('interseção: reta '+fmtLine(res.line)); r.scene3d.push(...lineScene(res.line,'','main',box)); }
+      if(res.kind==='line'){ notes.push('interseção: reta '+fmtLine(res.line)); r.scene3d.push(...lineScene(res.line,'','main')); }
       if(res.kind==='none') notes.push('distância = '+core.fmt(distancePlanes(A,B)));
     } else {
       const l=isLine3(A) ? A : B, pl=isPlane3(A) ? A : B;

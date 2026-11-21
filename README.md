@@ -4,6 +4,46 @@ Calculadora científica e gráfica em JavaScript com geometria, estatística, c�
 
 Abra [a Curva](https://lsbjordao.github.io/Calculadora-Curva/) ou sirva este diretório localmente (`python3 -m http.server 8000`). Execute `npm test` para verificar a aplicação.
 
+## Comandos pela URL (GET)
+
+Passe um parâmetro **`cmd` por comando** na query string para abrir a Curva com
+as linhas preenchidas e os resultados calculados automaticamente. A ordem e os
+comandos repetidos são preservados. Por exemplo,
+`?cmd=ponto%3A+A%3D%28-2%2C3%29&cmd=calc%3A+2%2B3` carrega
+`ponto: A=(-2,3)` e `calc: 2+3` (resultado 5).
+
+Gere os links com `URLSearchParams` para codificar corretamente sinais de `=`,
+`+`, `&`, `%`, espaços e caracteres Unicode:
+
+```js
+const comandos = [
+  'ponto: A=(-2,3), B=(4,-5)',
+  'dist: A,B',
+  'calc: ((-2)+4)/2',
+  'calc: (3+(-5))/2',
+  'calc: sqrt(2^2 + 3^2 + 6^2)'
+];
+
+const url = new URL('https://lsbjordao.github.io/Calculadora-Curva/');
+comandos.forEach(cmd => url.searchParams.append('cmd', cmd));
+console.log(url.href); // abra ou compartilhe este link
+```
+
+Esse exemplo mostra A e B, distância **10** e resultados **1**, **−1** e **7**.
+Cada linha continua editável; erros aparecem na linha correspondente sem impedir
+as demais. A edição recalcula as referências e salva a sessão como de costume.
+
+Quando há comandos não vazios, a URL define uma cena nova com a vista padrão,
+sem misturar a sessão salva. Valores `cmd` vazios ou compostos apenas de espaços
+são ignorados. Sem comandos úteis, a aplicação restaura a sessão anterior ou
+abre o exemplo inicial. Não concatene comandos diretamente na URL: um `+` sem
+codificação é interpretado como espaço; use `URLSearchParams` ou `%2B`.
+
+Esta é uma entrada por URL executada no navegador: a resposta HTTP continua
+sendo a página da calculadora, sem endpoint de resultados JSON. Não requer
+servidor adicional. Para grandes listas, considere o limite de tamanho de URL
+do navegador e da hospedagem. Os comandos são lidos ao abrir ou recarregar a página.
+
 ## Álgebra linear
 
 A aba **álgebra** insere exemplos completos na linha selecionada. Edite os números ou use os parâmetros disponíveis. O cálculo é automático.

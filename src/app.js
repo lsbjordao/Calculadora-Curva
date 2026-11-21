@@ -5318,7 +5318,13 @@ document.getElementById('theme').onclick=function(){
   scheduleSave();
 };
 
-if(!restoreState()) equations.push(makeEq('sin(x)'));
+// URL commands define the initial scene; reuse the normal compilation below
+// so geometry and algebra references resolve just like manually entered rows.
+const initialCommands=new URLSearchParams(window.location?.search || '')
+  .getAll('cmd').filter(command=>command.trim());
+if(initialCommands.length){
+  initialCommands.forEach(command=>equations.push(makeEq(command)));
+}else if(!restoreState()) equations.push(makeEq('sin(x)'));
 initPresets();
 initLessons();
 initHelp();

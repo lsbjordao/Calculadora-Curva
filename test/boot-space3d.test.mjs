@@ -41,6 +41,7 @@ function makeEl(id){
         case 'querySelectorAll': return ()=>[];
         case 'closest': return ()=>null;
         case 'appendChild': case 'append': return (...c)=>{ t.children.push(...c); return c[0]; };
+        case 'replaceChildren': return (...c)=>{ t.children=[...c]; };
         case 'cloneNode': return ()=>makeEl();
         case 'contains': case 'matches': return ()=>false;
         default: return ()=>{};
@@ -73,8 +74,9 @@ globalThis.localStorage={
 const mk=(ci,text)=>({ci,text,visible:true,showD:false,showI:false,showL:false,showA:false,colorOverride:null,style:'solid',lw:2,params:{}});
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 let bootN=0;
-async function boot(state){
+async function boot(state, search=''){
   calls=[]; elements=new Map(); created=[]; saved=null; stored=state; ctx=recordingCtx();
+  window.location={search};
   await import('../src/app.js?boot='+(++bootN));
   await wait(20);
 }
@@ -82,6 +84,77 @@ const texts=()=>calls.filter(c=>c[0]==='fillText').map(c=>String(c[1]));
 const cv=()=>byId('cv');
 // The persisted state is written by the 120 ms debounced save.
 const settle=()=>wait(220);
+
+const fields=()=>created.filter(el=>el.className==='field');
+const scalars=()=>created.filter(el=>el.className==='row-info')
+  .flatMap(el=>el.children.filter(child=>child.className==='algebra-scalar').map(child=>child.textContent));
+const urlFor=commands=>'?'+new URLSearchParams(commands.map(cmd=>['cmd',cmd]));
+
+test('URL executa os comandos na ordem, resolve referências e substitui a cena salva',async()=>{
+  const commands=[
+    'ponto: A=(-2,3), B=(4,-5)',
+    'dist: A,B',
+    'calc: ((-2)+4)/2',
+    'calc: (3+(-5))/2',
+    'calc: sqrt(2^2 + 3^2 + 6^2)'
+  ];
+  await boot({version:1,view:{cx:1000,cy:1000,scale:1},view3d:{mode:'3d'},
+    equations:[mk(0,'ponto: A=(0,0), B=(30,40)')]},urlFor(commands));
+  assert.deepEqual(fields().map(el=>el.value),commands);
+  assert.deepEqual(scalars(),['1','-1','7']);
+  assert.ok(created.some(el=>el.className==='row-info'&&/d\(A, B\) = 10\b/.test(el.textContent)));
+  assert.ok(created.filter(el=>el.className==='row').every(el=>el.dataset.err==='0'));
+  assert.ok(texts().includes('A'),'ponto da URL visível na cena padrão');
+  assert.ok(!texts().includes('z'),'vista 3D salva não contamina a URL 2D');
+});
+
+test('URL preserva sinais de igual, soma, Unicode e repetições sem decodificar duas vezes',async()=>{
+  await boot(null,'?cmd=ponto%3A+A%3D%28-2%2C3%29%2C+B%3D%284%2C-5%29'+
+    '&cmd=calc%3A+2%2B3&cmd=calc%3A+2%2B3&cmd=calc%3A+%CF%80'+
+    '&cmd=calc%3A+%252B%26%23&ignored=calc%3A+999');
+  assert.deepEqual(fields().map(el=>el.value),[
+    'ponto: A=(-2,3), B=(4,-5)','calc: 2+3','calc: 2+3','calc: π','calc: %2B&#'
+  ]);
+  assert.deepEqual(scalars(),['5','5','3.141592654']);
+});
+
+test('comando inválido na URL mostra erro na linha e permite os demais cálculos',async()=>{
+  await boot(null,urlFor(['calc: sqrt(','calc: 6+1']));
+  assert.deepEqual(created.filter(el=>el.className==='row').map(el=>el.dataset.err),['1','0']);
+  assert.ok(created.some(el=>el.className==='row-info'&&typeof el.textContent==='string'&&el.textContent.length>0));
+  assert.deepEqual(scalars(),['7']);
+});
+
+test('parâmetros cmd vazios são ignorados sem mudar a restauração da sessão',async()=>{
+  const state={version:1,equations:[mk(0,'calc: 40+2')]};
+  for(const search of ['', '?ignored=calc%3A+999', '?cmd=&cmd=++%0A']){
+    await boot(state,search);
+    assert.deepEqual(fields().map(el=>el.value),['calc: 40+2']);
+    assert.deepEqual(scalars(),['42']);
+  }
+  await boot(null,'?cmd=&cmd=+');
+  assert.deepEqual(fields().map(el=>el.value),['sin(x)']);
+  await boot(null,'?cmd=&cmd=calc%3A+8%2B1&cmd=+');
+  assert.deepEqual(fields().map(el=>el.value),['calc: 8+1']);
+  assert.deepEqual(scalars(),['9']);
+});
+
+test('linhas da URL continuam editáveis, recalculam dependentes e salvam normalmente',async()=>{
+  await boot(null,urlFor(['ponto: A=(0,0), B=(3,4)','dist: A,B']));
+  const [points]=fields();
+  points.value='ponto: A=(0,0), B=(6,8)';
+  points.oninput();
+  assert.ok(created.some(el=>el.className==='row-info'&&/d\(A, B\) = 10\b/.test(el.textContent)));
+  await settle();
+  assert.deepEqual(saved.equations.map(eq=>eq.text),['ponto: A=(0,0), B=(6,8)','dist: A,B']);
+});
+
+test('comandos 3D na URL selecionam automaticamente a vista 3D',async()=>{
+  await boot({version:1,view3d:{mode:'2d'},equations:[mk(0,'sin(x)')]},urlFor(['ponto: A=(1,2,3)']));
+  assert.deepEqual(fields().map(el=>el.value),['ponto: A=(1,2,3)']);
+  assert.ok(texts().includes('z'));
+  assert.match(String(byId('canvas-description').textContent),/Vista 3D/);
+});
 
 test('estado salvo com objeto 3D e view3d 3D inicializa e desenha a cena 3D',async()=>{
   await boot({version:1,theme:'light',view:{cx:0,cy:0,scale:60},

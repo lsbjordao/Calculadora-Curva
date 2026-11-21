@@ -1,0 +1,1972 @@
+[
+ {
+  "text": "ponto: A=(1,2)",
+  "result": {
+   "type": "point",
+   "label": "ponto",
+   "info": [
+    "A = (1, 2)"
+   ],
+   "points": [
+    {
+     "x": 1,
+     "y": 2,
+     "label": "A"
+    }
+   ],
+   "segments": [],
+   "lines": [],
+   "vectors": [],
+   "polygons": [],
+   "conics": [],
+   "angles": [],
+   "matrix": null,
+   "definitions": [
+    {
+     "name": "A",
+     "kind": "point",
+     "value": {
+      "x": 1,
+      "y": 2,
+      "label": "A"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "text": "ponto: A=(0,0), B=(3,4), C=(k,1)",
+  "result": {
+   "type": "point",
+   "label": "ponto",
+   "info": [
+    "A = (0, 0)",
+    "B = (3, 4)",
+    "C = (2, 1)"
+   ],
+   "points": [
+    {
+     "x": 0,
+     "y": 0,
+     "label": "A"
+    },
+    {
+     "x": 3,
+     "y": 4,
+     "label": "B"
+    },
+    {
+     "x": 2,
+     "y": 1,
+     "label": "C"
+    }
+   ],
+   "segments": [],
+   "lines": [],
+   "vectors": [],
+   "polygons": [],
+   "conics": [],
+   "angles": [],
+   "matrix": null,
+   "definitions": [
+    {
+     "name": "A",
+     "kind": "point",
+     "value": {
+      "x": 0,
+      "y": 0,
+      "label": "A"
+     }
+    },
+    {
+     "name": "B",
+     "kind": "point",
+     "value": {
+      "x": 3,
+      "y": 4,
+      "label": "B"
+     }
+    },
+    {
+     "name": "C",
+     "kind": "point",
+     "value": {
+      "x": 2,
+      "y": 1,
+      "label": "C"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "text": "P = (2,-1)",
+  "result": {
+   "type": "point",
+   "label": "ponto",
+   "info": [
+    "P = (2, -1)"
+   ],
+   "points": [
+    {
+     "x": 2,
+     "y": -1,
+     "label": "P"
+    }
+   ],
+   "segments": [],
+   "lines": [],
+   "vectors": [],
+   "polygons": [],
+   "conics": [],
+   "angles": [],
+   "matrix": null,
+   "definitions": [
+    {
+     "name": "P",
+     "kind": "point",
+     "value": {
+      "x": 2,
+      "y": -1,
+      "label": "P"
+     }
+    },
+    {
+     "name": "P",
+     "kind": "point",
+     "value": {
+      "x": 2,
+      "y": -1,
+      "label": "P"
+     }
+    }
+   ],
+   "definitionName": "P"
+  }
+ },
+ {
+  "text": "Q = ponto(1,5)",
+  "result": {
+   "type": "point",
+   "label": "ponto",
+   "info": [
+    "Q = (1, 5)"
+   ],
+   "points": [
+    {
+     "x": 1,
+     "y": 5,
+     "label": "Q"
+    }
+   ],
+   "segments": [],
+   "lines": [],
+   "vectors": [],
+   "polygons": [],
+   "conics": [],
+   "angles": [],
+   "matrix": null,
+   "definitions": [
+    {
+     "name": "Q",
+     "kind": "point",
+     "value": {
+      "x": 1,
+      "y": 5,
+      "label": "Q"
+     }
+    },
+    {
+     "name": "Q",
+     "kind": "point",
+     "value": {
+      "x": 1,
+      "y": 5,
+      "label": "Q"
+     }
+    }
+   ],
+   "definitionName": "Q"
+  }
+ },
+ {
+  "text": "G = pontos(A,B,C)",
+  "result": {
+   "type": "point",
+   "label": "ponto",
+   "info": [
+    "A = (0, 0)",
+    "B = (3, 4)",
+    "C = (2, 1)"
+   ],
+   "points": [
+    {
+     "x": 0,
+     "y": 0,
+     "label": "A"
+    },
+    {
+     "x": 3,
+     "y": 4,
+     "label": "B"
+    },
+    {
+     "x": 2,
+     "y": 1,
+     "label": "C"
+    }
+   ],
+   "segments": [],
+   "lines": [],
+   "vectors": [],
+   "polygons": [],
+   "conics": [],
+   "angles": [],
+   "matrix": null,
+   "definitions": [
+    {
+     "name": "A",
+     "kind": "point",
+     "value": {
+      "x": 0,
+      "y": 0,
+      "label": "A"
+     }
+    },
+    {
+     "name": "B",
+     "kind": "point",
+     "value": {
+      "x": 3,
+      "y": 4,
+      "label": "B"
+     }
+    },
+    {
+     "name": "C",
+     "kind": "point",
+     "value": {
+      "x": 2,
+      "y": 1,
+      "label": "C"
+     }
+    },
+    {
+     "name": "G",
+     "kind": "point",
+     "value": {
+      "x": 0,
+      "y": 0,
+      "label": "A"
+     }
+    }
+   ],
+   "definitionName": "G"
+  }
+ },
+ {
+  "text": "vetor: u=(1,2)",
+  "result": {
+   "type": "vector",
+   "label": "vetor",
+   "info": [
+    "vetor u = (1, 2)",
+    "|u| = 2.23607"
+   ],
+   "points": [],
+   "segments": [],
+   "lines": [],
+   "vectors": [
+    {
+     "from": {
+      "x": 0,
+      "y": 0,
+      "label": "O"
+     },
+     "to": {
+      "x": 1,
+      "y": 2,
+      "label": "u"
+     },
+     "label": "u"
+    }
+   ],
+   "polygons": [],
+   "conics": [],
+   "angles": [],
+   "matrix": null,
+   "definitions": []
+  }
+ },
+ {
+  "text": "vetor: (3,4)",
+  "result": {
+   "type": "vector",
+   "label": "vetor",
+   "info": [
+    "vetor A = (3, 4)",
+    "|A| = 5"
+   ],
+   "points": [],
+   "segments": [],
+   "lines": [],
+   "vectors": [
+    {
+     "from": {
+      "x": 0,
+      "y": 0,
+      "label": "O"
+     },
+     "to": {
+      "x": 3,
+      "y": 4,
+      "label": "A"
+     },
+     "label": "A"
+    }
+   ],
+   "polygons": [],
+   "conics": [],
+   "angles": [],
+   "matrix": null,
+   "definitions": []
+  }
+ },
+ {
+  "text": "vetor: A, B",
+  "result": {
+   "type": "vector",
+   "label": "vetor",
+   "info": [
+    "vetor AB = (3, 4)",
+    "|AB| = 5"
+   ],
+   "points": [
+    {
+     "x": 0,
+     "y": 0,
+     "label": "A"
+    },
+    {
+     "x": 3,
+     "y": 4,
+     "label": "B"
+    }
+   ],
+   "segments": [],
+   "lines": [],
+   "vectors": [
+    {
+     "from": {
+      "x": 0,
+      "y": 0,
+      "label": "A"
+     },
+     "to": {
+      "x": 3,
+      "y": 4,
+      "label": "B"
+     },
+     "label": "AB"
+    }
+   ],
+   "polygons": [],
+   "conics": [],
+   "angles": [],
+   "matrix": null,
+   "definitions": []
+  }
+ },
+ {
+  "text": "w = vetor(A,B)",
+  "result": {
+   "type": "vector",
+   "label": "vetor",
+   "info": [
+    "vetor w = (3, 4)",
+    "|w| = 5"
+   ],
+   "points": [
+    {
+     "x": 0,
+     "y": 0,
+     "label": "A"
+    },
+    {
+     "x": 3,
+     "y": 4,
+     "label": "B"
+    }
+   ],
+   "segments": [],
+   "lines": [],
+   "vectors": [
+    {
+     "from": {
+      "x": 0,
+      "y": 0,
+      "label": "A"
+     },
+     "to": {
+      "x": 3,
+      "y": 4,
+      "label": "B"
+     },
+     "label": "w"
+    }
+   ],
+   "polygons": [],
+   "conics": [],
+   "angles": [],
+   "matrix": null,
+   "definitions": [
+    {
+     "name": "w",
+     "kind": "vector",
+     "value": {
+      "from": {
+       "x": 0,
+       "y": 0,
+       "label": "A"
+      },
+      "to": {
+       "x": 3,
+       "y": 4,
+       "label": "B"
+      },
+      "label": "w"
+     }
+    }
+   ],
+   "definitionName": "w"
+  }
+ },
+ {
+  "text": "reta: (0,0),(2,4)",
+  "result": {
+   "type": "line",
+   "label": "reta",
+   "info": [
+    "reta por A e B",
+    "y = 2x + 0"
+   ],
+   "points": [
+    {
+     "x": 0,
+     "y": 0,
+     "label": "A"
+    },
+    {
+     "x": 2,
+     "y": 4,
+     "label": "B"
+    }
+   ],
+   "segments": [],
+   "lines": [
+    {
+     "a": -4,
+     "b": 2,
+     "c": 0,
+     "label": "r",
+     "through": [
+      {
+       "x": 0,
+       "y": 0,
+       "label": "A"
+      },
+      {
+       "x": 2,
+       "y": 4,
+       "label": "B"
+      }
+     ]
+    }
+   ],
+   "vectors": [],
+   "polygons": [],
+   "conics": [],
+   "angles": [],
+   "matrix": null,
+   "definitions": [
+    {
+     "name": "r",
+     "kind": "line",
+     "value": {
+      "a": -4,
+      "b": 2,
+      "c": 0,
+      "label": "r",
+      "through": [
+       {
+        "x": 0,
+        "y": 0,
+        "label": "A"
+       },
+       {
+        "x": 2,
+        "y": 4,
+        "label": "B"
+       }
+      ]
+     }
+    }
+   ]
+  }
+ },
+ {
+  "text": "r = reta(A,B)",
+  "result": {
+   "type": "line",
+   "label": "reta",
+   "info": [
+    "reta por A e B",
+    "y = 1.33333x + 0"
+   ],
+   "points": [
+    {
+     "x": 0,
+     "y": 0,
+     "label": "A"
+    },
+    {
+     "x": 3,
+     "y": 4,
+     "label": "B"
+    }
+   ],
+   "segments": [],
+   "lines": [
+    {
+     "a": -4,
+     "b": 3,
+     "c": 0,
+     "label": "r",
+     "through": [
+      {
+       "x": 0,
+       "y": 0,
+       "label": "A"
+      },
+      {
+       "x": 3,
+       "y": 4,
+       "label": "B"
+      }
+     ]
+    }
+   ],
+   "vectors": [],
+   "polygons": [],
+   "conics": [],
+   "angles": [],
+   "matrix": null,
+   "definitions": [
+    {
+     "name": "r",
+     "kind": "line",
+     "value": {
+      "a": -4,
+      "b": 3,
+      "c": 0,
+      "label": "r",
+      "through": [
+       {
+        "x": 0,
+        "y": 0,
+        "label": "A"
+       },
+       {
+        "x": 3,
+        "y": 4,
+        "label": "B"
+       }
+      ]
+     }
+    },
+    {
+     "name": "r",
+     "kind": "line",
+     "value": {
+      "a": -4,
+      "b": 3,
+      "c": 0,
+      "label": "r",
+      "through": [
+       {
+        "x": 0,
+        "y": 0,
+        "label": "A"
+       },
+       {
+        "x": 3,
+        "y": 4,
+        "label": "B"
+       }
+      ]
+     }
+    }
+   ],
+   "definitionName": "r"
+  }
+ },
+ {
+  "text": "reta: (0,0),(0,0)",
+  "result": {
+   "type": "error",
+   "label": "line",
+   "info": [
+    "pontos coincidentes nao definem reta"
+   ],
+   "points": [],
+   "segments": [],
+   "lines": [],
+   "vectors": [],
+   "polygons": [],
+   "conics": [],
+   "angles": [],
+   "matrix": null,
+   "definitions": [],
+   "error": "pontos coincidentes nao definem reta"
+  }
+ },
+ {
+  "text": "dist: (0,0),(3,4)",
+  "result": {
+   "type": "distance",
+   "label": "distancia",
+   "info": [
+    "d(A, B) = 5",
+    "delta = (3, 4)"
+   ],
+   "points": [
+    {
+     "x": 0,
+     "y": 0,
+     "label": "A"
+    },
+    {
+     "x": 3,
+     "y": 4,
+     "label": "B"
+    }
+   ],
+   "segments": [
+    {
+     "a": {
+      "x": 0,
+      "y": 0,
+      "label": "A"
+     },
+     "b": {
+      "x": 3,
+      "y": 4,
+      "label": "B"
+     },
+     "label": "d"
+    }
+   ],
+   "lines": [],
+   "vectors": [],
+   "polygons": [],
+   "conics": [],
+   "angles": [],
+   "matrix": null,
+   "definitions": []
+  }
+ },
+ {
+  "text": "dist: A, B",
+  "result": {
+   "type": "distance",
+   "label": "distancia",
+   "info": [
+    "d(A, B) = 5",
+    "delta = (3, 4)"
+   ],
+   "points": [
+    {
+     "x": 0,
+     "y": 0,
+     "label": "A"
+    },
+    {
+     "x": 3,
+     "y": 4,
+     "label": "B"
+    }
+   ],
+   "segments": [
+    {
+     "a": {
+      "x": 0,
+      "y": 0,
+      "label": "A"
+     },
+     "b": {
+      "x": 3,
+      "y": 4,
+      "label": "B"
+     },
+     "label": "d"
+    }
+   ],
+   "lines": [],
+   "vectors": [],
+   "polygons": [],
+   "conics": [],
+   "angles": [],
+   "matrix": null,
+   "definitions": []
+  }
+ },
+ {
+  "text": "medio: (0,0),(4,2)",
+  "result": {
+   "type": "midpoint",
+   "label": "ponto medio",
+   "info": [
+    "M = (2, 1)",
+    "M e o ponto medio de AB"
+   ],
+   "points": [
+    {
+     "x": 0,
+     "y": 0,
+     "label": "A"
+    },
+    {
+     "x": 4,
+     "y": 2,
+     "label": "B"
+    },
+    {
+     "x": 2,
+     "y": 1,
+     "label": "M"
+    }
+   ],
+   "segments": [
+    {
+     "a": {
+      "x": 0,
+      "y": 0,
+      "label": "A"
+     },
+     "b": {
+      "x": 4,
+      "y": 2,
+      "label": "B"
+     },
+     "label": "AB"
+    }
+   ],
+   "lines": [],
+   "vectors": [],
+   "polygons": [],
+   "conics": [],
+   "angles": [],
+   "matrix": null,
+   "definitions": [
+    {
+     "name": "M",
+     "kind": "point",
+     "value": {
+      "x": 2,
+      "y": 1,
+      "label": "M"
+     }
+    }
+   ]
+  }
+ },
+ {
+  "text": "M = medio(A,B)",
+  "result": {
+   "type": "midpoint",
+   "label": "ponto medio",
+   "info": [
+    "M = (1.5, 2)",
+    "M e o ponto medio de AB"
+   ],
+   "points": [
+    {
+     "x": 0,
+     "y": 0,
+     "label": "A"
+    },
+    {
+     "x": 3,
+     "y": 4,
+     "label": "B"
+    },
+    {
+     "x": 1.5,
+     "y": 2,
+     "label": "M"
+    }
+   ],
+   "segments": [
+    {
+     "a": {
+      "x": 0,
+      "y": 0,
+      "label": "A"
+     },
+     "b": {
+      "x": 3,
+      "y": 4,
+      "label": "B"
+     },
+     "label": "AB"
+    }
+   ],
+   "lines": [],
+   "vectors": [],
+   "polygons": [],
+   "conics": [],
+   "angles": [],
+   "matrix": null,
+   "definitions": [
+    {
+     "name": "M",
+     "kind": "point",
+     "value": {
+      "x": 1.5,
+      "y": 2,
+      "label": "M"
+     }
+    },
+    {
+     "name": "M",
+     "kind": "point",
+     "value": {
+      "x": 1.5,
+      "y": 2,
+      "label": "M"
+     }
+    }
+   ],
+   "definitionName": "M"
+  }
+ },
+ {
+  "text": "conica: x^2 + y^2 = 4",
+  "result": {
+   "type": "conic",
+   "label": "conica",
+   "info": [
+    "circunferencia",
+    "centro C = (0, 0)",
+    "raio = 2",
+    "excentricidade e = 0",
+    "b^2 - 4ac = -4 < 0 (genero eliptico)"
+   ],
+   "points": [
+    {
+     "x": 0,
+     "y": 0,
+     "label": "C"
+    }
+   ],
+   "segments": [
+    {
+     "a": {
+      "x": 0,
+      "y": 0
+     },
+     "b": {
+      "x": 2,
+      "y": 0
+     },
+     "label": "r",
+     "style": "dotted"
+    }
+   ],
+   "lines": [
+    {
+     "a": 1,
+     "b": 0,
+     "c": 0,
+     "label": "eixo x=C",
+     "style": "dotted"
+    },
+    {
+     "a": 0,
+     "b": 1,
+     "c": 0,
+     "label": "eixo y=C",
+     "style": "dotted"
+    }
+   ],
+   "vectors": [],
+   "polygons": [],
+   "conics": [
+    {
+     "type": "conic",
+     "source": "x^2 + y^2 = 4",
+     "coeffs": {
+      "A": 1,
+      "B": 0,
+      "C": 1,
+      "D": 0,
+      "E": 0,
+      "F": -4
+     },
+     "analysis": {
+      "info": [
+       "circunferencia",
+       "centro C = (0, 0)",
+       "raio = 2",
+       "excentricidade e = 0",
+       "b^2 - 4ac = -4 < 0 (genero eliptico)"
+      ],
+      "points": [
+       {
+        "x": 0,
+        "y": 0,
+        "label": "C"
+       }
+      ],
+      "lines": [
+       {
+        "a": 1,
+        "b": 0,
+        "c": 0,
+        "label": "eixo x=C",
+        "style": "dotted"
+       },
+       {
+        "a": 0,
+        "b": 1,
+        "c": 0,
+        "label": "eixo y=C",
+        "style": "dotted"
+       }
+      ],
+      "segments": [
+       {
+        "a": {
+         "x": 0,
+         "y": 0
+        },
+        "b": {
+         "x": 2,
+         "y": 0
+        },
+        "label": "r",
+        "style": "dotted"
+       }
+      ]
+     }
+    }
+   ],
+   "angles": [],
+   "matrix": null,
+   "definitions": []
+  }
+ },
+ {
+  "text": "conica: x^2/9 + y^2/4 = 1",
+  "result": {
+   "type": "conic",
+   "label": "conica",
+   "info": [
+    "elipse",
+    "centro C = (0, 0)",
+    "semieixos = 3 e 2",
+    "eixo maior horizontal",
+    "semidistancia focal c = 2.23607 (a^2 = b^2 + c^2)",
+    "excentricidade e = c/a = 0.74536",
+    "focos = (-2.23607, 0) e (2.23607, 0)",
+    "b^2 - 4ac = -0.11111 < 0 (genero eliptico)"
+   ],
+   "points": [
+    {
+     "x": 0,
+     "y": 0,
+     "label": "C"
+    },
+    {
+     "x": -2.2360679774997894,
+     "y": 0,
+     "label": "F1"
+    },
+    {
+     "x": 2.2360679774997894,
+     "y": 0,
+     "label": "F2"
+    }
+   ],
+   "segments": [
+    {
+     "a": {
+      "x": -2.9999999999999996,
+      "y": 0
+     },
+     "b": {
+      "x": 2.9999999999999996,
+      "y": 0
+     },
+     "label": "eixo maior",
+     "style": "dotted"
+    },
+    {
+     "a": {
+      "x": 0,
+      "y": -2
+     },
+     "b": {
+      "x": 0,
+      "y": 2
+     },
+     "label": "eixo menor",
+     "style": "dotted"
+    }
+   ],
+   "lines": [
+    {
+     "a": 1,
+     "b": 0,
+     "c": 0,
+     "label": "eixo x=C",
+     "style": "dotted"
+    },
+    {
+     "a": 0,
+     "b": 1,
+     "c": 0,
+     "label": "eixo y=C",
+     "style": "dotted"
+    },
+    {
+     "a": 1,
+     "b": 0,
+     "c": 4.024922359499621,
+     "label": "diretriz",
+     "style": "dashed"
+    },
+    {
+     "a": 1,
+     "b": 0,
+     "c": -4.024922359499621,
+     "label": "diretriz",
+     "style": "dashed"
+    }
+   ],
+   "vectors": [],
+   "polygons": [],
+   "conics": [
+    {
+     "type": "conic",
+     "source": "x^2/9 + y^2/4 = 1",
+     "coeffs": {
+      "A": 0.11111111111111116,
+      "B": 0,
+      "C": 0.25,
+      "D": 0,
+      "E": 0,
+      "F": -1
+     },
+     "analysis": {
+      "info": [
+       "elipse",
+       "centro C = (0, 0)",
+       "semieixos = 3 e 2",
+       "eixo maior horizontal",
+       "semidistancia focal c = 2.23607 (a^2 = b^2 + c^2)",
+       "excentricidade e = c/a = 0.74536",
+       "focos = (-2.23607, 0) e (2.23607, 0)",
+       "b^2 - 4ac = -0.11111 < 0 (genero eliptico)"
+      ],
+      "points": [
+       {
+        "x": 0,
+        "y": 0,
+        "label": "C"
+       },
+       {
+        "x": -2.2360679774997894,
+        "y": 0,
+        "label": "F1"
+       },
+       {
+        "x": 2.2360679774997894,
+        "y": 0,
+        "label": "F2"
+       }
+      ],
+      "lines": [
+       {
+        "a": 1,
+        "b": 0,
+        "c": 0,
+        "label": "eixo x=C",
+        "style": "dotted"
+       },
+       {
+        "a": 0,
+        "b": 1,
+        "c": 0,
+        "label": "eixo y=C",
+        "style": "dotted"
+       },
+       {
+        "a": 1,
+        "b": 0,
+        "c": 4.024922359499621,
+        "label": "diretriz",
+        "style": "dashed"
+       },
+       {
+        "a": 1,
+        "b": 0,
+        "c": -4.024922359499621,
+        "label": "diretriz",
+        "style": "dashed"
+       }
+      ],
+      "segments": [
+       {
+        "a": {
+         "x": -2.9999999999999996,
+         "y": 0
+        },
+        "b": {
+         "x": 2.9999999999999996,
+         "y": 0
+        },
+        "label": "eixo maior",
+        "style": "dotted"
+       },
+       {
+        "a": {
+         "x": 0,
+         "y": -2
+        },
+        "b": {
+         "x": 0,
+         "y": 2
+        },
+        "label": "eixo menor",
+        "style": "dotted"
+       }
+      ]
+     }
+    }
+   ],
+   "angles": [],
+   "matrix": null,
+   "definitions": []
+  }
+ },
+ {
+  "text": "conica: x*y = 1",
+  "result": {
+   "type": "conic",
+   "label": "conica",
+   "info": [
+    "conica rotacionada",
+    "hiperbole",
+    "b^2 - 4ac = 1 > 0 (genero hiperbolico)",
+    "rotacao dos eixos = 45°",
+    "termo xy detectado: desenho implicito sem focos/eixos"
+   ],
+   "points": [],
+   "segments": [],
+   "lines": [],
+   "vectors": [],
+   "polygons": [],
+   "conics": [
+    {
+     "type": "conic",
+     "source": "x*y = 1",
+     "coeffs": {
+      "A": 0,
+      "B": 1,
+      "C": 0,
+      "D": 0,
+      "E": 0,
+      "F": -1
+     },
+     "analysis": {
+      "info": [
+       "conica rotacionada",
+       "hiperbole",
+       "b^2 - 4ac = 1 > 0 (genero hiperbolico)",
+       "rotacao dos eixos = 45°",
+       "termo xy detectado: desenho implicito sem focos/eixos"
+      ],
+      "points": [],
+      "lines": [],
+      "segments": []
+     }
+    }
+   ],
+   "angles": [],
+   "matrix": null,
+   "definitions": []
+  }
+ },
+ {
+  "text": "matriz: [1,0.5; 0,1]",
+  "result": {
+   "type": "matrix",
+   "label": "matriz 2x2",
+   "info": [
+    "A = [1 0.5; 0 1]",
+    "det = 1",
+    "traco = 2",
+    "autovalores = 1, 1",
+    "Matriz não diagonalizável: existe apenas uma direção própria independente."
+   ],
+   "points": [],
+   "segments": [],
+   "lines": [],
+   "vectors": [
+    {
+     "from": {
+      "x": 0,
+      "y": 0
+     },
+     "to": {
+      "x": 1,
+      "y": 0
+     },
+     "label": "A i"
+    },
+    {
+     "from": {
+      "x": 0,
+      "y": 0
+     },
+     "to": {
+      "x": 0.5,
+      "y": 1
+     },
+     "label": "A j"
+    }
+   ],
+   "polygons": [
+    {
+     "points": [
+      {
+       "x": 0,
+       "y": 0
+      },
+      {
+       "x": 1,
+       "y": 0
+      },
+      {
+       "x": 1.5,
+       "y": 1
+      },
+      {
+       "x": 0.5,
+       "y": 1
+      }
+     ],
+     "label": "A unidade"
+    }
+   ],
+   "conics": [],
+   "angles": [],
+   "matrix": {
+    "values": [
+     [
+      1,
+      0.5
+     ],
+     [
+      0,
+      1
+     ]
+    ],
+    "det": 1,
+    "trace": 2,
+    "eigen": {
+     "kind": "eiginfo",
+     "shape": [
+      2,
+      2
+     ],
+     "value": [
+      1,
+      1
+     ],
+     "eigenvectors": [
+      [
+       1,
+       0
+      ]
+     ],
+     "pairs": [
+      {
+       "value": 1,
+       "vector": [
+        1,
+        0
+       ],
+       "residual": 0,
+       "algebraicMultiplicity": 2,
+       "geometricMultiplicity": 1
+      }
+     ],
+     "metadata": {
+      "diagonalizable": false,
+      "repeated": true,
+      "order": "crescente",
+      "residual": 0
+     },
+     "warnings": [
+      "Matriz não diagonalizável: existe apenas uma direção própria independente."
+     ]
+    }
+   },
+   "definitions": []
+  }
+ },
+ {
+  "text": "matriz: [a,b; c,d]",
+  "result": {
+   "type": "matrix",
+   "label": "matriz 2x2",
+   "info": [
+    "A = [2 1; 1 2]",
+    "det = 3",
+    "traco = 4",
+    "autovalores = 1, 3"
+   ],
+   "points": [],
+   "segments": [],
+   "lines": [],
+   "vectors": [
+    {
+     "from": {
+      "x": 0,
+      "y": 0
+     },
+     "to": {
+      "x": 2,
+      "y": 1
+     },
+     "label": "A i"
+    },
+    {
+     "from": {
+      "x": 0,
+      "y": 0
+     },
+     "to": {
+      "x": 1,
+      "y": 2
+     },
+     "label": "A j"
+    }
+   ],
+   "polygons": [
+    {
+     "points": [
+      {
+       "x": 0,
+       "y": 0
+      },
+      {
+       "x": 2,
+       "y": 1
+      },
+      {
+       "x": 3,
+       "y": 3
+      },
+      {
+       "x": 1,
+       "y": 2
+      }
+     ],
+     "label": "A unidade"
+    }
+   ],
+   "conics": [],
+   "angles": [],
+   "matrix": {
+    "values": [
+     [
+      2,
+      1
+     ],
+     [
+      1,
+      2
+     ]
+    ],
+    "det": 3,
+    "trace": 4,
+    "eigen": {
+     "kind": "eiginfo",
+     "shape": [
+      2,
+      2
+     ],
+     "value": [
+      1,
+      3
+     ],
+     "eigenvectors": [
+      [
+       0.7071067811865475,
+       -0.7071067811865475
+      ],
+      [
+       0.7071067811865475,
+       0.7071067811865475
+      ]
+     ],
+     "pairs": [
+      {
+       "value": 1,
+       "vector": [
+        0.7071067811865475,
+        -0.7071067811865475
+       ],
+       "residual": 0,
+       "algebraicMultiplicity": 1,
+       "geometricMultiplicity": 1
+      },
+      {
+       "value": 3,
+       "vector": [
+        0.7071067811865475,
+        0.7071067811865475
+       ],
+       "residual": 0,
+       "algebraicMultiplicity": 1,
+       "geometricMultiplicity": 1
+      }
+     ],
+     "metadata": {
+      "diagonalizable": true,
+      "repeated": false,
+      "order": "crescente",
+      "residual": 0
+     },
+     "warnings": []
+    }
+   },
+   "definitions": []
+  }
+ },
+ {
+  "text": "T = [0,-1; 1,0]",
+  "result": {
+   "type": "matrix",
+   "label": "matriz 2x2",
+   "info": [
+    "A = [0 -1; 1 0]",
+    "det = 1",
+    "traco = 0",
+    "autovalores complexos"
+   ],
+   "points": [],
+   "segments": [],
+   "lines": [],
+   "vectors": [
+    {
+     "from": {
+      "x": 0,
+      "y": 0
+     },
+     "to": {
+      "x": 0,
+      "y": 1
+     },
+     "label": "A i"
+    },
+    {
+     "from": {
+      "x": 0,
+      "y": 0
+     },
+     "to": {
+      "x": -1,
+      "y": 0
+     },
+     "label": "A j"
+    }
+   ],
+   "polygons": [
+    {
+     "points": [
+      {
+       "x": 0,
+       "y": 0
+      },
+      {
+       "x": 0,
+       "y": 1
+      },
+      {
+       "x": -1,
+       "y": 1
+      },
+      {
+       "x": -1,
+       "y": 0
+      }
+     ],
+     "label": "A unidade"
+    }
+   ],
+   "conics": [],
+   "angles": [],
+   "matrix": {
+    "values": [
+     [
+      0,
+      -1
+     ],
+     [
+      1,
+      0
+     ]
+    ],
+    "det": 1,
+    "trace": 0,
+    "eigen": null
+   },
+   "definitions": [
+    {
+     "name": "T",
+     "kind": "matrix",
+     "value": {
+      "values": [
+       [
+        0,
+        -1
+       ],
+       [
+        1,
+        0
+       ]
+      ],
+      "det": 1,
+      "trace": 0,
+      "eigen": null
+     }
+    }
+   ],
+   "definitionName": "T"
+  }
+ },
+ {
+  "text": "intersecao: r; line((0,4),(4,0))",
+  "result": {
+   "type": "intersect",
+   "label": "intersecao",
+   "info": [
+    "P = (1.71429, 2.28571)"
+   ],
+   "points": [
+    {
+     "x": 1.7142857142857142,
+     "y": 2.2857142857142856,
+     "label": "P"
+    }
+   ],
+   "segments": [],
+   "lines": [
+    {
+     "a": -4,
+     "b": 3,
+     "c": 0,
+     "label": "r",
+     "through": [
+      {
+       "x": 0,
+       "y": 0,
+       "label": "A"
+      },
+      {
+       "x": 3,
+       "y": 4,
+       "label": "B"
+      }
+     ]
+    },
+    {
+     "a": 4,
+     "b": 4,
+     "c": -16,
+     "label": "s",
+     "through": [
+      {
+       "x": 0,
+       "y": 4,
+       "label": "A"
+      },
+      {
+       "x": 4,
+       "y": 0,
+       "label": "B"
+      }
+     ]
+    }
+   ],
+   "vectors": [],
+   "polygons": [],
+   "conics": [],
+   "angles": [],
+   "matrix": null,
+   "definitions": []
+  }
+ },
+ {
+  "text": "produto: w; vetor((0,0),(3,0))",
+  "result": {
+   "type": "dot",
+   "label": "produto escalar",
+   "info": [
+    "u · v = 9",
+    "|u| = 5",
+    "|v| = 3",
+    "cos(theta) = 0.6"
+   ],
+   "points": [],
+   "segments": [],
+   "lines": [],
+   "vectors": [
+    {
+     "from": {
+      "x": 0,
+      "y": 0,
+      "label": "O"
+     },
+     "to": {
+      "x": 3,
+      "y": 4,
+      "label": "u"
+     },
+     "label": "u"
+    },
+    {
+     "from": {
+      "x": 0,
+      "y": 0,
+      "label": "O"
+     },
+     "to": {
+      "x": 3,
+      "y": 0,
+      "label": "v"
+     },
+     "label": "v"
+    }
+   ],
+   "polygons": [],
+   "conics": [],
+   "angles": [],
+   "matrix": null,
+   "definitions": []
+  }
+ },
+ {
+  "text": "angulo: (1,0),(0,0),(0,1)",
+  "result": {
+   "type": "angle",
+   "label": "angulo",
+   "info": [
+    "angulo = 90°",
+    "rad = 1.5708",
+    "produto escalar = 0"
+   ],
+   "points": [
+    {
+     "x": 1,
+     "y": 0,
+     "label": "A"
+    },
+    {
+     "x": 0,
+     "y": 0,
+     "label": "B"
+    },
+    {
+     "x": 0,
+     "y": 1,
+     "label": ""
+    }
+   ],
+   "segments": [],
+   "lines": [],
+   "vectors": [
+    {
+     "from": {
+      "x": 0,
+      "y": 0,
+      "label": "B"
+     },
+     "to": {
+      "x": 1,
+      "y": 0,
+      "label": "A"
+     },
+     "label": "BA"
+    },
+    {
+     "from": {
+      "x": 0,
+      "y": 0,
+      "label": "B"
+     },
+     "to": {
+      "x": 0,
+      "y": 1,
+      "label": ""
+     },
+     "label": "BC"
+    }
+   ],
+   "polygons": [],
+   "conics": [],
+   "angles": [
+    {
+     "vertex": {
+      "x": 0,
+      "y": 0,
+      "label": "B"
+     },
+     "a": {
+      "x": 1,
+      "y": 0,
+      "label": "A"
+     },
+     "b": {
+      "x": 0,
+      "y": 1,
+      "label": ""
+     },
+     "label": "θ",
+     "rad": 1.5707963267948966,
+     "deg": 90
+    }
+   ],
+   "matrix": null,
+   "definitions": []
+  }
+ },
+ {
+  "text": "triangulo: A=(0,0), B=(4,0), C=(0,3)",
+  "result": {
+   "type": "polygon",
+   "label": "triangulo",
+   "info": [
+    "triangulo com 3 vertices",
+    "perimetro = 12",
+    "area = 6",
+    "angulos: A 90° · B 36.8699° · C 53.1301°",
+    "classificacao: escaleno retangulo",
+    "triangulo retangulo em A",
+    "catetos: CA = 3 · AB = 4",
+    "hipotenusa: BC = 5"
+   ],
+   "points": [
+    {
+     "x": 0,
+     "y": 0,
+     "label": "A"
+    },
+    {
+     "x": 4,
+     "y": 0,
+     "label": "B"
+    },
+    {
+     "x": 0,
+     "y": 3,
+     "label": "C"
+    }
+   ],
+   "segments": [
+    {
+     "a": {
+      "x": 0,
+      "y": 0,
+      "label": "A"
+     },
+     "b": {
+      "x": 4,
+      "y": 0,
+      "label": "B"
+     },
+     "label": "cateto",
+     "length": 4,
+     "showLabel": true
+    },
+    {
+     "a": {
+      "x": 4,
+      "y": 0,
+      "label": "B"
+     },
+     "b": {
+      "x": 0,
+      "y": 3,
+      "label": "C"
+     },
+     "label": "hipotenusa",
+     "length": 5,
+     "showLabel": true
+    },
+    {
+     "a": {
+      "x": 0,
+      "y": 3,
+      "label": "C"
+     },
+     "b": {
+      "x": 0,
+      "y": 0,
+      "label": "A"
+     },
+     "label": "cateto",
+     "length": 3,
+     "showLabel": true
+    }
+   ],
+   "lines": [],
+   "vectors": [],
+   "polygons": [
+    {
+     "points": [
+      {
+       "x": 0,
+       "y": 0,
+       "label": "A"
+      },
+      {
+       "x": 4,
+       "y": 0,
+       "label": "B"
+      },
+      {
+       "x": 0,
+       "y": 3,
+       "label": "C"
+      }
+     ],
+     "label": "triangulo",
+     "caption": "escaleno retangulo"
+    }
+   ],
+   "conics": [],
+   "angles": [
+    {
+     "vertex": {
+      "x": 0,
+      "y": 0,
+      "label": "A"
+     },
+     "a": {
+      "x": 0,
+      "y": 3,
+      "label": "C"
+     },
+     "b": {
+      "x": 4,
+      "y": 0,
+      "label": "B"
+     },
+     "label": "A",
+     "rad": 1.5707963267948966,
+     "deg": 90,
+     "externalRad": 1.5707963267948966,
+     "externalDeg": 90
+    },
+    {
+     "vertex": {
+      "x": 4,
+      "y": 0,
+      "label": "B"
+     },
+     "a": {
+      "x": 0,
+      "y": 0,
+      "label": "A"
+     },
+     "b": {
+      "x": 0,
+      "y": 3,
+      "label": "C"
+     },
+     "label": "B",
+     "rad": 0.6435011087932843,
+     "deg": 36.86989764584401,
+     "externalRad": 2.498091544796509,
+     "externalDeg": 143.13010235415598
+    },
+    {
+     "vertex": {
+      "x": 0,
+      "y": 3,
+      "label": "C"
+     },
+     "a": {
+      "x": 4,
+      "y": 0,
+      "label": "B"
+     },
+     "b": {
+      "x": 0,
+      "y": 0,
+      "label": "A"
+     },
+     "label": "C",
+     "rad": 0.9272952180016123,
+     "deg": 53.13010235415598,
+     "externalRad": 2.214297435588181,
+     "externalDeg": 126.86989764584402
+    }
+   ],
+   "matrix": null,
+   "definitions": [
+    {
+     "name": "A",
+     "kind": "point",
+     "value": {
+      "x": 0,
+      "y": 0,
+      "label": "A"
+     }
+    },
+    {
+     "name": "B",
+     "kind": "point",
+     "value": {
+      "x": 4,
+      "y": 0,
+      "label": "B"
+     }
+    },
+    {
+     "name": "C",
+     "kind": "point",
+     "value": {
+      "x": 0,
+      "y": 3,
+      "label": "C"
+     }
+    }
+   ],
+   "triangleClass": {
+    "sideType": "escaleno",
+    "angleType": "retangulo",
+    "label": "escaleno retangulo"
+   }
+  }
+ },
+ {
+  "text": "fit2: (0,1),(1,2)",
+  "result": null
+ }
+]

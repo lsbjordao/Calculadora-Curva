@@ -2,6 +2,7 @@
 
 import { compile, setImplicitY, splitTop } from './parser.js';
 import { det as matrixDet, trace as matrixTrace, eiginfo, dot as algebraDot, norm as algebraNorm, angle as algebraAngle, proj as algebraProjection, validateMatrix } from './linear-algebra.js';
+import { involves3d, parse3dCommand } from './space3d/geometry3d.js';
 
 const EPS=1e-9;
 const GEOMETRY_PARAM_NAMES=new Set(['a','b','c','d','k','m','n','p','q','r']);
@@ -134,8 +135,9 @@ function parsePoint(src,fallbackLabel='',ctx={}){
   }
   if(!text.startsWith('(')||!text.endsWith(')')) throw new Error('ponto esperado: '+src);
   const parts=splitTop(text.slice(1,-1),',');
-  if(parts.length!==2) throw new Error('ponto precisa de duas coordenadas: '+src);
-  return {x:evalScalar(parts[0],ctx), y:evalScalar(parts[1],ctx), label};
+  if(parts.length===3) return {x:evalScalar(parts[0],ctx), y:evalScalar(parts[1],ctx), z:evalScalar(parts[2],ctx), label, dim:3};
+  if(parts.length!==2) throw new Error('ponto precisa de duas ou três coordenadas: '+src);
+  return {x:evalScalar(parts[0],ctx), y:evalScalar(parts[1],ctx), label, dim:2};
 }
 
 function parsePointList(body,ctx={}){
@@ -989,6 +991,11 @@ function commandCall(text){
   if(command==='point'&&!body.startsWith('(')&&splitTop(body,',').length===2){
     body='('+body+')';
   }
+  // ponto(x,y,z): coordinates, unless the three items are named points (see pointCallBody).
+  const parts=command==='point' ? splitTop(body,',') : [];
+  if(parts.length===3&&parts.every(part=>!part.trim().startsWith('(')&&!part.includes('='))){
+    return {command, body, tupleBody:'('+body+')'};
+  }
   return {command, body};
 }
 
@@ -1005,7 +1012,25 @@ function definitionInput(text){
   return null;
 }
 
+function pointCallBody(def,ctx){
+  if(!def.tupleBody) return def.body;
+  const allNamedPoints=splitTop(def.body,',').every(part=>refFromRegistry(part.trim(),ctx)?.kind==='point');
+  return allNamedPoints ? def.body : def.tupleBody;
+}
+
+const COMMAND_NAMES_PT={
+  angle:'angulo', dot:'produto escalar', projection:'projecao', triangle:'triangulo',
+  quadrilateral:'quadrilatero', polygon:'poligono', convexHull:'poligono convexo',
+  distance:'distancia', midpoint:'ponto medio', line:'reta', intersect:'intersecao',
+  conic:'conica', matrix:'matriz'
+};
+
 function runCommand(command,body,ctx,definitionName=''){
+  if(involves3d(body,ctx)){
+    const r3=parse3dCommand(command,body,ctx,definitionName);
+    if(r3) return r3;
+    throw new Error((COMMAND_NAMES_PT[command]||command)+': objetos 3D ainda não são aceitos neste comando');
+  }
   if(command==='point') return parsePointCommand(body,ctx,definitionName);
   if(command==='vector') return parseVectorCommand(body,ctx,definitionName);
   if(command==='angle') return parseAngleCommand(body,ctx,definitionName);
@@ -1046,7 +1071,7 @@ export function parseGeometryInput(raw,ctx={}){
   const def=definitionInput(text);
   if(def){
     try{
-      const r=runCommand(def.command,def.body,ctx,def.name);
+      const r=runCommand(def.command,pointCallBody(def,ctx),ctx,def.name);
       if(r) r.definitionName=def.name;
       return r;
     }catch(err){
@@ -1064,6 +1089,17 @@ export function parseGeometryInput(raw,ctx={}){
     return errorResult(command, err?.message || 'entrada invalida');
   }
 }
+
+// Shared with src/space3d/geometry3d.js (which geometry.js imports back).
+export const _geometryCore={
+  fmt,
+  result,
+  define,
+  evalScalar,
+  splitTopAny,
+  refFromRegistry,
+  parsePoint
+};
 
 export const _geometryTest={
   fmt,

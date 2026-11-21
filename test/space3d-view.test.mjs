@@ -49,6 +49,7 @@ test('normalizeView3d / serializeView3d guardam modo, câmera e zoom relativo',(
   assert.equal(empty.zoom,1);
   assert.equal(empty.autoAxisRange,true);
   assert.equal(empty.axisRange,5);
+  assert.equal(empty.axisTickStep,'auto');
   const v=normalizeView3d({mode:'3d',grid:true,camera:{azimuth:30,elevation:10,projection:'perspective',zoom:2,target:[1,0,0]}});
   assert.equal(v.mode,'3d');
   assert.equal(v.savedMode,true);
@@ -57,10 +58,12 @@ test('normalizeView3d / serializeView3d guardam modo, câmera e zoom relativo',(
   assert.equal(v.camera.projection,'perspective');
   assert.equal(v.zoom,2);
   const out=serializeView3d({...v,camera:{...v.camera,scale:80,dragging:true}},40);
-  assert.deepEqual(out,{mode:'3d',grid:true,autoAxisRange:true,axisRange:5,camera:{azimuth:30,elevation:10,distance:30,target:[1,0,0],projection:'perspective',zoom:2}});
+  assert.deepEqual(out,{mode:'3d',grid:true,axisTickStep:'auto',autoAxisRange:true,axisRange:5,camera:{azimuth:30,elevation:10,distance:30,target:[1,0,0],projection:'perspective',zoom:2}});
   const manual=normalizeView3d({autoAxisRange:false,axisRange:12});
   assert.equal(manual.autoAxisRange,false);
   assert.equal(manual.axisRange,12);
+  assert.equal(normalizeView3d({axisTickStep:'1'}).axisTickStep,'1');
+  assert.equal(normalizeView3d({axisTickStep:'invalid'}).axisTickStep,'auto');
   assert.equal(normalizeView3d({mode:'xyz',camera:{zoom:-1}}).mode,'2d');
   assert.equal(normalizeView3d({mode:'3d',camera:{zoom:-1}}).zoom,1);
 });

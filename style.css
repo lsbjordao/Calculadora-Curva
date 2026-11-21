@@ -1116,7 +1116,8 @@
   #view3d-bar button:hover{border-color:var(--accent);color:var(--accent)}
   #view3d-bar button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
   #view3d-controls .view-axis-control,
-  #view3d-controls .view-axis-auto-control{
+  #view3d-controls .view-axis-auto-control,
+  #view3d-controls .view-axis-ticks-control{
     height:34px;display:flex;align-items:center;gap:4px;
     padding:0 7px;border:1px solid var(--panel-edge);
     border-radius:8px;background:var(--glass);color:var(--ink);
@@ -1124,6 +1125,11 @@
   }
   #view3d-controls .view-axis-control input{
     width:58px;height:24px;padding:2px 4px;
+    border:1px solid var(--panel-edge);border-radius:5px;
+    background:var(--bg);color:var(--ink);font:inherit;
+  }
+  #view3d-controls .view-axis-ticks-control select{
+    height:24px;padding:2px 4px;
     border:1px solid var(--panel-edge);border-radius:5px;
     background:var(--bg);color:var(--ink);font:inherit;
   }

@@ -5,7 +5,7 @@
 //   {kind:'arrow', from, to, label?}     {kind:'polygon', points, alpha}
 //   {kind:'mesh', vertices, faces, alpha} {kind:'label', p, text}
 // All accept role?: 'main' | 'aux' (aux = dashed/lighter) and color?; axes use
-// role 'axis' and the optional floor grid role 'grid' (theme colors).
+// role 'axis' and the optional 3-plane grid role 'grid' (theme colors).
 
 const EPS = 1e-9;
 const isVec = p => Array.isArray(p) && p.length === 3 && p.every(Number.isFinite);
@@ -100,7 +100,7 @@ function tickStep(extent) {
 // Axes x, y, z through the origin (clamped to the box), names at the positive ends,
 // integer marks and their numbers. Marks and numbers carry role 'tick' with
 // {axis, value, step}, so buildDrawList can hide or thin them per axis on screen.
-// opts.grid adds a dotted floor grid on z = 0.
+// opts.grid adds a dotted grid on the xy, xz and yz planes through the origin.
 export function axesPrimitives(box = defaultBox(), opts = {}) {
   if (!boxOk(box)) box = defaultBox();
   const prims = [], names = ['x','y','z'];
@@ -113,24 +113,44 @@ export function axesPrimitives(box = defaultBox(), opts = {}) {
     prims.push({kind:'segment', a, b, role:'axis', weight:1.4});
     const tip = [...b]; tip[i] += size*.04;
     prims.push({kind:'label', p:tip, text:names[i], role:'axis', axisName:true});
-    const across = i === 0 ? 1 : 0, step = tickStep(Math.max(Math.abs(box.min[i]), Math.abs(box.max[i])));
+    const across = i === 0 ? 1 : 0;
+    const forcedUnitStep = opts.axisTickStep === '1';
+    const span = box.max[i]-box.min[i];
+    const step = forcedUnitStep
+      ? Math.max(1, Math.ceil(span/2000))
+      : tickStep(Math.max(Math.abs(box.min[i]), Math.abs(box.max[i])));
+    const showEveryTick = forcedUnitStep && step === 1;
     for (let k = Math.ceil(box.min[i]/step)*step; k <= box.max[i]+1e-9; k += step) {
       if (Math.abs(k) < 1e-9) continue;
       const m = [...origin]; m[i] = k;
       const t0 = [...m], t1 = [...m];
       t0[across] -= tick; t1[across] += tick;
-      const value = Number(k.toPrecision(12)), meta = {role:'tick', tick:true, axis:i, value, step};
+      const value = Number(k.toPrecision(12)), meta = {role:'tick', tick:true, axis:i, value, step, showEveryTick};
       prims.push({kind:'segment', a:t0, b:t1, ...meta});
       const lp = [...m]; lp[across] -= tick*4;
       prims.push({kind:'label', p:lp, text:String(value), ...meta});
     }
   }
   if (opts.grid) {
-    const z = origin[2], step = tickStep(Math.max(...[0,1].map(i => Math.max(Math.abs(box.min[i]), Math.abs(box.max[i])))));
-    for (let k = Math.ceil(box.min[0]/step)*step; k <= box.max[0]+1e-9; k += step)
-      if (Math.abs(k) > 1e-9) prims.push({kind:'segment', a:[k, box.min[1], z], b:[k, box.max[1], z], role:'grid'});
-    for (let k = Math.ceil(box.min[1]/step)*step; k <= box.max[1]+1e-9; k += step)
-      if (Math.abs(k) > 1e-9) prims.push({kind:'segment', a:[box.min[0], k, z], b:[box.max[0], k, z], role:'grid'});
+    const addGridPlane = (u, v, plane) => {
+      const extent = Math.max(Math.abs(box.min[u]), Math.abs(box.max[u]), Math.abs(box.min[v]), Math.abs(box.max[v]));
+      const step = tickStep(extent);
+      for (let k = Math.ceil(box.min[u]/step)*step; k <= box.max[u]+1e-9; k += step) {
+        if (Math.abs(k) < 1e-9) continue;
+        const a=[...origin], b=[...origin];
+        a[u]=b[u]=k; a[v]=box.min[v]; b[v]=box.max[v];
+        prims.push({kind:'segment',a,b,role:'grid',gridPlane:plane});
+      }
+      for (let k = Math.ceil(box.min[v]/step)*step; k <= box.max[v]+1e-9; k += step) {
+        if (Math.abs(k) < 1e-9) continue;
+        const a=[...origin], b=[...origin];
+        a[v]=b[v]=k; a[u]=box.min[u]; b[u]=box.max[u];
+        prims.push({kind:'segment',a,b,role:'grid',gridPlane:plane});
+      }
+    };
+    addGridPlane(0,1,'xy');
+    addGridPlane(0,2,'xz');
+    addGridPlane(1,2,'yz');
   }
   return prims;
 }

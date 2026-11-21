@@ -221,6 +221,32 @@ test('controles dos eixos 3D alternam entre limite manual e extensão automátic
   assert.equal(saved.view3d.axisRange,12);
 });
 
+test('grade 3D pode ser ocultada e os eixos podem exibir cada unidade',async()=>{
+  await boot({version:1,view3d:{mode:'3d'},equations:[mk(0,'ponto: A=(1,2,3)')]});
+  const grid=byId('grid-mode');
+  assert.equal(grid.dataset.on,'0');
+  assert.equal(grid.title,'Mostrar grade 3D');
+  grid.onclick();
+  await wait(20);
+  assert.equal(grid.dataset.on,'1');
+  assert.equal(grid.title,'Ocultar grade 3D');
+
+  const ticks=byId('view-axis-ticks');
+  assert.equal(ticks.value,'auto');
+  ticks.value='1';
+  ticks.fire('change');
+  await wait(20);
+  assert.equal(ticks.value,'1');
+  await settle();
+  assert.equal(saved.view3d.grid,true);
+  assert.equal(saved.view3d.axisTickStep,'1');
+
+  grid.onclick();
+  await wait(20);
+  assert.equal(grid.dataset.on,'0');
+  assert.equal(grid.title,'Mostrar grade 3D');
+});
+
 test('estado salvo com objeto 3D e view3d 3D inicializa e desenha a cena 3D',async()=>{
   await boot({version:1,theme:'light',view:{cx:0,cy:0,scale:60},
     view3d:{mode:'3d',camera:{azimuth:-60,elevation:25,projection:'ortho',zoom:1}},

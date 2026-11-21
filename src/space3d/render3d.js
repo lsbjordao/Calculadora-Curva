@@ -60,6 +60,7 @@ export function buildDrawList(primitives, camera, viewport, opts = {}) {
   const tickVisible = prim => {
     if (prim.role !== 'tick' || !Number.isInteger(prim.axis)) return true;
     const step = prim.step > 0 ? prim.step : 1, px = ppu[prim.axis]*step;
+    if (prim.showEveryTick) return true;
     if (ppu[prim.axis] < MIN_TICK_PX) return false;
     if (prim.kind !== 'label') return true;
     const every = THIN.find(m => px*m >= TICK_LABEL_PX) ?? Infinity;

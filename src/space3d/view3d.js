@@ -108,6 +108,7 @@ export function normalizeView3d(saved) {
     mode: s.mode === '3d' ? '3d' : '2d',
     savedMode,
     grid: s.grid === true,
+    axisTickStep: s.axisTickStep === '1' ? '1' : 'auto',
     autoAxisRange: s.autoAxisRange !== false,
     axisRange: finitePos(s.axisRange, 5),
     camera: createCamera({azimuth:cam.azimuth, elevation:cam.elevation, distance:cam.distance, target:cam.target, projection:cam.projection}),
@@ -121,6 +122,7 @@ export function serializeView3d(view3d, fitScale) {
   const c = view3d.camera;
   const zoom = Number.isFinite(fitScale) && fitScale > 0 ? c.scale/fitScale : finitePos(view3d.zoom, 1);
   return {mode:view3d.mode === '3d' ? '3d' : '2d', grid:!!view3d.grid,
+    axisTickStep:view3d.axisTickStep === '1' ? '1' : 'auto',
     autoAxisRange:view3d.autoAxisRange !== false, axisRange:finitePos(view3d.axisRange, 5), camera:{
     azimuth:c.azimuth, elevation:c.elevation, distance:c.distance, target:[...c.target], projection:c.projection,
     zoom:Number(zoom.toPrecision(12)),

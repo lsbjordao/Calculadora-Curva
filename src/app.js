@@ -4996,7 +4996,7 @@ let view3dUiSignature='';
 function updateView3dUi(has3d){
   const on=view3d.mode==='3d';
   const range=activeAxisRange();
-  const signature=[on,has3d,view3d.camera.projection,view3d.grid,view3d.autoAxisRange,view3d.axisRange,range].join();
+  const signature=[on,has3d,view3d.camera.projection,view3d.grid,view3d.axisTickStep,view3d.autoAxisRange,view3d.axisRange,range].join();
   if(signature===view3dUiSignature) return;
   view3dUiSignature=signature;
   document.body.dataset.view=on?'3d':'2d';
@@ -5017,6 +5017,8 @@ function updateView3dUi(has3d){
   }
   const autoInput=document.getElementById('view-axis-auto');
   if(autoInput) autoInput.checked=view3d.autoAxisRange;
+  const tickStepSelect=document.getElementById('view-axis-ticks');
+  if(tickStepSelect) tickStepSelect.value=view3d.axisTickStep;
   const proj=document.getElementById('view-proj');
   if(proj){
     const persp=view3d.camera.projection==='perspective';
@@ -5024,7 +5026,13 @@ function updateView3dUi(has3d){
     proj.title=persp?'Projeção em perspectiva (alternar para ortográfica)':'Projeção ortográfica (alternar para perspectiva)';
   }
   const gridBtn=document.getElementById('grid-mode');
-  if(gridBtn) gridBtn.dataset.on=on&&view3d.grid?'1':'0';
+  if(gridBtn){
+    if(on){
+      gridBtn.dataset.on=view3d.grid?'1':'0';
+      gridBtn.title=view3d.grid?'Ocultar grade 3D':'Mostrar grade 3D';
+      gridBtn.setAttribute('aria-label',gridBtn.title);
+    }else updateGridModeButton();
+  }
 }
 
 function setViewMode(mode){
@@ -5042,7 +5050,7 @@ function render3d(){
   ctx.fillStyle=colors.bg;
   ctx.fillRect(0,0,W,H);
   ctx.restore();
-  const primitives=[...axesPrimitives(axisBox(range),{grid:view3d.grid}),...scenePrimitives(equations,{colorOf:eqColor})];
+  const primitives=[...axesPrimitives(axisBox(range),{grid:view3d.grid,axisTickStep:view3d.axisTickStep}),...scenePrimitives(equations,{colorOf:eqColor})];
   drawScene3d(ctx,buildDrawList(primitives,view3d.camera,{width:W,height:H}),colors);
   readout.style.display='none';
   const card=document.getElementById('analysis');
@@ -5310,6 +5318,11 @@ if(viewProjBtn) viewProjBtn.onclick=()=>{
 };
 const axisRangeInput=document.getElementById('view-axis-range');
 const autoAxisInput=document.getElementById('view-axis-auto');
+const axisTicksInput=document.getElementById('view-axis-ticks');
+if(axisTicksInput) axisTicksInput.addEventListener('change',()=>{
+  view3d.axisTickStep=axisTicksInput.value==='1'?'1':'auto';
+  draw(); scheduleSave();
+});
 if(autoAxisInput) autoAxisInput.addEventListener('change',()=>{
   view3d.autoAxisRange=autoAxisInput.checked;
   if(!view3d.autoAxisRange){

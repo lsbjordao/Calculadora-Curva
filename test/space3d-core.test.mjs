@@ -100,7 +100,21 @@ test('axesPrimitives: three axes, names and integer marks', () => {
   assert.ok(ticks.length >= 30);
   assert.ok(ticks.every(p => [0,1,2].includes(p.axis) && Number.isFinite(p.value) && p.step === 1));
   assert.ok(prims.every(p => ['axis','tick','grid'].includes(p.role)));
-  assert.ok(axesPrimitives(defaultBox(), {grid:true}).some(p => p.role === 'grid'));
+  const grid=axesPrimitives(defaultBox(), {grid:true}).filter(p => p.role === 'grid');
+  assert.deepEqual(new Set(grid.map(p=>p.gridPlane)),new Set(['xy','xz','yz']));
+  assert.ok(axesPrimitives(defaultBox()).every(p => p.role !== 'grid'));
+});
+
+test('axesPrimitives can show every integer mark and number when requested',()=>{
+  const box={min:[-15,-15,-15],max:[15,15,15]};
+  const automatic=axesPrimitives(box).filter(p=>p.role==='tick');
+  assert.ok(automatic.every(p=>p.step===5));
+  const complete=axesPrimitives(box,{axisTickStep:'1'}).filter(p=>p.role==='tick');
+  assert.ok(complete.every(p=>p.step===1&&p.showEveryTick));
+  for(const axis of [0,1,2]){
+    const values=complete.filter(p=>p.axis===axis&&p.kind==='label').map(p=>p.value);
+    assert.deepEqual(values,Array.from({length:31},(_,i)=>i-15).filter(value=>value!==0));
+  }
 });
 
 test('buildDrawList sorts surfaces back to front, lines among them and labels last', () => {

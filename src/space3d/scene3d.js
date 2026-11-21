@@ -98,7 +98,9 @@ function tickStep(extent) {
 }
 
 // Axes x, y, z through the origin (clamped to the box), names at the positive ends,
-// integer marks and their numbers. opts.grid adds a dotted floor grid on z = 0.
+// integer marks and their numbers. Marks and numbers carry role 'tick' with
+// {axis, value, step}, so buildDrawList can hide or thin them per axis on screen.
+// opts.grid adds a dotted floor grid on z = 0.
 export function axesPrimitives(box = defaultBox(), opts = {}) {
   if (!boxOk(box)) box = defaultBox();
   const prims = [], names = ['x','y','z'];
@@ -117,9 +119,10 @@ export function axesPrimitives(box = defaultBox(), opts = {}) {
       const m = [...origin]; m[i] = k;
       const t0 = [...m], t1 = [...m];
       t0[across] -= tick; t1[across] += tick;
-      prims.push({kind:'segment', a:t0, b:t1, role:'axis', tick:true});
+      const value = Number(k.toPrecision(12)), meta = {role:'tick', tick:true, axis:i, value, step};
+      prims.push({kind:'segment', a:t0, b:t1, ...meta});
       const lp = [...m]; lp[across] -= tick*4;
-      prims.push({kind:'label', p:lp, text:String(Number(k.toPrecision(12))), role:'axis', tick:true});
+      prims.push({kind:'label', p:lp, text:String(value), ...meta});
     }
   }
   if (opts.grid) {
@@ -130,4 +133,18 @@ export function axesPrimitives(box = defaultBox(), opts = {}) {
       if (Math.abs(k) > 1e-9) prims.push({kind:'segment', a:[box.min[0], k, z], b:[box.max[0], k, z], role:'grid'});
   }
   return prims;
+}
+
+// Depth cue for a 3D point P = (x, y, z): dashed aux segments P → (x, y, 0) and,
+// from that foot, to (x, 0, 0) and (0, y, 0). A guide that would have zero length
+// (a coordinate is 0) is left out, so points on a plane or axis get fewer, shorter
+// guides and the origin gets none.
+export function guideLines(p) {
+  if (!isVec(p)) return [];
+  const [x, y, z] = p, foot = [x, y, 0], out = [];
+  const add = (a, b) => { if (a.some((c, i) => Math.abs(c-b[i]) > EPS)) out.push({kind:'segment', a, b, role:'aux', dash:true, guide:true}); };
+  add([...p], foot);
+  add([...foot], [x, 0, 0]);
+  add([...foot], [0, y, 0]);
+  return out;
 }

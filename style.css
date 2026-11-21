@@ -238,6 +238,7 @@
     padding:0 5px;
     outline:none;
   }
+  .row-name::placeholder{color:var(--ink);opacity:1}
   .row-name:hover,
   .row-name:focus{
     background:var(--field);
@@ -1119,6 +1120,7 @@
   #view-mode[data-mode="3d"] span[data-m="3d"]{background:var(--accent);color:#fff}
   body[data-view-toggle="1"] #readout{top:54px}
   body[data-view="3d"] #annotate{display:none}
+  #cv:focus:not(:focus-visible){outline:none}
   .view-notice{color:var(--muted);font-style:italic}
   #readout{
     position:absolute;top:12px;left:12px;

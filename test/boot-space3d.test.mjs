@@ -92,6 +92,7 @@ test('estado salvo com objeto 3D e view3d 3D inicializa e desenha a cena 3D',asy
   assert.ok(t.includes('A'),'rótulo do ponto A');
   assert.ok(t.includes('u'),'rótulo do vetor u');
   assert.match(String(byId('canvas-description').textContent),/Vista 3D/);
+  assert.equal(cv().style.cursor,'grab','cursor de mão já ao carregar na vista 3D');
   // The function row says it is not drawn in the 3D view.
   assert.ok(created.some(el=>/não aparece na vista 3D/.test(String(el.textContent||''))));
 
@@ -146,4 +147,47 @@ test('estado v1 antigo sem view3d continua igual (vista 2D, nada de 3D)',async()
 test('estado sem view3d mas com objeto 3D abre na vista 3D',async()=>{
   await boot({version:1,theme:'dark',view:{cx:0,cy:0,scale:60},equations:[mk(0,'ponto: A=(1,2,3)')]});
   assert.ok(texts().includes('z'));
+});
+
+test('chip guias: ligado por padrão na linha de ponto 3D, ausente nas linhas 2D, salvo no estado',async()=>{
+  await boot({version:1,theme:'light',view:{cx:0,cy:0,scale:60},view3d:{mode:'3d'},
+    equations:[mk(0,'ponto: A=(1,2,3)'),mk(1,'ponto: B=(1,2)')]});
+  const chips=created.filter(el=>el.textContent==='guias');
+  assert.equal(chips.length,1);
+  assert.equal(chips[0].dataset.on,'1');
+  // Default: the guide segments are drawn (dashed) for A.
+  assert.ok(calls.some(c=>c[0]==='setLineDash'&&Array.isArray(c[1])&&c[1].length));
+  chips[0].onclick();
+  assert.equal(chips[0].dataset.on,'0');
+  await settle();
+  assert.equal(saved.equations[0].showGeoGuides,false);
+  assert.equal(saved.equations[1].showGeoGuides,undefined);
+  // The row title is left empty so the placeholder shows the computed name.
+  assert.ok(!created.some(el=>el.className==='row-name'&&el.value));
+  assert.ok(created.some(el=>el.className==='row-name'&&el.placeholder==='Geometria 1'));
+});
+
+test('ao entrar na vista 3D o modo anotação é desligado e o cursor vira mão',async()=>{
+  await boot({version:1,theme:'light',view:{cx:0,cy:0,scale:60},view3d:{mode:'2d'},
+    equations:[mk(0,'ponto: A=(1,2,3)')]});
+  byId('annotate').onclick();
+  byId('view-mode').onclick();
+  await wait(20);
+  assert.equal(byId('cv').style.cursor,'grab');
+  assert.match(String(byId('cv').title||''),/arraste para girar/);
+  // Annotation mode is off: a click on the canvas orbits instead of opening a note.
+  cv().fire('pointerdown',{clientX:400,clientY:300});
+  cv().fire('pointermove',{clientX:410,clientY:300});
+  cv().fire('pointerup',{clientX:410,clientY:300});
+  await settle();
+  assert.equal(saved.view3d.camera.azimuth,-64);
+  byId('view-mode').onclick();
+  await wait(20);
+  assert.notEqual(byId('cv').style.cursor,'grab');
+  // Back in 2D the annotation mode stays off: a drag pans instead of opening a note.
+  cv().fire('pointerdown',{clientX:650,clientY:500});
+  cv().fire('pointermove',{clientX:680,clientY:500});
+  cv().fire('pointerup',{clientX:680,clientY:500});
+  await settle();
+  assert.equal(saved.view.cx,-0.5);
 });

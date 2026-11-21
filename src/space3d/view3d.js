@@ -1,7 +1,7 @@
 "use strict";
 
 import { createCamera, orbit, zoomCamera, panCamera } from './camera.js';
-import { defaultBox, clipLineToBox, clipSegmentToBox } from './scene3d.js';
+import { defaultBox, clipLineToBox, clipSegmentToBox, guideLines } from './scene3d.js';
 import { toVec3 } from './geometry3d.js';
 
 // Glue between the app's equation rows and the pure 3D core: view mode rules
@@ -17,6 +17,16 @@ const NOTICE_3D = 'não aparece na vista 3D';
 export function is3dEquation(eq) {
   return !!eq && eq.kind === 'geometry' && !eq.error && eq.geometry?.dim === 3;
 }
+
+// Rows of 3D points get the "guias" chip; guides are on unless turned off.
+export function hasGuidesChip(eq) {
+  return is3dEquation(eq) && eq.geometry.type === 'point';
+}
+export function showsGuides(eq) {
+  return hasGuidesChip(eq) && eq.showGeoGuides !== false;
+}
+
+export const CAMERA_HINT = 'arraste para girar · Shift+arraste para mover · roda para zoom · duplo clique volta';
 
 export function has3dObjects(equations = []) {
   return equations.some(eq => eq?.visible !== false && is3dEquation(eq));
@@ -160,8 +170,17 @@ export function scenePrimitives(equations = [], {colorOf = () => '', box = defau
     if (!eq || eq.visible === false || eq.error) continue;
     const source = is3dEquation(eq) ? eq.geometry.scene3d : promote2d(scene2dOf(eq), box);
     if (!Array.isArray(source) || !source.length) continue;
-    const color = colorOf(eq);
-    for (const prim of source) { const s = prim && styled(prim, eq, color); if (s) prims.push(s); }
+    const color = colorOf(eq), guides = showsGuides(eq);
+    for (const prim of source) {
+      const s = prim && styled(prim, eq, color);
+      if (!s) continue;
+      prims.push(s);
+      // Depth cue for 3D points (not for vector tips: only point rows).
+      if (guides && prim.kind === 'point') for (const g of guideLines(prim.p)) {
+        const c = clipSegmentToBox(g.a, g.b, box);
+        if (c) prims.push({...g, a:c[0], b:c[1], color});
+      }
+    }
   }
   return prims;
 }
@@ -186,6 +205,10 @@ export function attachCameraControls(canvas, getCamera, setCamera, requestDraw, 
     if (!isActive()) return;
     pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
     if (pointers.size === 1) { pan = !!e.shiftKey; moved = false; }
+    // preventDefault on pointerdown suppresses the mousedown that would focus
+    // the canvas, so focus it here for the arrow/+/− keys.
+    try { canvas.focus?.({preventScroll:true, focusVisible:false}); } catch {}
+    if (canvas.style) canvas.style.cursor = 'grabbing';
     if (pointers.size === 2) pinch = pair();
     try { canvas.setPointerCapture?.(e.pointerId); } catch {}
     e.preventDefault?.();
@@ -214,6 +237,7 @@ export function attachCameraControls(canvas, getCamera, setCamera, requestDraw, 
     try { canvas.releasePointerCapture?.(e.pointerId); } catch {}
     if (pointers.size < 2) pinch = null;
     if (pointers.size) return;
+    if (canvas.style) canvas.style.cursor = 'grab';
     if (getCamera().dragging) { setDragging(false); requestDraw(); }
     if (moved) commit();
     moved = false;

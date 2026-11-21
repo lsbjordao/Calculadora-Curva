@@ -38,7 +38,7 @@ import { createTransformControls, buildSystemScene } from './linear-transform-vi
 import { createCamera, zoomCamera, presetView, fitCameraScale } from './space3d/camera.js';
 import { defaultBox, axesPrimitives } from './space3d/scene3d.js';
 import { buildDrawList, drawScene3d, colorsFromTheme } from './space3d/render3d.js';
-import { attachCameraControls, decideViewMode, has3dObjects, normalizeView3d, scenePrimitives, serializeView3d, viewNotice } from './space3d/view3d.js';
+import { attachCameraControls, CAMERA_HINT, decideViewMode, hasGuidesChip, has3dObjects, normalizeView3d, scenePrimitives, serializeView3d, viewNotice } from './space3d/view3d.js';
 
 const PALETTES={
   light:["#c0492f","#2d70b3","#2f7d5b","#6042a6","#d98324","#1d1d1f","#0a8aa6","#a8336e"],
@@ -174,6 +174,7 @@ function serializeEq(eq){
     showGeoAnglesExternal:eq.showGeoAnglesExternal,
     showGeoAnglesComplement:eq.showGeoAnglesComplement,
     showGeoLabels:eq.showGeoLabels,
+    showGeoGuides:eq.showGeoGuides,
     showGeoXAxisAngles:eq.showGeoXAxisAngles,
     histBins:eq.histBins,
     histDensity:eq.histDensity,
@@ -1383,7 +1384,7 @@ function renderRows(){
 
     const name=document.createElement('input');
     name.className='row-name';
-    name.value=eq.name || defaultEqName(eq);
+    name.value=eq.name || '';
     name.placeholder=defaultEqName(eq);
     name.spellcheck=false;
     name.autocomplete='off';
@@ -1844,7 +1845,23 @@ function renderRows(){
         scheduleSave();
       };
 
-      controls.append(typeBtn,angleBtn,angleExtBtn,angleCompBtn,sidesBtn,vectorsBtn,labelsBtn,xAxisAngleBtn);
+      controls.append(typeBtn,angleBtn,angleExtBtn,angleCompBtn,sidesBtn,vectorsBtn,labelsBtn);
+      // 3D point rows: dashed guides to the xy plane and the x, y axes (on by default).
+      if(hasGuidesChip(eq)){
+        const guidesBtn=document.createElement('button');
+        guidesBtn.className='calc';
+        guidesBtn.textContent='guias';
+        guidesBtn.title='Mostrar/ocultar as linhas-guia do ponto até o plano xy e os eixos';
+        guidesBtn.dataset.on=eq.showGeoGuides!==false?'1':'0';
+        guidesBtn.onclick=()=>{
+          eq.showGeoGuides=eq.showGeoGuides===false;
+          guidesBtn.dataset.on=eq.showGeoGuides?'1':'0';
+          draw();
+          scheduleSave();
+        };
+        controls.append(guidesBtn);
+      }
+      controls.append(xAxisAngleBtn);
     };
     refreshControls=()=>{
       controls.innerHTML='';
@@ -2352,6 +2369,7 @@ function applyEquationOptions(eq, options={}){
   if(options.showGeoAnglesExternal!==undefined) eq.showGeoAnglesExternal=!!options.showGeoAnglesExternal;
   if(options.showGeoAnglesComplement!==undefined) eq.showGeoAnglesComplement=!!options.showGeoAnglesComplement;
   if(options.showGeoLabels!==undefined) eq.showGeoLabels=!!options.showGeoLabels;
+  if(options.showGeoGuides!==undefined) eq.showGeoGuides=!!options.showGeoGuides;
 
   applyOpFields(eq, options);
   recompileEq(eq);
@@ -2859,6 +2877,7 @@ function refreshGeoBuilder(){
 
 function setCanvasCursor(){
   if(typeof cv==='undefined'||!cv) return;
+  if(view3d.mode==='3d'){ cv.style.cursor='grab'; return; }
   if(annotationMode){ cv.style.cursor=annotationHoverId ? 'move' : 'text'; return; }
   cv.style.cursor=geoTool==='point' ? 'copy' : 'crosshair';
 }
@@ -4943,13 +4962,22 @@ function syncUserFunctions(){
 function syncViewMode(){
   const now=has3dObjects(equations);
   let mode=view3d.mode;
-  if(has3dSeen===null){ if(!view3d.savedMode) mode=now?'3d':'2d'; }
+  const first=has3dSeen===null;
+  if(first){ if(!view3d.savedMode) mode=now?'3d':'2d'; }
   else mode=decideViewMode({previousHas3d:has3dSeen,nowHas3d:now,current:mode});
   has3dSeen=now;
   const changed=mode!==view3d.mode;
   view3d.mode=mode;
   updateView3dUi(now);
-  if(changed) resultRefreshers.forEach(refresh=>refresh());
+  if(changed||first) viewModeChanged();
+}
+
+// Annotations live in 2D world coordinates: leave that mode when entering 3D.
+function viewModeChanged(){
+  if(view3d.mode==='3d'&&annotationMode) toggleAnnotationMode();
+  cv.title=view3d.mode==='3d' ? CAMERA_HINT : '';
+  setCanvasCursor();
+  resultRefreshers.forEach(refresh=>refresh());
 }
 
 let view3dUiSignature='';
@@ -4982,7 +5010,7 @@ function updateView3dUi(has3d){
 function setViewMode(mode){
   view3d.mode=mode==='3d'?'3d':'2d';
   updateView3dUi(has3dObjects(equations));
-  resultRefreshers.forEach(refresh=>refresh());
+  viewModeChanged();
   draw(); scheduleSave();
 }
 

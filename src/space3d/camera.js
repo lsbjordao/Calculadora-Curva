@@ -56,9 +56,12 @@ export function panCamera(camera, dx, dy) {
 const PRESETS = {xy:{azimuth:-90, elevation:90}, xz:{azimuth:-90, elevation:0}, yz:{azimuth:0, elevation:0}, iso:{azimuth:45, elevation:35.264}};
 export function presetView(name) { return PRESETS[name] ? {...PRESETS[name]} : null; }
 
-// Pixels per unit so that the whole box (its circumscribed sphere) fits the viewport.
-export function fitCameraScale(viewport, box = {min:[-5,-5,-5], max:[5,5,5]}, margin = .92) {
-  const r = Math.hypot(...box.max.map((m, i) => (m-box.min[i])/2)) || 1;
+// Pixels per unit so that the axes (the box's largest half-extent, plus 20% for
+// the axis names past the tips) fill about 82% of the viewport's short side in
+// any orientation. The box corners may leave the screen; the axes never do.
+export const FIT_AXIS_ROOM = 1.2;
+export function fitCameraScale(viewport, box = {min:[-5,-5,-5], max:[5,5,5]}, margin = .98) {
+  const r = FIT_AXIS_ROOM*Math.max(...box.max.map((m, i) => (m-box.min[i])/2)) || 1;
   const side = Math.min(viewport.width, viewport.height);
   return clamp(side*margin/(2*r), MIN_SCALE, MAX_SCALE);
 }

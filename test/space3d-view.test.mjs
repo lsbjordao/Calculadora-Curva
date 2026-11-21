@@ -82,7 +82,7 @@ test('scenePrimitives omite ocultas, não geométricas e rótulos desligados',()
   const colorOf=()=> '#000';
   assert.deepEqual(scenePrimitives([geoEq('ponto: A=(1,2,3)',{visible:false})],{colorOf}),[]);
   assert.deepEqual(scenePrimitives([{kind:'function',text:'sin(x)',visible:true,error:false}],{colorOf}),[]);
-  const noLabels=scenePrimitives([geoEq('ponto: A=(1,2,3)',{showGeoLabels:false})],{colorOf});
+  const noLabels=scenePrimitives([geoEq('ponto: A=(1,2,3)',{showGeoLabels:false})],{colorOf}).filter(p=>p.kind==='point');
   assert.equal(noLabels.length,1);
   assert.equal(noLabels[0].label,undefined);
 });
@@ -186,4 +186,67 @@ test('attachCameraControls: arrastar gira, Shift move, roda aproxima, duplo cliq
   canvas.fire('wheel',{deltaY:-100});
   canvas.fire('keydown',{key:'ArrowLeft'});
   assert.equal(camera,frozen);
+});
+
+// --- T3b: axis ticks, point guides, guides chip -------------------------------
+import { presetView, fitCameraScale } from '../src/space3d/camera.js';
+import { axesPrimitives, defaultBox, guideLines } from '../src/space3d/scene3d.js';
+import { buildDrawList } from '../src/space3d/render3d.js';
+import { showsGuides, hasGuidesChip } from '../src/space3d/view3d.js';
+
+const tickItems = (cam, vp) => buildDrawList(axesPrimitives(defaultBox()), cam, vp).filter(i => i.source?.role === 'tick');
+
+test('vista xy: o eixo z aponta para o observador e perde marcas e números',()=>{
+  const items=tickItems(createCamera({...presetView('xy'),scale:40}),{width:800,height:600});
+  assert.equal(items.filter(i=>i.source.axis===2).length,0);
+  assert.equal(items.filter(i=>i.kind==='label'&&i.source.axis===0).length,10);
+  assert.equal(items.filter(i=>i.kind==='segment'&&i.source.axis===1).length,10);
+});
+
+test('tela pequena: números das marcas rareiam para ficar a ≥ 28 px',()=>{
+  const vp={width:390,height:390};
+  const items=tickItems(createCamera({scale:fitCameraScale(vp)}),vp);
+  const yLabels=items.filter(i=>i.kind==='label'&&i.source.axis===1).map(i=>i.source.value);
+  assert.ok(yLabels.length>0&&yLabels.length<10);
+  assert.ok(yLabels.every(v=>v%2===0||v%5===0));
+  for(const axis of [0,1,2]){
+    const pts=items.filter(i=>i.kind==='label'&&i.source.axis===axis).sort((a,b)=>a.source.value-b.source.value);
+    for(let k=1;k<pts.length;k++){
+      if(Math.sign(pts[k].source.value)!==Math.sign(pts[k-1].source.value)) continue;
+      assert.ok(Math.hypot(pts[k].x-pts[k-1].x,pts[k].y-pts[k-1].y)>=27.9);
+    }
+  }
+  // Marks (short segments) stay on every unit.
+  assert.equal(items.filter(i=>i.kind==='segment'&&i.source.axis===1).length,10);
+  // A roomy viewport keeps every number.
+  const big=tickItems(createCamera({scale:80}),{width:1200,height:1200});
+  assert.equal(big.filter(i=>i.kind==='label').length,30);
+});
+
+test('guideLines: tracejados até o plano xy e até os eixos x e y',()=>{
+  const g=guideLines([1,2,3]);
+  assert.deepEqual(g.map(s=>[s.a,s.b]),[[[1,2,3],[1,2,0]],[[1,2,0],[1,0,0]],[[1,2,0],[0,2,0]]]);
+  assert.ok(g.every(s=>s.kind==='segment'&&s.role==='aux'&&s.dash===true));
+  assert.deepEqual(guideLines([1,0,3]).map(s=>[s.a,s.b]),[[[1,0,3],[1,0,0]],[[1,0,0],[0,0,0]]]);
+  assert.deepEqual(guideLines([1,2,0]).map(s=>[s.a,s.b]),[[[1,2,0],[1,0,0]],[[1,2,0],[0,2,0]]]);
+  assert.deepEqual(guideLines([0,0,3]).map(s=>[s.a,s.b]),[[[0,0,3],[0,0,0]]]);
+  assert.deepEqual(guideLines([0,0,0]),[]);
+  assert.deepEqual(guideLines([NaN,1,2]),[]);
+});
+
+test('guias: ligadas por padrão só em linhas de pontos 3D; chip guias só nelas',()=>{
+  const p3=geoEq('ponto: A=(1,2,3)'), p2=geoEq('ponto: B=(1,2)'), v3=geoEq('vetor: u=(1,2,3)');
+  assert.equal(hasGuidesChip(p3),true);
+  assert.equal(hasGuidesChip(p2),false);
+  assert.equal(hasGuidesChip(v3),false);
+  assert.equal(showsGuides(p3),true);
+  assert.equal(showsGuides({...p3,showGeoGuides:false}),false);
+  assert.equal(showsGuides(v3),false);
+  const colorOf=()=> '#c0492f';
+  const withGuides=scenePrimitives([p3],{colorOf});
+  const aux=withGuides.filter(p=>p.kind==='segment'&&p.role==='aux');
+  assert.equal(aux.length,3);
+  assert.ok(aux.every(s=>s.color==='#c0492f'&&s.dash));
+  assert.equal(scenePrimitives([{...p3,showGeoGuides:false}],{colorOf}).filter(p=>p.kind==='segment').length,0);
+  assert.equal(scenePrimitives([v3],{colorOf}).filter(p=>p.kind==='segment').length,0);
 });

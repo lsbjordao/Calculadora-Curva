@@ -51,9 +51,11 @@ test('panCamera moves the target so the scene follows the pointer', () => {
   assert.deepEqual(cam.target, [0,0,0]);
 });
 
-test('fitCameraScale fits the default box in the viewport', () => {
-  const s = fitCameraScale({width:390, height:500});
-  assert.ok(s > 0 && s*2*Math.sqrt(75) <= 390);
+test('fitCameraScale: the ±5 axes fill about 80–85% of the short side', () => {
+  for (const vp of [{width:390, height:500}, {width:1280, height:800}, {width:390, height:422}]) {
+    const side = Math.min(vp.width, vp.height), s = fitCameraScale(vp);
+    assert.ok(s*10 >= .8*side && s*10 <= .85*side, `${s*10} / ${side}`);
+  }
 });
 
 test('clipPlaneToBox returns the ordered section or []', () => {
@@ -92,10 +94,12 @@ test('axesPrimitives: three axes, names and integer marks', () => {
   const prims = axesPrimitives(defaultBox());
   const texts = prims.filter(p => p.kind === 'label').map(p => p.text);
   for (const t of ['x','y','z','1','-5','5']) assert.ok(texts.includes(t), t);
-  const axes = prims.filter(p => p.kind === 'segment' && p.role === 'axis' && !p.tick);
+  const axes = prims.filter(p => p.kind === 'segment' && p.role === 'axis');
   assert.equal(axes.length, 3);
-  assert.ok(prims.filter(p => p.tick).length >= 30);
-  assert.ok(prims.every(p => p.role === 'axis' || p.role === 'grid'));
+  const ticks = prims.filter(p => p.role === 'tick');
+  assert.ok(ticks.length >= 30);
+  assert.ok(ticks.every(p => [0,1,2].includes(p.axis) && Number.isFinite(p.value) && p.step === 1));
+  assert.ok(prims.every(p => ['axis','tick','grid'].includes(p.role)));
   assert.ok(axesPrimitives(defaultBox(), {grid:true}).some(p => p.role === 'grid'));
 });
 

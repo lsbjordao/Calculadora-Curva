@@ -12,6 +12,7 @@ import { cameraBasis, projectPoint, nearDepth } from './camera.js';
 
 const finiteVec = p => Array.isArray(p) && p.length === 3 && p.every(Number.isFinite);
 const TIE = 1e-9;
+const MIN_TICK_PX = 6, TICK_LABEL_PX = 28, THIN = [1, 2, 5, 10, 20, 50, 100];
 
 export function buildDrawList(primitives, camera, viewport) {
   if (!Array.isArray(primitives) || !camera || !viewport) return [];
@@ -45,6 +46,18 @@ export function buildDrawList(primitives, camera, viewport) {
     });
     return out;
   };
+  // Pixels per unit along each axis (at the target depth). Tick marks and numbers
+  // of an axis that points at the viewer (< MIN_TICK_PX per unit) are hidden;
+  // numbers are thinned to every 2nd, 5th, 10th… unit when closer than TICK_LABEL_PX.
+  const ppu = [0,1,2].map(i => camera.scale*Math.hypot(basis.right[i], basis.up[i]));
+  const tickVisible = prim => {
+    if (prim.role !== 'tick' || !Number.isInteger(prim.axis)) return true;
+    const step = prim.step > 0 ? prim.step : 1, px = ppu[prim.axis]*step;
+    if (ppu[prim.axis] < MIN_TICK_PX) return false;
+    if (prim.kind !== 'label') return true;
+    const every = THIN.find(m => px*m >= TICK_LABEL_PX) ?? Infinity;
+    return Math.round(prim.value/step)%every === 0;
+  };
   const projAll = ps => { const out = []; for (const p of ps || []) { const q = proj(p); if (!q) return null; out.push(q); } return out; };
   const meanDepth = qs => qs.reduce((s, q) => s+q.depth, 0)/qs.length;
   const xy = q => ({x:q.x, y:q.y});
@@ -64,7 +77,7 @@ export function buildDrawList(primitives, camera, viewport) {
   };
 
   for (const prim of primitives) {
-    if (!prim || typeof prim !== 'object') continue;
+    if (!prim || typeof prim !== 'object' || !tickVisible(prim)) continue;
     switch (prim.kind) {
       case 'point': {
         const q = proj(prim.p); if (!q) break;
@@ -137,7 +150,7 @@ export function colorsFromTheme(getVar) {
 
 function colorOf(item, colors) {
   if (item.color) return item.color;
-  if (item.role === 'axis') return colors.axis;
+  if (item.role === 'axis' || item.role === 'tick') return colors.axis;
   if (item.role === 'grid') return colors.grid;
   return colors.text;
 }
@@ -210,7 +223,7 @@ export function drawScene3d(ctx, drawList, colors = colorsFromTheme(() => '')) {
         ctx.stroke();
         break;
       }
-      case 'label': drawLabel(ctx, item, item.role === 'axis' ? (item.axisName ? colors.axis : colors.muted) : color, colors, placed); break;
+      case 'label': drawLabel(ctx, item, item.role === 'tick' ? colors.muted : item.role === 'axis' ? colors.axis : color, colors, placed); break;
     }
     ctx.restore();
   }
@@ -219,7 +232,7 @@ export function drawScene3d(ctx, drawList, colors = colorsFromTheme(() => '')) {
 // Labels get a background chip (like drawWorldLabel in app.js) and are nudged
 // down/up a few times when they would cover an earlier label.
 function drawLabel(ctx, item, color, colors, placed) {
-  const small = item.role === 'axis' && !item.axisName;
+  const small = item.role === 'tick';
   ctx.font = (small ? '10px ' : '10.5px ')+colors.font;
   ctx.textBaseline = 'top';
   ctx.textAlign = 'left';

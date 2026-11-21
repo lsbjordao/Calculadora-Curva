@@ -231,6 +231,10 @@ export function matrixInfo(A) {
     if (shape[0] === 2) {
       try { const e = eiginfo(A); metadata.eigenvalues = e.value; metadata.diagonalizable = e.metadata.diagonalizable; }
       catch (e) { if (e.code !== 'COMPLEX') throw e; metadata.eigenvalueNote = e.message; }
+    } else if (shape[0] === 3) {
+      // Only symmetric 3×3 matrices have eigenvalues here; others stay silent.
+      try { const e = eiginfo(A); metadata.eigenvalues = e.value; metadata.diagonalizable = e.metadata.diagonalizable; }
+      catch (e) { if (e.code === 'CONVERGENCE') metadata.eigenvalueNote = e.message; else if (e.code !== 'UNSUPPORTED') throw e; }
     }
   }
   return structured('matrix', shape, {value:A.map(row => row.slice())}, metadata, warnings);
@@ -374,10 +378,52 @@ export function solveinfo(A, b) {
   return solutionResult(A,v,svdResult(A),'solveinfo');
 }
 export function lstsq(A, b) { const v = rhs(A,b); return solutionResult(A,v,svd(A),'lstsq'); }
+// Symmetric 3×3 eigenpairs by cyclic Jacobi on the power-of-two-scaled matrix.
+// Symmetry uses a tolerance relative to the largest entry. Equal eigenvalues
+// (relative 1e-13) form one eigenspace; Jacobi keeps its basis orthonormal.
+function symmetricEiginfo3(A) {
+  const {matrix:M, scale:s} = scaled(A), top = maxAbs(M), n = 3;
+  for (let i = 0; i < n; i++) for (let j = i+1; j < n; j++)
+    if (Math.abs(M[i][j]-M[j][i]) > 1e-12*top) fail('UNSUPPORTED', 'autovalores 3×3: só matrizes simétricas');
+  const a = M.map((row,i) => row.map((x,j) => (x+M[j][i])/2)), V = rawEye(n);
+  const offTarget = EPS*Math.hypot(...a.flat());
+  let sweeps = 0;
+  for (;; sweeps++) {
+    if (Math.hypot(a[0][1],a[0][2],a[1][2])*Math.SQRT2 <= offTarget) break;
+    if (sweeps === 50) fail('CONVERGENCE', 'Os autovalores 3×3 não convergiram no limite de 50 varreduras.');
+    for (let p = 0; p < n-1; p++) for (let q = p+1; q < n; q++) {
+      if (a[p][q] === 0) continue;
+      const theta = (a[q][q]-a[p][p])/(2*a[p][q]), t = (theta >= 0 ? 1 : -1)/(Math.abs(theta)+Math.hypot(1,theta));
+      const c = 1/Math.hypot(1,t), sn = t*c;
+      for (const row of [...a, ...V]) { const x = row[p], y = row[q]; row[p] = c*x-sn*y; row[q] = sn*x+c*y; }
+      for (let k = 0; k < n; k++) { const x = a[p][k], y = a[q][k]; a[p][k] = c*x-sn*y; a[q][k] = sn*x+c*y; }
+      a[p][q] = a[q][p] = 0;
+    }
+  }
+  const order = [0,1,2].sort((i,j) => a[i][i]-a[j][j] || i-j), values = order.map(i => a[i][i]);
+  const groupTol = 1e-13*Math.max(...values.map(Math.abs)), groups = [];
+  values.forEach((x,i) => i && x-values[i-1] <= groupTol ? groups[groups.length-1].push(i) : groups.push([i]));
+  const multiplicity = [];
+  for (const g of groups) {
+    const mean = g.reduce((sum,i) => sum+values[i],0)/g.length;
+    for (const i of g) { values[i] = g.length > 1 ? mean : values[i]; multiplicity[i] = g.length; }
+  }
+  const pairs = order.map((column,i) => {
+    let v = V.map(row => row[column]), pivot = 0;
+    for (let k = 1; k < n; k++) if (Math.abs(v[k]) > Math.abs(v[pivot])) pivot = k;
+    if (v[pivot] < 0) v = v.map(x => -x);
+    const lambda = values[i], residual = Math.hypot(...M.map((row,k) => rawDot(row,v)-lambda*v[k]));
+    return {value:lambda*s, vector:v, residual, algebraicMultiplicity:multiplicity[i], geometricMultiplicity:multiplicity[i]};
+  });
+  return structured('eiginfo', [3,3], {value:pairs.map(p => p.value), eigenvectors:pairs.map(p => p.vector), pairs},
+    {diagonalizable:true, repeated:groups.length < 3, order:'crescente', residual:Math.max(...pairs.map(p => p.residual)), method:'Jacobi cíclico', sweeps});
+}
 // Real 2×2 eigenpairs. Scale before the discriminant; use the determinant for
 // the smaller root to avoid cancellation. Ascending eigenvalue order.
 export function eiginfo(A) {
-  if (square(A) !== 2) fail('UNSUPPORTED', 'Autovalores e autovetores disponíveis apenas para matrizes reais 2×2.');
+  const size = square(A);
+  if (size === 3) return symmetricEiginfo3(A);
+  if (size !== 2) fail('UNSUPPORTED', 'Autovalores e autovetores disponíveis apenas para matrizes reais 2×2 e 3×3 simétricas.');
   const {matrix:[[a,b],[c,d]], scale:s} = scaled(A), tr = a+d, determinant = a*d-b*c;
   let disc = (a-d)*(a-d)+4*b*c;
   const discTol = EPS*16*((a-d)*(a-d)+Math.abs(4*b*c));

@@ -91,7 +91,7 @@ test('validation rejects malformed data, inappropriate domains and excessive siz
     [()=>la.matmul([[1,2]],[[1,2]]),'DIMENSION'],[()=>la.inv([[1,2]]),'SQUARE'],
     [()=>la.dot([1],[1,2]),'DIMENSION'],[()=>la.cross([1],[2]),'DIMENSION'],
     [()=>la.proj([1,2],[0,0]),'ZERO_VECTOR'],[()=>la.angle([0,0],[1,0]),'ZERO_VECTOR'],
-    [()=>la.eig([[0,-1],[1,0]]),'COMPLEX'],[()=>la.eig(la.eye(3)),'UNSUPPORTED'],
+    [()=>la.eig([[0,-1],[1,0]]),'COMPLEX'],[()=>la.eig(la.eye(4)),'UNSUPPORTED'],[()=>la.eig([[1,2,0],[0,1,0],[0,0,1]]),'UNSUPPORTED'],
     [()=>la.eye(21),'SIZE'],[()=>la.eye(2.5),'SIZE'],[()=>la.zeros(-1,2),'SIZE'],
     [()=>la.det([[[1]]]),'FINITE'],[()=>la.det(Array.from({length:21},()=>[1])),'SIZE'],
     [()=>la.svd(la.eye(13)),'SIZE'],[()=>la.qr(la.eye(13)),'SIZE'],
@@ -177,4 +177,85 @@ test('matrixInfo classifies structural matrix types',()=>{
   assert.deepEqual(types([[1,2],[3,4]]),[]);
   const c=Math.cos(0.3), s=Math.sin(0.3);
   assert.ok(types([[c,-s],[s,c]]).includes('ortogonal'));
+});
+
+// Symmetric 3×3 eigenpairs (cyclic Jacobi): same contract as 2×2.
+const checkSymmetric3=(A,expected,tolerance=1e-10)=>{
+  const info=la.eiginfo(A), scale=Math.max(...A.flat().map(Math.abs))||1;
+  assert.equal(info.kind,'eiginfo'); assert.deepEqual(info.shape,[3,3]);
+  close(info.value,expected,tolerance);
+  assert.ok(info.value.every((x,i)=>!i||info.value[i-1]<=x));
+  assert.equal(info.pairs.length,3); assert.equal(info.eigenvectors.length,3);
+  assert.equal(info.metadata.diagonalizable,true); assert.equal(info.metadata.order,'crescente');
+  info.pairs.forEach((pair,i)=>{
+    assert.equal(pair.value,info.value[i]); assert.deepEqual(pair.vector,info.eigenvectors[i]);
+    const r=la.vsub(la.matmul(A,pair.vector),la.scale(pair.value,pair.vector));
+    assert.ok(la.norm(r)/scale<1e-9,`‖Av−λv‖ = ${la.norm(r)}`);
+    assert.ok(pair.residual<1e-12);
+    const pivot=pair.vector.reduce((p,x,j)=>Math.abs(x)>Math.abs(pair.vector[p])?j:p,0);
+    assert.ok(pair.vector[pivot]>0,'maior componente positiva');
+    const same=info.value.filter(x=>Math.abs(x-pair.value)<=1e-9*Math.max(...info.value.map(Math.abs))).length;
+    assert.equal(pair.algebraicMultiplicity,same); assert.equal(pair.geometricMultiplicity,same);
+  });
+  close(la.matmul(info.eigenvectors,la.transpose(info.eigenvectors)),la.eye(3),1e-12);
+  return info;
+};
+test('symmetric 3×3 eigenvalues by Jacobi keep the eiginfo contract',()=>{
+  const A=[[2,0,0],[0,3,4],[0,4,9]];
+  checkSymmetric3(A,[1,2,11]); close(la.eig(A),[1,2,11]);
+  close(la.eigenvectors(A)[1],[1,0,0]);
+  assert.equal(la.eiginfo(A).metadata.repeated,false);
+  // Repeated eigenvalue: an orthonormal basis of the plane x+y+z=0.
+  const J=checkSymmetric3([[2,1,1],[1,2,1],[1,1,2]],[1,1,4]);
+  assert.equal(J.metadata.repeated,true); assert.deepEqual(J.warnings,[]);
+  assert.deepEqual(J.value.slice(0,2),[J.value[0],J.value[0]]);
+  assert.deepEqual(J.pairs.map(p=>p.algebraicMultiplicity),[2,2,1]);
+  for(const v of J.eigenvectors.slice(0,2)) close(la.dot(v,[1,1,1]),0,1e-12);
+  close(J.eigenvectors[2],[1,1,1].map(x=>x/Math.sqrt(3)));
+  // Diagonal, scalar, zero and negative eigenvalues.
+  assert.deepEqual(checkSymmetric3([[3,0,0],[0,-1,0],[0,0,2]],[-1,2,3]).eigenvectors,[[0,1,0],[0,0,1],[1,0,0]]);
+  const I=checkSymmetric3(la.eye(3),[1,1,1]);
+  assert.deepEqual(I.eigenvectors,la.eye(3)); assert.deepEqual(I.pairs.map(p=>p.geometricMultiplicity),[3,3,3]);
+  checkSymmetric3(la.zeros(3,3),[0,0,0]);
+  checkSymmetric3([[1,1,0],[1,1,0],[0,0,2]],[0,2,2]);
+  checkSymmetric3([[1,2,3],[2,4,6],[3,6,9]],[0,0,14]);
+  checkSymmetric3([[-2,0,0],[0,-3,-4],[0,-4,-9]],[-11,-2,-1]);
+  checkSymmetric3([[0,1,0],[1,0,0],[0,0,-3]],[-3,-1,1]);
+  checkSymmetric3([[4,-2,0],[-2,4,-2],[0,-2,4]],[4-2*Math.SQRT2,4,4+2*Math.SQRT2]);
+  // Small distinct eigenvalues next to a large one are not merged.
+  assert.deepEqual(la.eig([[1e6,0,0],[0,1e-6,0],[0,0,2e-6]]),[1e-6,2e-6,1e6]);
+  assert.deepEqual(la.eiginfo([[1e6,0,0],[0,1e-6,0],[0,0,2e-6]]).pairs.map(p=>p.algebraicMultiplicity),[1,1,1]);
+  assert.equal(la.eiginfo([[1,0],[0,2]]).metadata.method,undefined,'2×2 metadata unchanged');
+  assert.ok(la.callAlgebra('eiginfo',[A]).pairs.length===3);
+});
+test('symmetric 3×3 eigenpairs are scale-aware and symmetry uses a relative tolerance',()=>{
+  const A=[[2,0,0],[0,3,4],[0,4,9]], reference=la.eiginfo(A);
+  for(const s of [1e-200,1e-6,1e6,1e200]){
+    const info=checkSymmetric3(A.map(row=>row.map(x=>x*s)),[1*s,2*s,11*s]);
+    close(info.eigenvectors,reference.eigenvectors,1e-12);
+  }
+  // Roundoff-level asymmetry is accepted at any scale; a real one is not.
+  for(const s of [1e-12,1,1e12]) checkSymmetric3([[2,1+1e-14,0],[1,2,0],[0,0,3]].map(row=>row.map(x=>x*s)),[s,3*s,3*s],1e-9);
+  for(const A of [[[2,1+1e-6,0],[1,2,0],[0,0,3]],[[1,2,0],[0,1,0],[0,0,1]],[[0,-1,0],[1,0,0],[0,0,1]]])
+    assert.throws(()=>la.eiginfo(A),e=>e instanceof la.AlgebraError&&e.code==='UNSUPPORTED'&&e.message==='autovalores 3×3: só matrizes simétricas');
+  assert.throws(()=>la.eig([[1e-20,1e-20,0],[0,1e-20,0],[0,0,1e-20]]),{code:'UNSUPPORTED'});
+  assert.throws(()=>la.eig(la.eye(4)),{code:'UNSUPPORTED'});
+});
+test('seeded symmetric 3×3 matrices: Av = λv, orthonormal vectors, trace preserved',()=>{
+  for(let i=0;i<40;i++){
+    const B=Array.from({length:3},()=>Array.from({length:3},random)), A=la.matadd(B,la.transpose(B));
+    const info=la.eiginfo(A);
+    close(info.value.reduce((s,x)=>s+x,0),la.trace(A),1e-12);
+    close(info.value.reduce((s,x)=>s*x,1),la.det(A),1e-10);
+    checkSymmetric3(A,info.value);
+  }
+});
+test('matrixInfo shows eigenvalues of symmetric 3×3 matrices only',()=>{
+  const symmetric=la.matrixInfo([[2,1,1],[1,2,1],[1,1,2]]).metadata;
+  close(symmetric.eigenvalues,[1,1,4]); assert.equal(symmetric.diagonalizable,true);
+  const general=la.matrixInfo([[1,2,3],[0,1,4],[5,6,0]]).metadata;
+  assert.equal(general.eigenvalues,undefined); assert.equal(general.eigenvalueNote,undefined);
+  assert.equal(la.matrixInfo(la.eye(4)).metadata.eigenvalues,undefined);
+  close(la.matrixInfo([[2,0],[0,3]]).metadata.eigenvalues,[2,3]);
+  assert.equal(la.matrixInfo([[0,-1],[1,0]]).metadata.eigenvalueNote,'Autovalores complexos: esta versão representa apenas autovalores e direções reais.');
 });

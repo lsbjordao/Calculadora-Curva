@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createCamera, orbit, zoomCamera, panCamera, presetView, projectPoint, fitCameraScale } from '../src/space3d/camera.js';
+import { createCamera, orbit, zoomCamera, panCamera, presetView, projectPoint, fitCameraScale, cameraBasis } from '../src/space3d/camera.js';
 import { defaultBox, clipSegmentToBox, clipLineToBox, clipPlaneToBox, pointInBox, axesPrimitives } from '../src/space3d/scene3d.js';
 import { buildDrawList, drawScene3d, colorsFromTheme } from '../src/space3d/render3d.js';
 
@@ -128,6 +128,92 @@ test('buildDrawList skips geometry behind a perspective camera', () => {
   const cam = {...topView(), projection:'perspective', distance:10};
   const list = buildDrawList([{kind:'point', p:[0,0,20]}, {kind:'point', p:[0,0,0]}], cam, vp);
   assert.equal(list.length, 1);
+});
+
+const cross = (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+
+test('iso preset is a right-handed view with z up', () => {
+  const cam = createCamera(presetView('iso')), {right, up, forward} = cameraBasis(cam);
+  cross(right, up).forEach((c, i) => close(c, forward[i], 1e-12));
+  const o = projectPoint(cam, [0,0,0], vp), x = projectPoint(cam, [1,0,0], vp), y = projectPoint(cam, [0,1,0], vp), z = projectPoint(cam, [0,0,1], vp);
+  close(z.x, o.x, 1e-9); assert.ok(z.y < o.y, 'z up');
+  assert.ok(x.x < o.x && x.y > o.y, 'x toward lower left');
+  assert.ok(y.x > o.x && y.y > o.y, 'y toward lower right');
+  // screen orientation of (x, y) is counter-clockwise seen from +z (z points at the viewer side)
+  const sx = [x.x-o.x, -(x.y-o.y)], sy = [y.x-o.x, -(y.y-o.y)];
+  assert.ok(sx[0]*sy[1]-sx[1]*sy[0] > 0);
+});
+
+test('orbit direction: +azimuth turns xz into yz, +elevation rises toward the top view', () => {
+  const xz = createCamera(presetView('xz'));
+  close(orbit(xz, 90, 0).azimuth, presetView('yz').azimuth);
+  assert.equal(orbit(xz, 0, 10).elevation, 10);
+  const cam = orbit(createCamera(presetView('yz')), 0, 89), top = projectPoint(cam, [0,0,1], vp);
+  close(top.x, 200, 1e-9); assert.ok(top.depth < 0, 'camera above: +z is nearer');
+});
+
+test('projectPoint flags points behind a perspective eye', () => {
+  const cam = {...topView(), projection:'perspective', distance:10};
+  assert.equal(projectPoint(cam, [0,0,20], vp).behind, true);
+  assert.equal(projectPoint(cam, [0,0,9.9], vp).behind, true, 'inside the near plane');
+  assert.equal(projectPoint(cam, [0,0,5], vp).behind, undefined);
+  assert.equal(projectPoint({...cam, projection:'ortho'}, [0,0,20], vp).behind, undefined);
+});
+
+test('clipPlaneToBox orders oblique sections and drops slivers', () => {
+  const box = defaultBox(), onFace = p => [0,1,2].filter(i => Math.abs(Math.abs(p[i])-5) < 1e-9);
+  for (const [n, d] of [[[1,1,1], 0], [[1,2,3], 1], [[1,-2,.5], 3], [[0,1,1], 2]]) {
+    const poly = clipPlaneToBox(n, d, box);
+    assert.ok(poly.length >= 3, String(n));
+    poly.forEach((p, i) => {
+      const q = poly[(i+1)%poly.length];
+      assert.ok(onFace(p).some(k => onFace(q).includes(k) && Math.sign(p[k]) === Math.sign(q[k])), `${p} → ${q} share a face`);
+      close(n[0]*p[0]+n[1]*p[1]+n[2]*p[2], d, 1e-9);
+    });
+  }
+  assert.deepEqual(clipPlaneToBox([1,1,0], 9.9999999, box), []);
+  assert.equal(clipPlaneToBox([1,1,0], 9.99, box).length, 4, 'thin but real section kept');
+});
+
+test('a segment lying on a polygon is drawn after it from any camera', () => {
+  const plane = {kind:'polygon', points:clipPlaneToBox([0,0,1], 0, defaultBox()), alpha:.2, id:'plane'};
+  const tilted = {kind:'polygon', points:clipPlaneToBox([1,2,3], 0, defaultBox()), alpha:.2, id:'tilted'};
+  const xAxis = {kind:'segment', a:[-5,0,0], b:[5,0,0], id:'axis'};
+  const onTilted = {kind:'segment', a:[-2,1,0], b:[2,-1,0], id:'onTilted'}; // through the centroid, n·X = 0
+  let views = 0;
+  for (let az = -180; az < 180; az += 7) for (let el = -89; el <= 89; el += 3) {
+    for (const projection of ['ortho', 'perspective']) {
+      const cam = createCamera({azimuth:az, elevation:el, projection});
+      for (const [poly, seg] of [[plane, xAxis], [tilted, onTilted]]) {
+        const ids = buildDrawList([seg, poly], cam, vp).map(i => i.source.id);
+        assert.deepEqual(ids, [poly.id, seg.id], `az ${az} el ${el} ${projection}`);
+      }
+      views++;
+    }
+  }
+  assert.ok(views > 1000);
+});
+
+test('perspective clips segments and polygons at the near plane instead of dropping them', () => {
+  const cam = createCamera({projection:'perspective', distance:10}); // default az −60, el 25
+  const [item] = buildDrawList([{kind:'segment', a:[0,-5,0], b:[0,-15,0]}], cam, vp);
+  assert.ok(item, 'segment kept');
+  const a = projectPoint(cam, [0,-5,0], vp);
+  close(item.a.x, a.x, 1e-9); close(item.a.y, a.y, 1e-9);
+  assert.ok([item.b.x, item.b.y].every(Number.isFinite));
+  assert.ok(Math.hypot(item.b.x-item.a.x, item.b.y-item.a.y) > 1, 'shortened, not collapsed');
+  const [arrow] = buildDrawList([{kind:'arrow', from:[0,-5,0], to:[0,-15,0]}], cam, vp);
+  assert.equal(arrow.headless, true, 'no head at a clipped tip');
+  const big = [[-20,-20,0],[20,-20,0],[20,20,0],[-20,20,0]];
+  const [poly] = buildDrawList([{kind:'polygon', points:big, alpha:.2}], cam, vp);
+  assert.ok(poly, 'polygon kept');
+  assert.equal(poly.points.length, 5, 'one corner behind the eye is cut off');
+  assert.ok(poly.points.flatMap(p => [p.x, p.y]).every(Number.isFinite));
+  const mesh = {kind:'mesh', vertices:big, faces:[[0,1,2,3]], alpha:.3};
+  assert.equal(buildDrawList([mesh], cam, vp).length, 1, 'mesh face kept');
+  assert.deepEqual(buildDrawList([{kind:'segment', a:[20,-20,0], b:[22,-22,0]}], cam, vp), [], 'fully behind');
+  const ortho = buildDrawList([{kind:'polygon', points:big, alpha:.2}], {...cam, projection:'ortho'}, vp);
+  assert.equal(ortho[0].points.length, 4, 'ortho never clips');
 });
 
 function recorder() {

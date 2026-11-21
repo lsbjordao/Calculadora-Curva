@@ -64,7 +64,8 @@ export function clipPlaneToBox(n, d, box) {
   if (len < EPS) return [];
   const u = n.map(c => c/len), off = d/len;
   const size = Math.max(...box.max.map((m, i) => m-box.min[i])) || 1, tol = 1e-9*size;
-  const pts = [], add = p => { if (!pts.some(q => Math.hypot(q[0]-p[0], q[1]-p[1], q[2]-p[2]) <= tol*10)) pts.push(p); };
+  // Same tolerance for "vertex on the plane" and for merging duplicate vertices.
+  const pts = [], add = p => { if (!pts.some(q => Math.hypot(q[0]-p[0], q[1]-p[1], q[2]-p[2]) <= tol)) pts.push(p); };
   for (const [a, b] of boxEdges(box)) {
     const fa = u[0]*a[0]+u[1]*a[1]+u[2]*a[2]-off, fb = u[0]*b[0]+u[1]*b[1]+u[2]*b[2]-off;
     const za = Math.abs(fa) <= tol, zb = Math.abs(fb) <= tol;
@@ -77,7 +78,15 @@ export function clipPlaneToBox(n, d, box) {
   const helper = Math.abs(u[0]) < .9 ? [1,0,0] : [0,1,0];
   const e1 = normalize(cross(helper, u)), e2 = cross(u, e1);
   const ang = p => { const r = p.map((c, i) => c-centroid[i]); return Math.atan2(dot(r, e2), dot(r, e1)); };
-  return pts.map(p => [p, ang(p)]).sort((x, y) => x[1]-y[1]).map(x => x[0]);
+  const poly = pts.map(p => [p, ang(p)]).sort((x, y) => x[1]-y[1]).map(x => x[0]);
+  // Drop zero-area slivers (plane grazing an edge): mean width = 2·area/perimeter.
+  let area = 0, perimeter = 0;
+  poly.forEach((p, i) => {
+    const q = poly[(i+1)%poly.length], a = p.map((c, k) => c-centroid[k]), b = q.map((c, k) => c-centroid[k]);
+    area += dot(cross(a, b), u)/2;
+    perimeter += Math.hypot(q[0]-p[0], q[1]-p[1], q[2]-p[2]);
+  });
+  return 2*Math.abs(area)/perimeter < 1e-6*size ? [] : poly;
 }
 const dot = (a, b) => a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
 const cross = (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];

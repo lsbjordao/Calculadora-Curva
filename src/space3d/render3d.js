@@ -1,21 +1,49 @@
 "use strict";
 
-import { cameraBasis, projectPoint } from './camera.js';
+import { cameraBasis, projectPoint, nearDepth } from './camera.js';
 
 // Painter's algorithm on Canvas 2D. buildDrawList is pure: it projects the
 // primitives, sorts surfaces (polygons and mesh faces) back to front by centroid
-// depth, places segments/arrows/points among them by mean depth (ties: surface
-// first, so an edge lying on a plane stays on top) and appends every label last.
+// depth, places segments/arrows/points among them by mean depth and appends every
+// label last. Depths within a tolerance relative to the scene size count as equal
+// (float noise, e.g. an axis lying on the plane z = 0); on a tie surfaces come
+// first, so an edge lying on a plane stays on top. With perspective, segments,
+// polygons and mesh faces are clipped to the near plane instead of dropped.
 
 const finiteVec = p => Array.isArray(p) && p.length === 3 && p.every(Number.isFinite);
+const TIE = 1e-9;
 
 export function buildDrawList(primitives, camera, viewport) {
   if (!Array.isArray(primitives) || !camera || !viewport) return [];
-  const basis = cameraBasis(camera), body = [], labels = [];
+  const basis = cameraBasis(camera), body = [], labels = [], {forward} = basis, t = camera.target;
+  // Keep a small margin inside the near plane so clipped vertices project finitely.
+  const near = camera.projection === 'perspective' ? nearDepth(camera)+camera.distance*1e-6 : -Infinity;
+  const depthOf = p => -((p[0]-t[0])*forward[0]+(p[1]-t[1])*forward[1]+(p[2]-t[2])*forward[2]);
+  const lerp = (a, b, da, db) => { const k = (near-da)/(db-da); return a.map((c, i) => c+k*(b[i]-c)); };
   const proj = p => {
     if (!finiteVec(p)) return null;
     const q = projectPoint(camera, p, viewport, basis);
     return q.behind || !Number.isFinite(q.x) || !Number.isFinite(q.y) ? null : q;
+  };
+  const clipSeg = (a, b) => {
+    if (!finiteVec(a) || !finiteVec(b)) return null;
+    const da = depthOf(a), db = depthOf(b);
+    if (da < near && db < near) return null;
+    if (da >= near && db >= near) return [a, b, false];
+    return da < near ? [lerp(a, b, da, db), b, false] : [a, lerp(a, b, da, db), true];
+  };
+  // Sutherland–Hodgman against depth >= near.
+  const clipPoly = pts => {
+    if (!Array.isArray(pts) || !pts.every(finiteVec)) return null;
+    const ds = pts.map(depthOf);
+    if (ds.every(d => d >= near)) return pts;
+    const out = [];
+    pts.forEach((p, i) => {
+      const j = (i+1)%pts.length, q = pts[j], dp = ds[i], dq = ds[j];
+      if (dp >= near) out.push(p);
+      if ((dp >= near) !== (dq >= near)) out.push(lerp(p, q, dp, dq));
+    });
+    return out;
   };
   const projAll = ps => { const out = []; for (const p of ps || []) { const q = proj(p); if (!q) return null; out.push(q); } return out; };
   const meanDepth = qs => qs.reduce((s, q) => s+q.depth, 0)/qs.length;
@@ -29,7 +57,8 @@ export function buildDrawList(primitives, camera, viewport) {
     if (text == null || text === '') return;
     labels.push({...style(prim), kind:'label', x:q.x, y:q.y, depth:q.depth, text:String(text), ...extra});
   };
-  const surface = (prim, qs, extra) => {
+  const surface = (prim, pts, extra) => {
+    const qs = projAll(clipPoly(pts));
     if (!qs || qs.length < 3) return;
     body.push({...style(prim), kind:'polygon', points:qs.map(xy), depth:meanDepth(qs), surface:true, alpha:prim.alpha ?? .18, ...extra});
   };
@@ -44,31 +73,42 @@ export function buildDrawList(primitives, camera, viewport) {
         break;
       }
       case 'segment': case 'arrow': {
-        const a = proj(prim.kind === 'arrow' ? prim.from : prim.a), b = proj(prim.kind === 'arrow' ? prim.to : prim.b);
+        const arrow = prim.kind === 'arrow', seg = clipSeg(arrow ? prim.from : prim.a, arrow ? prim.to : prim.b);
+        const a = seg && proj(seg[0]), b = seg && proj(seg[1]);
         if (!a || !b) break;
         const item = {...style(prim), kind:prim.kind, a:xy(a), b:xy(b), depth:(a.depth+b.depth)/2};
         if (prim.dash) item.dash = true;
         if (prim.weight) item.weight = prim.weight;
+        if (arrow && seg[2]) item.headless = true; // tip cut by the near plane
         body.push(item);
-        if (prim.kind === 'arrow') pushLabel(prim, {x:(a.x+b.x)/2, y:(a.y+b.y)/2, depth:item.depth}, prim.label, {anchor:'mid', dx:b.x-a.x, dy:b.y-a.y});
+        if (arrow) pushLabel(prim, {x:(a.x+b.x)/2, y:(a.y+b.y)/2, depth:item.depth}, prim.label, {anchor:'mid', dx:b.x-a.x, dy:b.y-a.y});
         break;
       }
-      case 'polygon': surface(prim, projAll(prim.points)); break;
+      case 'polygon': surface(prim, prim.points); break;
       case 'mesh': {
-        const verts = Array.isArray(prim.vertices) ? prim.vertices.map(proj) : [];
-        for (const face of prim.faces || []) {
-          const qs = face.map(i => verts[i]);
-          if (qs.every(Boolean)) surface(prim, qs, {mesh:true});
-        }
+        const verts = Array.isArray(prim.vertices) ? prim.vertices : [];
+        for (const face of prim.faces || []) if (Array.isArray(face)) surface(prim, face.map(i => verts[i]), {mesh:true});
         break;
       }
       case 'label': { const q = proj(prim.p); if (q) pushLabel(prim, q, prim.text); break; }
     }
   }
-  // Stable: equal depth keeps surfaces before lines, then input order.
-  const order = body.map((item, i) => [item, i]);
-  order.sort((x, y) => (y[0].depth-x[0].depth) || ((x[0].surface ? 0 : 1)-(y[0].surface ? 0 : 1)) || (x[1]-y[1]));
-  return [...order.map(x => x[0]), ...labels];
+  return [...sortBackToFront(body), ...labels];
+}
+
+// Depths are grouped into tie clusters (consecutive gaps <= tolerance relative to
+// the scene's depth extent) so the order is transitive and deterministic. Inside a
+// cluster: surfaces before lines/points, then input order.
+function sortBackToFront(body) {
+  if (!body.length) return [];
+  const order = body.map((item, i) => ({item, i}));
+  order.sort((x, y) => (y.item.depth-x.item.depth) || (x.i-y.i));
+  const top = order[0].item.depth, bottom = order[order.length-1].item.depth;
+  const eps = TIE*Math.max(1, top-bottom, Math.abs(top), Math.abs(bottom));
+  let cluster = 0;
+  order.forEach((o, k) => { if (k && order[k-1].item.depth-o.item.depth > eps) cluster++; o.cluster = cluster; });
+  order.sort((x, y) => (x.cluster-y.cluster) || ((x.item.surface ? 0 : 1)-(y.item.surface ? 0 : 1)) || (x.i-y.i));
+  return order.map(o => o.item);
 }
 
 const DEFAULTS = {axis:'#9aa1ab', grid:'#dde1e7', text:'#1a1d23', bg:'#ffffff', muted:'#727a86', edge:'#e4e7ec', font:'ui-monospace, Menlo, Consolas, monospace'};
@@ -156,7 +196,7 @@ export function drawScene3d(ctx, drawList, colors = colorsFromTheme(() => '')) {
         ctx.moveTo(item.a.x, item.a.y);
         ctx.lineTo(item.b.x, item.b.y);
         ctx.stroke();
-        if (item.kind === 'arrow') { ctx.setLineDash([]); drawArrowHead(ctx, item.a, item.b, color); }
+        if (item.kind === 'arrow' && !item.headless) { ctx.setLineDash([]); drawArrowHead(ctx, item.a, item.b, color); }
         break;
       }
       case 'point': {

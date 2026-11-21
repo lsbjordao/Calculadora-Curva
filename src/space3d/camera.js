@@ -17,6 +17,8 @@ export function createCamera(opts = {}) {
   const target = Array.isArray(o.target) && o.target.length === 3 && o.target.every(Number.isFinite) ? [...o.target] : [...d.target];
   return {
     azimuth: normalizeAzimuth(finite(o.azimuth, d.azimuth)),
+    // ±90 is allowed here so presetView('xy') gives an exact top view; orbit()
+    // stops at ±89 so dragging never flips the up vector through the pole.
     elevation: clamp(finite(o.elevation, d.elevation), -90, 90),
     distance: Math.max(1, finite(o.distance, d.distance)),
     target,
@@ -30,7 +32,7 @@ function normalizeAzimuth(a) { const r = ((a+180)%360+360)%360-180; return r ===
 export function orbit(camera, dAzimuth, dElevation) {
   return {...camera, target:[...camera.target],
     azimuth: normalizeAzimuth(camera.azimuth+finite(dAzimuth, 0)),
-    elevation: clamp(camera.elevation+finite(dElevation, 0), -89, 89)};
+    elevation: clamp(camera.elevation+finite(dElevation, 0), -89, 89)}; // see createCamera
 }
 
 export function zoomCamera(camera, factor) {
@@ -62,7 +64,12 @@ export function fitCameraScale(viewport, box = {min:[-5,-5,-5], max:[5,5,5]}, ma
 }
 
 // Returns {x, y, depth}; larger depth = farther from the viewer. With perspective,
-// points at or behind the eye get `behind: true` and must not be drawn.
+// points closer than the near plane (see nearDepth) get `behind: true`; their x, y
+// are meaningless and must not be drawn (buildDrawList clips to that plane first).
+// Perspective near plane: smallest drawable depth (eye at depth = −distance).
+export const NEAR_FRACTION = .02;
+export function nearDepth(camera) { return camera.distance*(NEAR_FRACTION-1); }
+
 export function projectPoint(camera, p, viewport, basis = cameraBasis(camera)) {
   const {right, up, forward} = basis, t = camera.target;
   const rx = p[0]-t[0], ry = p[1]-t[1], rz = p[2]-t[2];
@@ -71,9 +78,8 @@ export function projectPoint(camera, p, viewport, basis = cameraBasis(camera)) {
   const depth = -(rx*forward[0]+ry*forward[1]+rz*forward[2]);
   let k = camera.scale, behind = false;
   if (camera.projection === 'perspective') {
-    const eye = camera.distance+depth;
-    if (eye <= camera.distance*.02) { behind = true; k *= 50; }
-    else k *= camera.distance/eye;
+    if (depth <= nearDepth(camera)) behind = true;
+    else k *= camera.distance/(camera.distance+depth);
   }
   const out = {x: viewport.width/2+sx*k, y: viewport.height/2-sy*k, depth};
   if (behind) out.behind = true;

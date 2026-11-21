@@ -36,9 +36,9 @@ import { matrixInfo } from './linear-algebra.js';
 import { algebraDeclaration, createAlgebraSymbols } from './algebra-symbols.js';
 import { createTransformControls, buildSystemScene } from './linear-transform-view.js';
 import { createCamera, zoomCamera, presetView, fitCameraScale } from './space3d/camera.js';
-import { defaultBox, axesPrimitives } from './space3d/scene3d.js';
+import { axesPrimitives } from './space3d/scene3d.js';
 import { buildDrawList, drawScene3d, colorsFromTheme } from './space3d/render3d.js';
-import { attachCameraControls, CAMERA_HINT, decideViewMode, hasGuidesChip, has3dObjects, normalizeView3d, scenePrimitives, serializeView3d, viewNotice } from './space3d/view3d.js';
+import { attachCameraControls, autoAxisLimit, CAMERA_HINT, decideViewMode, hasGuidesChip, has3dObjects, normalizeView3d, scenePrimitives, serializeView3d, viewNotice } from './space3d/view3d.js';
 
 const PALETTES={
   light:["#c0492f","#2d70b3","#2f7d5b","#6042a6","#d98324","#1d1d1f","#0a8aa6","#a8336e"],
@@ -82,6 +82,7 @@ const view={cx:0, cy:0, scale:38};
 // mode wins there and only later "no 3D" → "some 3D" transitions switch to 3D.
 let view3d=normalizeView3d(null);
 let view3dFit=0;
+let view3dFitAxisRange=null;
 let has3dSeen=null;
 let W=0,H=0,dpr=1;
 let mouse={inside:false, px:0, py:0};
@@ -277,22 +278,32 @@ function applyState(snap){
 function restoreView3d(saved){
   view3d=normalizeView3d(saved);
   view3dFit=0;
+  view3dFitAxisRange=null;
   has3dSeen=null;
   fitCameraToViewport();
 }
 
-// Keeps the camera's zoom relative to the scale that fits the ±5 box, so the box
-// fits at any viewport size (390 px included) and resizing keeps the framing.
+function activeAxisRange(){
+  return view3d.autoAxisRange ? autoAxisLimit(equations) : view3d.axisRange;
+}
+
+function axisBox(limit=activeAxisRange()){
+  return {min:[-limit,-limit,-limit],max:[limit,limit,limit]};
+}
+
+// Keep zoom relative to the current axis box so resizing preserves framing.
 function fitCameraToViewport(){
   if(!(W>0&&H>0)) return;
-  const fit=fitCameraScale({width:W,height:H});
+  const limit=activeAxisRange();
+  const fit=fitCameraScale({width:W,height:H},axisBox(limit));
   const zoom=view3dFit>0 ? view3d.camera.scale/view3dFit : view3d.zoom;
   view3d.camera={...createCamera({...view3d.camera,scale:fit*zoom}),dragging:!!view3d.camera.dragging};
   view3dFit=fit;
+  view3dFitAxisRange=limit;
 }
 
 function defaultCamera3d(keep={}){
-  return createCamera({projection:keep.projection,scale:fitCameraScale({width:W||1,height:H||1})});
+  return createCamera({projection:keep.projection,scale:fitCameraScale({width:W||1,height:H||1},axisBox())});
 }
 
 function flushPending(){
@@ -3364,7 +3375,10 @@ function restoreAnnotations(saved){
 
 function fitToView(){
   if(view3d.mode==='3d'){
-    view3d.camera=createCamera({...view3d.camera,target:[0,0,0],scale:fitCameraScale({width:W,height:H})});
+    const fit=fitCameraScale({width:W,height:H},axisBox());
+    view3d.camera=createCamera({...view3d.camera,target:[0,0,0],scale:fit});
+    view3dFit=fit;
+    view3dFitAxisRange=activeAxisRange();
     draw(); scheduleSave(); return;
   }
   const pad=60;
@@ -4981,7 +4995,8 @@ function viewModeChanged(){
 let view3dUiSignature='';
 function updateView3dUi(has3d){
   const on=view3d.mode==='3d';
-  const signature=[on,has3d,view3d.camera.projection,view3d.grid].join();
+  const range=activeAxisRange();
+  const signature=[on,has3d,view3d.camera.projection,view3d.grid,view3d.autoAxisRange,view3d.axisRange,range].join();
   if(signature===view3dUiSignature) return;
   view3dUiSignature=signature;
   document.body.dataset.view=on?'3d':'2d';
@@ -4995,6 +5010,13 @@ function updateView3dUi(has3d){
   document.body.dataset.viewToggle=toggle&&!toggle.hidden?'1':'0';
   const controls=document.getElementById('view3d-controls');
   if(controls) controls.hidden=!on;
+  const rangeInput=document.getElementById('view-axis-range');
+  if(rangeInput){
+    rangeInput.value=String(view3d.autoAxisRange ? range : view3d.axisRange);
+    rangeInput.disabled=view3d.autoAxisRange;
+  }
+  const autoInput=document.getElementById('view-axis-auto');
+  if(autoInput) autoInput.checked=view3d.autoAxisRange;
   const proj=document.getElementById('view-proj');
   if(proj){
     const persp=view3d.camera.projection==='perspective';
@@ -5013,12 +5035,14 @@ function setViewMode(mode){
 }
 
 function render3d(){
+  const range=activeAxisRange();
+  if(range!==view3dFitAxisRange) fitCameraToViewport();
   const colors=colorsFromTheme(getCss);
   ctx.save();
   ctx.fillStyle=colors.bg;
   ctx.fillRect(0,0,W,H);
   ctx.restore();
-  const primitives=[...axesPrimitives(defaultBox(),{grid:view3d.grid}),...scenePrimitives(equations,{colorOf:eqColor})];
+  const primitives=[...axesPrimitives(axisBox(range),{grid:view3d.grid}),...scenePrimitives(equations,{colorOf:eqColor})];
   drawScene3d(ctx,buildDrawList(primitives,view3d.camera,{width:W,height:H}),colors);
   readout.style.display='none';
   const card=document.getElementById('analysis');
@@ -5284,6 +5308,31 @@ if(viewProjBtn) viewProjBtn.onclick=()=>{
   view3d.camera=createCamera({...view3d.camera,projection:view3d.camera.projection==='perspective'?'ortho':'perspective'});
   draw(); scheduleSave();
 };
+const axisRangeInput=document.getElementById('view-axis-range');
+const autoAxisInput=document.getElementById('view-axis-auto');
+if(autoAxisInput) autoAxisInput.addEventListener('change',()=>{
+  view3d.autoAxisRange=autoAxisInput.checked;
+  if(!view3d.autoAxisRange){
+    const range=Number(axisRangeInput?.value);
+    if(Number.isFinite(range)&&range>0) view3d.axisRange=range;
+  }
+  view3dFitAxisRange=null;
+  draw(); scheduleSave();
+});
+if(axisRangeInput) axisRangeInput.addEventListener('change',()=>{
+  const range=Number(axisRangeInput.value);
+  if(!Number.isFinite(range)||range<=0){
+    axisRangeInput.setCustomValidity('Informe um limite dos eixos maior que zero.');
+    axisRangeInput.reportValidity();
+    return;
+  }
+  axisRangeInput.setCustomValidity('');
+  view3d.axisRange=range;
+  view3d.autoAxisRange=false;
+  if(autoAxisInput) autoAxisInput.checked=false;
+  view3dFitAxisRange=null;
+  draw(); scheduleSave();
+});
 const fitBtn=document.getElementById('fit');
 if(fitBtn) fitBtn.onclick=fitToView;
 const gridBtn=document.getElementById('grid-mode');

@@ -3,7 +3,7 @@ import test from 'node:test';
 import { createCamera } from '../src/space3d/camera.js';
 import { parseGeometryInput } from '../src/geometry.js';
 import {
-  decideViewMode, has3dObjects, viewNotice, normalizeView3d, serializeView3d,
+  autoAxisLimit, decideViewMode, has3dObjects, viewNotice, normalizeView3d, serializeView3d,
   scenePrimitives, contourSegments, attachCameraControls
 } from '../src/space3d/view3d.js';
 
@@ -24,6 +24,14 @@ test('has3dObjects conta só linhas 3D visíveis e válidas',()=>{
   assert.equal(has3dObjects([geoEq('ponto: A=(1,2,3)',{error:true})]),false);
 });
 
+test('autoAxisLimit grows to visible finite geometry and keeps a minimum of five',()=>{
+  assert.equal(autoAxisLimit([]),5);
+  assert.equal(autoAxisLimit([geoEq('ponto: A=(5,0,0)')]),5);
+  assert.equal(autoAxisLimit([geoEq('dist: (0,0,0), (12,4,-3)')]),15);
+  assert.equal(autoAxisLimit([geoEq('ponto: A=(50,0,0)',{visible:false})]),5);
+  assert.equal(autoAxisLimit([geoEq('ponto: A=(50,0,0)',{error:true})]),5);
+});
+
 test('viewNotice avisa objetos 3D na vista 2D e não geométricos na vista 3D',()=>{
   assert.equal(viewNotice(geoEq('ponto: A=(1,2,3)'),'2d'),'objeto 3D: abra a vista 3D');
   assert.equal(viewNotice(geoEq('ponto: A=(1,2,3)'),'3d'),'');
@@ -39,6 +47,8 @@ test('normalizeView3d / serializeView3d guardam modo, câmera e zoom relativo',(
   assert.equal(empty.mode,'2d');
   assert.equal(empty.savedMode,false);
   assert.equal(empty.zoom,1);
+  assert.equal(empty.autoAxisRange,true);
+  assert.equal(empty.axisRange,5);
   const v=normalizeView3d({mode:'3d',grid:true,camera:{azimuth:30,elevation:10,projection:'perspective',zoom:2,target:[1,0,0]}});
   assert.equal(v.mode,'3d');
   assert.equal(v.savedMode,true);
@@ -47,7 +57,10 @@ test('normalizeView3d / serializeView3d guardam modo, câmera e zoom relativo',(
   assert.equal(v.camera.projection,'perspective');
   assert.equal(v.zoom,2);
   const out=serializeView3d({...v,camera:{...v.camera,scale:80,dragging:true}},40);
-  assert.deepEqual(out,{mode:'3d',grid:true,camera:{azimuth:30,elevation:10,distance:30,target:[1,0,0],projection:'perspective',zoom:2}});
+  assert.deepEqual(out,{mode:'3d',grid:true,autoAxisRange:true,axisRange:5,camera:{azimuth:30,elevation:10,distance:30,target:[1,0,0],projection:'perspective',zoom:2}});
+  const manual=normalizeView3d({autoAxisRange:false,axisRange:12});
+  assert.equal(manual.autoAxisRange,false);
+  assert.equal(manual.axisRange,12);
   assert.equal(normalizeView3d({mode:'xyz',camera:{zoom:-1}}).mode,'2d');
   assert.equal(normalizeView3d({mode:'3d',camera:{zoom:-1}}).zoom,1);
 });

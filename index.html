@@ -408,6 +408,12 @@
         <button id="view-yz" class="small" title="Vista lateral (plano yz)">yz</button>
         <button id="view-iso" class="small" title="Vista isométrica">iso</button>
         <button id="view-proj" class="small" title="Projeção ortográfica (alternar para perspectiva)" aria-label="Alternar projeção ortográfica/perspectiva">orto</button>
+        <label class="view-axis-control" title="Limite simétrico dos eixos">
+          ±<input id="view-axis-range" type="number" min="1" step="any" value="5" aria-label="Limite dos eixos 3D">
+        </label>
+        <label class="view-axis-auto-control" title="Expandir os eixos para incluir os objetos">
+          <input id="view-axis-auto" type="checkbox" checked> auto
+        </label>
       </span>
     </div>
     <div id="tools">

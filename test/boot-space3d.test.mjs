@@ -201,6 +201,26 @@ test('comandos 3D na URL selecionam automaticamente a vista 3D',async()=>{
   assert.match(String(byId('canvas-description').textContent),/Vista 3D/);
 });
 
+test('controles dos eixos 3D alternam entre limite manual e extensão automática',async()=>{
+  await boot({version:1,view3d:{mode:'3d',autoAxisRange:false,axisRange:12},
+    equations:[mk(0,'ponto: A=(21,0,0)')]});
+  const range=byId('view-axis-range');
+  const auto=byId('view-axis-auto');
+  assert.equal(range.value,'12');
+  assert.equal(range.disabled,false);
+  assert.equal(auto.checked,false);
+
+  auto.checked=true;
+  auto.fire('change');
+  await wait(20);
+  assert.equal(range.value,'25');
+  assert.equal(range.disabled,true);
+  assert.equal(auto.checked,true);
+  await settle();
+  assert.equal(saved.view3d.autoAxisRange,true);
+  assert.equal(saved.view3d.axisRange,12);
+});
+
 test('estado salvo com objeto 3D e view3d 3D inicializa e desenha a cena 3D',async()=>{
   await boot({version:1,theme:'light',view:{cx:0,cy:0,scale:60},
     view3d:{mode:'3d',camera:{azimuth:-60,elevation:25,projection:'ortho',zoom:1}},

@@ -32,6 +32,52 @@ export function has3dObjects(equations = []) {
   return equations.some(eq => eq?.visible !== false && is3dEquation(eq));
 }
 
+export function autoAxisLimit(equations = [], minimum = 5) {
+  let extent = finitePos(minimum, 5);
+  const include = point => {
+    const values = Array.isArray(point)
+      ? point
+      : point && Number.isFinite(point.x) && Number.isFinite(point.y)
+        ? [point.x, point.y, Number.isFinite(point.z) ? point.z : 0]
+        : [];
+    values.slice(0, 3).forEach(value => {
+      if (Number.isFinite(value)) extent = Math.max(extent, Math.abs(value));
+    });
+  };
+  const includeScene = primitive => {
+    if (!primitive) return;
+    if (primitive.kind === 'point' || primitive.kind === 'label') include(primitive.p);
+    else if (primitive.kind === 'segment') { include(primitive.a); include(primitive.b); }
+    else if (primitive.kind === 'arrow') { include(primitive.from); include(primitive.to); }
+    else if (primitive.kind === 'polygon') (primitive.points || []).forEach(include);
+    else if (primitive.kind === 'mesh') (primitive.vertices || []).forEach(include);
+    else if (primitive.kind === 'line') include(primitive.p);
+    else if (primitive.kind === 'plane' && Array.isArray(primitive.n)) {
+      const norm2 = primitive.n.reduce((sum, value) => sum + value * value, 0);
+      if (norm2 > 0 && Number.isFinite(primitive.d)) {
+        include(primitive.n.map(value => value * primitive.d / norm2));
+      }
+    }
+  };
+
+  equations.forEach(eq => {
+    if (!eq || eq.visible === false || eq.error || eq.kind !== 'geometry') return;
+    const geometry = eq.geometry;
+    if (!geometry) return;
+    (geometry.points || []).forEach(include);
+    (geometry.segments || []).forEach(segment => { include(segment.a); include(segment.b); });
+    (geometry.vectors || []).forEach(vector => { include(vector.from); include(vector.to); });
+    (geometry.scene3d || []).forEach(includeScene);
+  });
+
+  if (extent <= minimum) return minimum;
+  const target = Math.min(Number.MAX_SAFE_INTEGER, extent * 1.1);
+  const roughStep = target / 5;
+  const power = 10 ** Math.floor(Math.log10(roughStep));
+  const step = [1, 2, 5, 10].map(value => value * power).find(value => value >= roughStep) || power * 10;
+  return Math.max(minimum, Math.ceil(target / step - 1e-12) * step);
+}
+
 // The view switches to 3D only on the "no 3D object" → "some 3D object"
 // transition; otherwise the current (possibly manual or saved) choice stays.
 export function decideViewMode({previousHas3d, nowHas3d, current}) {
@@ -62,6 +108,8 @@ export function normalizeView3d(saved) {
     mode: s.mode === '3d' ? '3d' : '2d',
     savedMode,
     grid: s.grid === true,
+    autoAxisRange: s.autoAxisRange !== false,
+    axisRange: finitePos(s.axisRange, 5),
     camera: createCamera({azimuth:cam.azimuth, elevation:cam.elevation, distance:cam.distance, target:cam.target, projection:cam.projection}),
     zoom: finitePos(cam.zoom, 1),
   };
@@ -72,7 +120,8 @@ export function normalizeView3d(saved) {
 export function serializeView3d(view3d, fitScale) {
   const c = view3d.camera;
   const zoom = Number.isFinite(fitScale) && fitScale > 0 ? c.scale/fitScale : finitePos(view3d.zoom, 1);
-  return {mode:view3d.mode === '3d' ? '3d' : '2d', grid:!!view3d.grid, camera:{
+  return {mode:view3d.mode === '3d' ? '3d' : '2d', grid:!!view3d.grid,
+    autoAxisRange:view3d.autoAxisRange !== false, axisRange:finitePos(view3d.axisRange, 5), camera:{
     azimuth:c.azimuth, elevation:c.elevation, distance:c.distance, target:[...c.target], projection:c.projection,
     zoom:Number(zoom.toPrecision(12)),
   }};

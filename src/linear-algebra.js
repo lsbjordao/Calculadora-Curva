@@ -186,9 +186,9 @@ function reduce(A,{record=false}={}) {
     M[row] = M[row].map(x => x/pivot); M[row][col] = 1;snap('Normalizar L'+(row+1)+' pelo pivô '+pivot);
     for (let i = 0; i < m; i++) if (i !== row) {
       const f = M[i][col];
-      if(Math.abs(f)<=tol){M[i][col]=0;continue;}
       for (let j = 0; j < n; j++) M[i][j] -= f*M[row][j];
-      M[i][col] = 0;snap('L'+(i+1)+' ← L'+(i+1)+' − ('+f+')L'+(row+1));
+      M[i][col] = 0;
+      if(f!==0)snap('L'+(i+1)+' ← L'+(i+1)+' − ('+f+')L'+(row+1));
     }
     pivots.push(col); row++;
   }

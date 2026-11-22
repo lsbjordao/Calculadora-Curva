@@ -5077,7 +5077,7 @@ function render3d(){
     ctx.fillStyle=colors.bg;
     ctx.fillRect(0,0,W,H);
     ctx.restore();
-    drawScene3d(ctx,buildDrawList(primitives,view3d.camera,{width:W,height:H}),colors);
+    drawScene3d(ctx,buildDrawList(primitives,view3d.camera,{width:W,height:H},{systemPlaneBox:box}),colors);
   }
   
   readout.style.display='none';

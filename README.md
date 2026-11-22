@@ -183,3 +183,20 @@ a entrada. As cores dos três vetores são consistentes nos renderizadores.
 As transformações são modelos visuais de interpolação, não uma solução
 simbólica dos autovalores. A interpolação linear e os estágios da SVD podem
 atravessar matrizes singulares e inverter orientações.
+
+
+## Seções cônicas no espaço 3D
+
+Em **Presets → Cônicas e quádricas**, escolha **Seções do cone e circunferência**
+ou **Hipérbole e planos (3D)**. São construções geométricas que apresentam
+o cone duplo `x² + y² = z²` em azul, o plano secante
+`z = h + kx` em amarelo e a interseção em rosa. Ao substituir a cena,
+o preset abre automaticamente a vista 3D; selecione Plotly.js ou Three.js
+para visualizar a transparência.
+
+O comando nativo é `secao: 2,k` com parâmetro `k` ajustável: `k=0`
+dá circunferência, `0<|k|<1` elipse, `|k|=1` parábola
+e `|k|>1` hipérbole. O modelo representa apenas a janela finita
+do cone, portanto as seções abertas ficam truncadas nos limites de desenho.
+Os presets trazem variantes inicialmente ocultas; mostre uma por vez
+para comparar planos sem sobrepor quatro cones.

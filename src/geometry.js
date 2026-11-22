@@ -25,6 +25,7 @@ const COMMAND_ALIASES={
   line:'line', reta:'line',
   intersect:'intersect', intersection:'intersect', intersecao:'intersect',
   conic:'conic', conica:'conic',
+  section:'section', secao:'section', seccao:'section', secaocone:'section',
   plane:'plane', plano:'plane',
   position:'position', posicao:'position',
   matrix:'matrix', matriz:'matrix',
@@ -1029,7 +1030,7 @@ const COMMAND_NAMES_PT={
   angle:'angulo', dot:'produto escalar', projection:'projecao', triangle:'triangulo',
   quadrilateral:'quadrilatero', polygon:'poligono', convexHull:'poligono convexo',
   distance:'distancia', midpoint:'ponto medio', line:'reta', intersect:'intersecao',
-  conic:'conica', matrix:'matriz', plane:'plano', position:'posicao'
+  conic:'conica', section:'seção do cone', matrix:'matriz', plane:'plano', position:'posicao'
 };
 
 function runCommand(command,body,ctx,definitionName=''){

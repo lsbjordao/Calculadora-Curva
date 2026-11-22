@@ -46,7 +46,7 @@ export function buildWorkbenchCommand(kind,operation,A,B,k=2){
   }
   if(['det','inv','trace','eiginfo','matpow','lu'].includes(operation)&&a.length!==a[0].length) throw Error('A operação exige matriz quadrada.');
   if(operation==='eiginfo'&&![2,3].includes(a.length)) throw Error('Autovalores: 2×2 real ou 3×3 simétrica.');
-  if(operation==='matpow'&&(!Number.isInteger(Number(k))||Math.abs(Number(k))>100)) throw Error('Expoente inteiro entre -100 e 100.');
+  if(operation==='matpow'&&(String(k).trim()===''||!Number.isInteger(Number(k))||Math.abs(Number(k))>100)) throw Error('Expoente inteiro entre -100 e 100.');
   if(operation==='qr'&&a.length<a[0].length) throw Error('QR: número de linhas deve ser ≥ colunas.');
   if(operation==='matpow'||operation==='scale'){
     if(!Number.isFinite(Number(k))||String(k).trim()==='') throw Error('Escalar inválido.');

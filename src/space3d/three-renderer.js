@@ -52,6 +52,7 @@ export function prepareThreePrimitives(primitives, box=defaultBox) {
 }
 
 let threePromise=null, three=null, engine=null, pending=null, lastSignature=null, lastError=null;
+let initializing=false;
 function root(){return typeof document==='undefined'?null:document.getElementById('three-3d-container');}
 function message(text){
   const status=document.getElementById('three-3d-status');
@@ -265,6 +266,8 @@ export function renderThree3D(primitives,options={}){
   pending={primitives,options};
   if(lastError){message('Three.js indisponível: '+lastError.message+' — tente Plotly.js ou Canvas 2D.');return;}
   if(engine){try{renderPending();}catch(error){lastError=error;message('Erro ao renderizar Three.js: '+error.message);}return;}
+  if(initializing)return;
+  initializing=true;
   message('Carregando Three.js…');
   loadLibrary().then(T=>{
     const container=root();
@@ -275,12 +278,10 @@ export function renderThree3D(primitives,options={}){
   }).catch(error=>{
     lastError=error;
     if(root()?.style.display!=='none')message('Não foi possível iniciar Three.js (WebGL ou conexão indisponível). Use Plotly.js ou Canvas 2D.');
-  });
+  }).finally(()=>{initializing=false;});
 }
 export function resizeThree3D(){
-  if(!engine)return;
-  engine.width=engine.height=0;
-  renderPending();
+  if(engine)engine.width=engine.height=0;
 }
 export function clearThree3D(){
   pending=null;

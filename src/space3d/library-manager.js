@@ -149,11 +149,12 @@ export function updateVisibility(viewMode = '3d') {
 
   if (selector) selector.hidden = false;
 
+  const threeWasVisible = threeContainer?.style.display === 'block';
   if (cv) cv.style.display = currentLibrary === 'default' ? '' : 'none';
   if (plotlyContainer) plotlyContainer.style.display = currentLibrary==='plotly' ? 'block' : 'none';
   if (threeContainer) threeContainer.style.display = currentLibrary==='threejs' ? 'block' : 'none';
   if (currentLibrary === 'plotly') resizePlotly3D();
-  if (currentLibrary === 'threejs') resizeThree3D();
+  if (currentLibrary === 'threejs' && !threeWasVisible) resizeThree3D();
 }
 
 /**

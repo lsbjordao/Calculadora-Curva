@@ -207,3 +207,8 @@ para comparar planos sem sobrepor quatro cones.
 Os presets agora usam a expressão `secao: h,k,a,d,p`. Os controles são: h (altura do plano em relação ao vértice), k (inclinação), a (abertura radial do cone), d (deslocamento vertical do vértice) e p (rotação azimutal do plano, em radianos).
 
 A superfície é `x²+y²=a²(z-d)²` e o plano `z=d+h+k(x cos(p)+y sin(p))`. O limite entre elipse e hipérbole é `|a*k|=1`. É mantida a sintaxe original `secao: 2,k` (a=1, d=p=0). Linhas ocultas nos presets permanecem ocultas até que o usuário ative o olho.
+
+
+### Inclinação até plano vertical exato
+
+Os presets de **Cônicas e quádricas (3D)** utilizam agora `secao: h,angulo(q),a,d,p,b`. O parâmetro `q` é o ângulo de inclinação em graus, com slider de −90° até +90°; ambos os extremos são planos realmente verticais. O controle `b` é o afastamento horizontal positivo do plano, que preserva uma hipérbole não degenerada em ±90°. Os demais controles h, a, d e p foram preservados. A condição para a parábola é `a*|tan(q)|=1`; no ângulo de 90° a seção é hiperbólica. O formato antigo `secao: h,k,a,d,p` continua funcionando com k como coeficiente angular.

@@ -99,9 +99,9 @@ try{
   // The section preset must expose independent shape, placement and
   // rotation controls; modifying a slider must change the visible 3D scene.
   const firstConic=page.locator('.row').first();
-  nodeAssert.equal(await firstConic.locator('.param-control').count(),5);
+  nodeAssert.equal(await firstConic.locator('.param-control').count(),6);
   const initialImage=await page.locator('#stage').screenshot();
-  for(const [name,value] of [['h','3'],['a','1.5'],['d','1.1'],['p','0.7']]){
+  for(const [name,value] of [['h','3'],['a','1.5'],['d','1.1'],['p','0.7'],['q','90']]){
     await firstConic.locator('.param-control[data-param="'+name+'"] input[type="number"]').fill(value);
     await page.waitForTimeout(120);
   }
@@ -115,6 +115,7 @@ try{
   nodeAssert.equal(geometryState.equations[0].params.a,1.5);
   nodeAssert.equal(geometryState.equations[0].params.d,1.1);
   nodeAssert.equal(geometryState.equations[0].params.p,.7);
+  nodeAssert.equal(geometryState.equations[0].params.q,90);
   await page.screenshot({path:resolve(screenshots,'desktop-hiperbole-parametros-ajustados.png')});
 
   await toggle.click();

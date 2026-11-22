@@ -379,7 +379,12 @@ function sanitizeParams(params){
 
 function setupParams(eq, names){
   eq.params=sanitizeParams(eq.params);
-  names.forEach(name=>{ if(!Number.isFinite(eq.params[name])) eq.params[name]=PARAM_DEFAULTS[name] ?? 1; });
+  names.forEach(name=>{
+    if(!Number.isFinite(eq.params[name])){
+      const isAngled=/^\s*secao\s*:[^\n]*angulo\(/i.test(eq.text);
+      eq.params[name]=isAngled&&name==='b'?.75:isAngled&&name==='q'?0:PARAM_DEFAULTS[name]??1;
+    }
+  });
   Object.keys(eq.params).forEach(name=>{ if(!names.includes(name)) delete eq.params[name]; });
   eq.paramNames=names;
 }
@@ -1661,7 +1666,9 @@ function renderRows(){
         const isSection=/^\s*(?:secao|seccao|secaocone|section)\s*:/i.test(eq.text);
         const sectionControls={
           h:{min:0.25,max:4.5,step:0.05,label:'h · altura do plano ao vértice'},
-          k:{min:-3,max:3,step:0.05,label:'k · inclinação do plano'},
+          k:{min:-3,max:3,step:0.05,label:'k · inclinação (razão)'}, 
+          q:{min:-90,max:90,step:1,label:'q · inclinação do plano (°), até vertical'},
+          b:{min:0.1,max:4,step:0.05,label:'b · afastamento horizontal do plano'},
           a:{min:0.4,max:2.5,step:0.05,label:'a · abertura do cone'},
           d:{min:-4,max:4,step:0.1,label:'d · altura do vértice'},
           p:{min:-3.14,max:3.14,step:0.05,label:'p · rotação do plano (rad)'}

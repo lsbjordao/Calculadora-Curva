@@ -77,8 +77,8 @@ test('presets de cônicas 3D são registrados e não confundidos com análise pl
   assert.ok(circle);
   assert.ok(hyperbola);
   assert.equal(circle.category,'Cônicas e quádricas');
-  assert.equal(circle.equations[0].params.k,0);
-  assert.equal(hyperbola.equations[0].params.k,1.6);
+  assert.equal(circle.equations[0].params.q,0);
+  assert.equal(hyperbola.equations[0].params.q,58);
   assert.equal(hyperbola.equations[0].visible,undefined);
   assert.ok(hyperbola.equations.slice(1).every(e=>e.visible===false));
   assert.equal(PRESETS.find(p=>p.id==='conic-analysis').equations.length,4);
@@ -89,7 +89,7 @@ test('aula Cônicas e quádricas apresenta as quatro seções do cone no 3D',()=
   assert.ok(lesson);
   assert.equal(lesson.steps.length,4);
   assert.equal(lesson.steps[0].title,'Seções do cone e circunferência');
-  assert.deepEqual(lesson.steps.map(step=>step.scene.equations[0].params.k),[0,.5,1,1.6]);
+  assert.deepEqual(lesson.steps.map(step=>step.scene.equations[0].params.q),[0,27,45,58]);
   for(const step of lesson.steps){
     const entry=step.scene.equations[0];
     const r=parseGeometryInput(entry.text,{params:entry.params});
@@ -152,8 +152,8 @@ test('presets de seções do cone expõem os cinco controles com valores coerent
   for(const id of ['cone-sections-3d','cone-hyperbola-planes-3d']){
     const preset=PRESETS.find(x=>x.id===id);
     for(const entry of preset.equations){
-      assert.equal(entry.text,'secao: h,k,a,d,p');
-      assert.deepEqual(Object.keys(entry.params),['h','k','a','d','p']);
+      assert.equal(entry.text,'secao: h,angulo(q),a,d,p,b');
+      assert.deepEqual(Object.keys(entry.params),['h','q','a','d','p','b']);
       const result=parseGeometryInput(entry.text,{params:entry.params});
       assert.ok(!result.error,String(result.error));
     }

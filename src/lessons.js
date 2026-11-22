@@ -990,15 +990,15 @@ export const LESSONS=[
       {
         title:'Seções do cone e circunferência',
         text:'No espaço, a circunferência aparece quando o plano horizontal z = d+h corta o cone x²+y²=a²(z-d)². h regula o tamanho da seção, a regula a abertura e d desloca o vértice. A interseção rosa é o conjunto de pontos que pertencem simultaneamente ao cone azul e ao plano amarelo.',
-        focus:'Gire o gráfico 3D e observe que a curva rosa pertence às duas superfícies. Em k = 0, ela é um círculo de raio 2.',
+        focus:'Gire o gráfico 3D e observe que a curva rosa pertence às duas superfícies. Em q = 0°, ela é um círculo de raio 2.',
         checkpoint:{
-          prompt:'Checkpoint: altere o parâmetro k de 0 para 0.3 e veja o círculo virar elipse.',
+          prompt:'Checkpoint: altere o ângulo q de 0° para 20° e veja o círculo virar elipse.',
           success:'O plano foi inclinado.',
-          next:'Com |k| entre 0 e 1, a seção é uma elipse fechada, e não uma circunferência.',
-          check:{type:'number-param',eq:0,param:'k',value:0.3,tol:1e-9}
+          next:'Com q entre 0° e 45° (para a = 1), a seção é uma elipse fechada, e não uma circunferência.',
+          check:{type:'number-param',eq:0,param:'q',value:20,tol:1e-9}
         },
         scene:{view:{cx:0,cy:0,scale:58},equations:[
-          {text:'secao: h,k,a,d,p',params:{h:2,k:0,a:1,d:0,p:0},name:'Circunferência no plano horizontal'}
+          {text:'secao: h,angulo(q),a,d,p,b',params:{h:2,q:0,a:1,d:0,p:0,b:0.75},name:'Circunferência no plano horizontal'}
         ]}
       },
       {
@@ -1006,41 +1006,41 @@ export const LESSONS=[
         text:'Ao inclinar o plano com 0 < |k| < 1, ele continua cruzando apenas uma das metades do cone. A seção fica oval e fechada: uma elipse.',
         focus:'Compare a elipse com o círculo anterior e observe a mudança da inclinação do plano.',
         checkpoint:{
-          prompt:'Checkpoint: aumente k para 0.8, mantendo |k| menor que 1.',
+          prompt:'Checkpoint: aumente q para 40°, mantendo q menor que 45°.',
           success:'A seção elíptica foi alongada.',
           next:'Quanto mais perto da inclinação de uma geratriz, mais alongada fica a elipse.',
-          check:{type:'number-param',eq:0,param:'k',value:0.8,tol:1e-9}
+          check:{type:'number-param',eq:0,param:'q',value:40,tol:1e-9}
         },
         scene:{view:{cx:0,cy:0,scale:58},equations:[
-          {text:'secao: h,k,a,d,p',params:{h:2,k:0.5,a:1,d:0,p:0},name:'Elipse sobre o cone'}
+          {text:'secao: h,angulo(q),a,d,p,b',params:{h:2,q:27,a:1,d:0,p:0,b:0.75},name:'Elipse sobre o cone'}
         ]}
       },
       {
         title:'Parábola e geratriz',
-        text:'Em |a·k| = 1 o plano torna-se paralelo a uma geratriz do cone. A seção é uma parábola aberta; no desenho finito, apenas um trecho aparece.',
+        text:'Quando tan(|q|) = 1/a o plano torna-se paralelo a uma geratriz do cone. A seção é uma parábola aberta; no desenho finito, apenas um trecho aparece.',
         focus:'Observe o ramo rosa estender-se até a borda do cone desenhado.',
         checkpoint:{
-          prompt:'Checkpoint: aumente a inclinação para k = 1.6 para produzir uma hipérbole.',
+          prompt:'Checkpoint: aumente a inclinação para q = 58° para produzir uma hipérbole.',
           success:'O plano passou a atravessar as duas metades do cone.',
           next:'Agora a interseção apresenta dois ramos: é uma hipérbole.',
-          check:{type:'number-param',eq:0,param:'k',value:1.6,tol:1e-9}
+          check:{type:'number-param',eq:0,param:'q',value:58,tol:1e-9}
         },
         scene:{view:{cx:0,cy:0,scale:58},equations:[
-          {text:'secao: h,k,a,d,p',params:{h:2,k:1,a:1,d:0,p:0},name:'Parábola como seção'}
+          {text:'secao: h,angulo(q),a,d,p,b',params:{h:2,q:45,a:1,d:0,p:0,b:0.75},name:'Parábola como seção'}
         ]}
       },
       {
         title:'Hipérbole e planos secantes',
-        text:'Com |a·k| > 1, o plano alcança as duas metades do cone duplo. A interseção possui dois ramos desconectados — a hipérbole — que se prolongariam indefinidamente num cone sem limites.',
+        text:'Com tan(|q|) > 1/a, o plano alcança as duas metades do cone duplo. A interseção possui dois ramos desconectados — a hipérbole — que se prolongariam indefinidamente num cone sem limites.',
         focus:'Gire a cena e identifique um ramo em cada metade do cone; compare com o plano horizontal da circunferência.',
         checkpoint:{
-          prompt:'Checkpoint: mude k para 0 e recupere a seção circular.',
+          prompt:'Checkpoint: mude q para 0° e recupere a seção circular.',
           success:'A seção voltou a ser uma circunferência.',
           next:'É a mesma superfície cônica: a família da curva depende da orientação do plano secante.',
-          check:{type:'number-param',eq:0,param:'k',value:0,tol:1e-9}
+          check:{type:'number-param',eq:0,param:'q',value:0,tol:1e-9}
         },
         scene:{view:{cx:0,cy:0,scale:58},equations:[
-          {text:'secao: h,k,a,d,p',params:{h:2,k:1.6,a:1,d:0,p:0},name:'Hipérbole do cone duplo'}
+          {text:'secao: h,angulo(q),a,d,p,b',params:{h:2,q:58,a:1,d:0,p:0,b:0.75},name:'Hipérbole do cone duplo'}
         ]}
       }
     ]

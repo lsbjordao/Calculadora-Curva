@@ -96,7 +96,7 @@ test('cameraToPlotlyEye maps camera direction to 3D spherical eye', () => {
   assert.ok(eyeData.up, 'Up vector exists');
 });
 
-test('DOM visibility toggles with stub elements', () => {
+test('DOM visibility toggles with stub elements', async () => {
   const stubElements = new Map();
   const makeStub = (id) => ({
     id,

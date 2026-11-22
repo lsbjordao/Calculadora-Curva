@@ -10,6 +10,24 @@ import { attachCameraControls } from './view3d.js';
 export const THREE_MODULE_URL = 'https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.js';
 const valid3 = p => Array.isArray(p) && p.length===3 && p.every(Number.isFinite);
 const defaultBox = {min:[-5,-5,-5],max:[5,5,5]};
+const THIN = [1,2,5,10,20,50,100];
+/**
+ * Like Canvas' tick culling, hide axis-aligned ticks when the axis points
+ * toward the viewer, and thin numerical labels when they get crowded.
+ * Explicit "1 em 1" preserves all tick labels, as in Canvas.
+ */
+export function threeTickVisible(prim,camera){
+  if(prim?.role!=='tick'||!Number.isInteger(prim.axis))return true;
+  if(prim.showEveryTick)return true;
+  if(!camera || !Number.isFinite(camera.scale))return true;
+  const basis=cameraBasis(camera),axis=prim.axis;
+  const pxPerUnit=camera.scale*Math.hypot(basis.right[axis],basis.up[axis]);
+  if(pxPerUnit<6)return false;
+  if(prim.kind!=='label')return true;
+  const step=prim.step>0?prim.step:1,px=pxPerUnit*step;
+  const every=THIN.find(v=>px*v>=28)??Infinity;
+  return Math.round(prim.value/step)%every===0;
+}
 const fallbackColor = prim =>
   prim.color || (prim.role==='grid' ? '#d8dee6' : prim.role==='axis' || prim.role==='tick' ? '#82909e' : '#2878b8');
 
@@ -18,13 +36,12 @@ const fallbackColor = prim =>
  * Pure, DOM-free; shared by node tests and the renderer. No changes to data
  * models used in the Canvas/Plotly renderers.
  */
-export function prepareThreePrimitives(primitives, box=defaultBox) {
+export function prepareThreePrimitives(primitives, box=defaultBox, {camera=null}={}) {
   const result=[];
   if(!Array.isArray(primitives))return result;
   for(const prim of primitives){
     if(!prim || typeof prim!=='object')continue;
-    if(prim.kind==='label' && prim.role==='tick')continue; // clear uncluttered axes
-    if(prim.kind==='segment' && prim.role==='tick')continue;
+    if(!threeTickVisible(prim,camera))continue;
     const color=fallbackColor(prim);
     if(prim.kind==='plane'){
       if(!valid3(prim.n)||!Number.isFinite(prim.d))continue;
@@ -101,17 +118,19 @@ function disposeGroup(group){
   group.clear();
 }
 function asVector(T,p){return new T.Vector3(p[0],p[1],p[2]);}
-function labelSprite(T, text, position, color, {axis=false}={}){
+function labelSprite(T, text, position, color, {axis=false,tick=false,dark=false}={}){
   const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
-  const fontSize=axis?17:13;
+  const fontSize=axis?17:tick?11:13;
   ctx.font='600 '+fontSize+'px system-ui, sans-serif';
   const w=Math.ceil(ctx.measureText(text).width)+18,h=fontSize+14;
   canvas.width=w*2;canvas.height=h*2;
   ctx.scale(2,2);
   ctx.font='600 '+fontSize+'px system-ui, sans-serif';
-  ctx.fillStyle='rgba(255,255,255,0.91)';
-  if(ctx.roundRect){ctx.beginPath();ctx.roundRect(0,0,w,h,5);ctx.fill();}
-  else ctx.fillRect(0,0,w,h);
+  if(!tick){
+    ctx.fillStyle=dark?'rgba(7,23,27,0.9)':'rgba(255,255,255,0.91)';
+    if(ctx.roundRect){ctx.beginPath();ctx.roundRect(0,0,w,h,5);ctx.fill();}
+    else ctx.fillRect(0,0,w,h);
+  }
   ctx.fillStyle=color;
   ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,w/2,h/2);
   const texture=new T.CanvasTexture(canvas);
@@ -156,7 +175,7 @@ function meshObject(T,vertices,faces,color,alpha){
   mesh.renderOrder=isTransparent?1:0;
   return mesh;
 }
-function polygonObject(T,prim){
+function polygonObject(T,prim,opts){
   const points=prim.points,color=prim.color;
   const wrap=new T.Group();
   wrap.add(meshObject(T,points,[points.map((_,i)=>i)],color,prim.alpha??.28));
@@ -165,15 +184,15 @@ function polygonObject(T,prim){
   border.renderOrder=3;wrap.add(border);
   if(prim.label){
     const p=points.reduce((sum,pt)=>sum.map((v,i)=>v+pt[i]/points.length),[0,0,0]);
-    const label=labelSprite(T,prim.label,p,color);
+    const label=labelSprite(T,prim.label,p,color,{dark:opts.dark});
     wrap.add(label);
   }
   return wrap;
 }
-function addPrimitive(T,group,p){
+function addPrimitive(T,group,p,opts){
   const color=p.color;
   switch(p.kind){
-    case 'polygon':group.add(polygonObject(T,p));break;
+    case 'polygon':group.add(polygonObject(T,p,opts));break;
     case 'mesh': {
       group.add(meshObject(T,p.vertices,p.faces,color,p.alpha??.55));
       break;
@@ -191,18 +210,18 @@ function addPrimitive(T,group,p){
         head.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),delta.normalize());
         head.renderOrder=4;group.add(head);
       }
-      if(p.label)group.add(labelSprite(T,p.label,p.to,color));
+      if(p.label)group.add(labelSprite(T,p.label,p.to,color,{dark:opts.dark}));
       break;
     }
     case 'point':{
       const radius=p.systemSolution?.17:.075;
       const sphere=new T.Mesh(new T.SphereGeometry(radius,16,12),new T.MeshBasicMaterial({color,depthTest:true}));
       sphere.position.copy(asVector(T,p.p));sphere.renderOrder=5;group.add(sphere);
-      if(p.label)group.add(labelSprite(T,p.label,[p.p[0],p.p[1],p.p[2]+radius*1.8],color));
+      if(p.label)group.add(labelSprite(T,p.label,[p.p[0],p.p[1],p.p[2]+radius*1.8],color,{dark:opts.dark}));
       break;
     }
     case 'label':{
-      group.add(labelSprite(T,p.text,p.p,color,{axis:p.role==='axis'}));
+      group.add(labelSprite(T,p.text,p.p,color,{axis:p.role==='axis',tick:p.role==='tick',dark:opts.dark}));
       break;
     }
   }
@@ -233,9 +252,9 @@ function setCamera(T,E,opts,width,height){
     if(w&&h)sprite.scale.set(w/scale,h/scale,1);
   }
 }
-function updateScene(T,E,prepared){
+function updateScene(T,E,prepared,options){
   disposeGroup(E.group);
-  for(const p of prepared)addPrimitive(T,E.group,p);
+  for(const p of prepared)addPrimitive(T,E.group,p,{dark:options.theme==='dark'});
   E.sprites=[];
   E.group.traverse(obj=>{if(obj.isSprite)E.sprites.push(obj);});
 }
@@ -246,10 +265,10 @@ function renderPending(){
   const width=Math.max(1,Math.round(rect.width)),height=Math.max(1,Math.round(rect.height));
   if(!rect.width||!rect.height)return;
   const {primitives,options}=pending,box=options.box||defaultBox;
-  const prepared=prepareThreePrimitives(primitives,box);
-  const signature=JSON.stringify(prepared); // reuse GPU buffers when only camera moves
+  const prepared=prepareThreePrimitives(primitives,box,{camera:options.camera});
+  const signature=JSON.stringify([prepared,options.theme]); // reuse buffers when only camera moves
   if(signature!==lastSignature){
-    updateScene(three,engine,prepared);
+    updateScene(three,engine,prepared,options);
     lastSignature=signature;
   }
   if(width!==engine.width||height!==engine.height){

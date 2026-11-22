@@ -292,3 +292,34 @@ test('colorsFromTheme reads the style.css variables with fallbacks', () => {
   assert.deepEqual([d.axis, d.grid, d.text, d.bg, d.muted], ['#586273','#222a34','#e8ebf0','#0d1017','#9aa4b2']);
   assert.ok(colorsFromTheme(() => { throw new Error('sem DOM'); }).text);
 });
+
+test('Canvas: solveinfo 3×3 recorta os três planos ao alcance dos eixos e ancora os rótulos',async()=>{
+  const {buildSystemScene3D}=await import('../src/linear-transform-view.js');
+  const {scenePrimitives}=await import('../src/space3d/view3d.js');
+  const system=buildSystemScene3D([[1,1,1],[2,-1,1],[1,2,-1]],[6,3,2],[1,2,3]);
+  const eq={kind:'result',visible:true,error:false,showAlgebraSystem:true,systemScene3d:system};
+  const prims=scenePrimitives([eq],{colorOf:()=> '#000000',box:defaultBox()});
+  const cam=createCamera({azimuth:-60,elevation:25,scale:58});
+  const viewport={width:1460,height:1000};
+  const list=buildDrawList(prims,cam,viewport,{systemPlaneBox:defaultBox()});
+  const patches=list.filter(p=>p.kind==='polygon'&&p.source.systemPlane);
+  const labels=list.filter(p=>p.kind==='label'&&p.source.systemPlane);
+  assert.equal(patches.length,3);
+  assert.equal(labels.length,3);
+  assert.equal(new Set(patches.map(p=>p.color)).size,3);
+  for(const patch of patches){
+    assert.ok(patch.points.length>=3);
+    // With orthographic projection the centroid must fall within the patch's
+    // screen-space bounding box, not out in the blank canvas.
+    const label=labels.find(l=>l.source===patch.source);
+    assert.ok(label);
+    const xs=patch.points.map(p=>p.x),ys=patch.points.map(p=>p.y);
+    assert.ok(label.x>=Math.min(...xs)-1e-8&&label.x<=Math.max(...xs)+1e-8);
+    assert.ok(label.y>=Math.min(...ys)-1e-8&&label.y<=Math.max(...ys)+1e-8);
+  }
+  assert.equal(list.filter(p=>p.kind==='point'&&p.source.systemSolution).length,1);
+  // Contrast with old viewport-dependent, much larger clipping.
+  const old=buildDrawList(prims,cam,viewport).filter(p=>p.kind==='polygon'&&p.source.systemPlane);
+  const area=p=>{const xs=p.points.map(v=>v.x),ys=p.points.map(v=>v.y);return (Math.max(...xs)-Math.min(...xs))*(Math.max(...ys)-Math.min(...ys));};
+  assert.ok(patches.some((p,i)=>area(p)<area(old[i])*.8),'Planos de sistema não devem extrapolar os eixos');
+});

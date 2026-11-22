@@ -21,6 +21,10 @@ const MIN_TICK_PX = 6, TICK_LABEL_PX = 28, THIN = [1, 2, 5, 10, 20, 50, 100];
 export function buildDrawList(primitives, camera, viewport, opts = {}) {
   if (!Array.isArray(primitives) || !camera || !viewport) return [];
   const box = opts.box || visibleBox(camera, viewport);
+  // For linear systems, limit infinite planes to the same ±axis range as the
+  // axes. The old view-sized clipping box made a giant diagonal band dominate
+  // the Canvas and could leave the other two planes almost entirely offscreen.
+  const systemPlaneBox = opts.systemPlaneBox || box;
   const labelHalf = .8*Math.min(viewport.width, viewport.height)/(2*camera.scale);
   const labelBox = labelHalf > 0 ? {min:camera.target.map(c => c-labelHalf), max:camera.target.map(c => c+labelHalf)} : box;
   const basis = cameraBasis(camera), body = [], labels = [], {forward} = basis, t = camera.target;
@@ -120,13 +124,21 @@ export function buildDrawList(primitives, camera, viewport, opts = {}) {
       }
       case 'plane': {
         if (!finiteVec(prim.n) || !Number.isFinite(prim.d)) break;
-        const pts = clipPlaneToBox(prim.n, prim.d, box);
+        const pts = clipPlaneToBox(prim.n, prim.d, prim.systemPlane ? systemPlaneBox : box);
         if (pts.length < 3) break;
         const before = body.length;
         surface(prim, pts);
         if (body.length === before) break;
-        const at = clipPlaneToBox(prim.n, prim.d, labelBox)[0], q = (at && proj(at)) || proj(pts[0]);
-        if (q) pushLabel(prim, q, prim.label);
+        if (prim.systemPlane) {
+          // Place the label on the actual visible patch, not at an unrelated
+          // corner of the much larger world clipping box.
+          const center = [0,1,2].map(axis => pts.reduce((sum,p)=>sum+p[axis],0)/pts.length);
+          const q=proj(center);
+          if(q) pushLabel(prim,q,prim.label,{anchor:'plane'});
+        } else {
+          const at = clipPlaneToBox(prim.n, prim.d, labelBox)[0], q = (at && proj(at)) || proj(pts[0]);
+          if (q) pushLabel(prim, q, prim.label);
+        }
         break;
       }
       case 'polygon': surface(prim, prim.points); break;
@@ -222,11 +234,11 @@ export function drawScene3d(ctx, drawList, colors = colorsFromTheme(() => '')) {
         item.points.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
         ctx.closePath();
         ctx.fillStyle = color;
-        ctx.globalAlpha = aux ? item.alpha*.6 : item.alpha;
+        ctx.globalAlpha = aux ? item.alpha*.6 : item.source?.systemPlane ? item.alpha*.75 : item.alpha;
         ctx.fill();
         ctx.strokeStyle = color;
         ctx.lineWidth = item.mesh ? .6 : 1.2;
-        ctx.globalAlpha = item.mesh ? .35 : (aux ? .4 : .6);
+        ctx.globalAlpha = item.mesh ? .35 : (aux ? .4 : item.source?.systemPlane ? .72 : .6);
         if (aux) ctx.setLineDash([4,3]);
         ctx.stroke();
         break;
@@ -250,7 +262,7 @@ export function drawScene3d(ctx, drawList, colors = colorsFromTheme(() => '')) {
         ctx.strokeStyle = colors.bg;
         ctx.globalAlpha = aux ? .6 : 1;
         ctx.beginPath();
-        ctx.arc(item.x, item.y, 4.5, 0, Math.PI*2);
+        ctx.arc(item.x, item.y, item.source?.systemSolution ? 6.5 : 4.5, 0, Math.PI*2);
         ctx.fill();
         ctx.stroke();
         break;

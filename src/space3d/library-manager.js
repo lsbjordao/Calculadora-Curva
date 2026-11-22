@@ -2,10 +2,11 @@
 
 /**
  * 3D Library Manager
- * Handles switching between the custom Canvas 2D (browser API) renderer and Plotly.js 3D renderer
+ * Handles switching between custom Canvas 2D, Plotly.js and Three.js WebGL renderers
  */
 
 import { renderPlotly3D, clearPlotly3D, resizePlotly3D, updatePlotlyCamera } from './plotly-renderer.js';
+import { renderThree3D, clearThree3D, resizeThree3D, resetThree3DError } from './three-renderer.js';
 export { updatePlotlyCamera };
 
 let currentLibrary = 'default';
@@ -15,8 +16,8 @@ function getSavedLibrary() {
   if (typeof localStorage === 'undefined') return null;
   try {
     const saved = localStorage.getItem('3d-library-preference');
-    if (saved === 'plotly') return 'plotly';
-    if (saved === 'default' || saved === 'threejs' || saved === 'native') return 'default';
+    if (saved === 'plotly' || saved === 'threejs') return saved;
+    if (saved === 'default' || saved === 'native') return 'default';
   } catch (_) {}
   return null;
 }
@@ -57,14 +58,14 @@ export function init3DLibrarySelector() {
 
 /**
  * Set the active 3D library
- * @param {string} library - 'default' (or 'threejs'/'native') or 'plotly'
+ * @param {string} library - 'default' (or legacy 'native'), 'plotly', 'threejs'
  * @param {Object} options - { redraw: boolean }
  */
 export async function setActive3DLibrary(library, { redraw = true } = {}) {
   let normalized = library;
-  if (normalized === 'threejs' || normalized === 'native') normalized = 'default';
+  if (normalized === 'native') normalized = 'default';
 
-  if (normalized !== 'default' && normalized !== 'plotly') {
+  if (normalized !== 'default' && normalized !== 'plotly' && normalized !== 'threejs') {
     console.warn('Biblioteca 3D desconhecida:', library);
     return;
   }
@@ -73,6 +74,7 @@ export async function setActive3DLibrary(library, { redraw = true } = {}) {
 
   currentLibrary = normalized;
   setSavedLibrary(normalized);
+  if(normalized==='threejs') resetThree3DError();
 
   const selector = typeof document !== 'undefined' && document.getElementById('3d-lib-select');
   if (selector && selector.value !== normalized) {
@@ -101,7 +103,7 @@ export function onActive3DLibraryChange(callback) {
 }
 
 /**
- * Get the currently active library ('default' | 'plotly')
+ * Get the currently active renderer ('default' | 'plotly' | 'threejs')
  */
 export function getActive3DLibrary() {
   return currentLibrary;
@@ -113,19 +115,17 @@ export function getActive3DLibrary() {
  * @param {Object} options - Rendering options
  */
 export async function render3DScene(primitives, options = {}) {
-  if (currentLibrary === 'plotly') {
-    return renderPlotly3D(primitives, options);
-  }
-  // Native rendering is handled by the main app drawScene3d
+  if (currentLibrary === 'plotly') return renderPlotly3D(primitives, options);
+  if (currentLibrary === 'threejs') return renderThree3D(primitives, options);
+  // Canvas rendering is handled by the main app drawScene3d
 }
 
 /**
  * Clear current 3D scene
  */
 export function clear3DScene() {
-  if (currentLibrary === 'plotly') {
-    clearPlotly3D();
-  }
+  if (currentLibrary === 'plotly') clearPlotly3D();
+  if (currentLibrary === 'threejs') clearThree3D();
 }
 
 /**
@@ -136,36 +136,32 @@ export function updateVisibility(viewMode = '3d') {
   if (typeof document === 'undefined') return;
   const cv = document.getElementById('cv');
   const plotlyContainer = document.getElementById('plotly-3d-container');
+  const threeContainer = document.getElementById('three-3d-container');
   const selector = document.getElementById('3d-library-selector');
 
   if (viewMode !== '3d') {
     if (cv) cv.style.display = '';
     if (plotlyContainer) plotlyContainer.style.display = 'none';
+    if (threeContainer) threeContainer.style.display = 'none';
     if (selector) selector.hidden = true;
     return;
   }
 
   if (selector) selector.hidden = false;
 
-  if (currentLibrary === 'plotly') {
-    if (cv) cv.style.display = 'none';
-    if (plotlyContainer) {
-      plotlyContainer.style.display = 'block';
-      resizePlotly3D();
-    }
-  } else {
-    if (cv) cv.style.display = '';
-    if (plotlyContainer) plotlyContainer.style.display = 'none';
-  }
+  if (cv) cv.style.display = currentLibrary === 'default' ? '' : 'none';
+  if (plotlyContainer) plotlyContainer.style.display = currentLibrary==='plotly' ? 'block' : 'none';
+  if (threeContainer) threeContainer.style.display = currentLibrary==='threejs' ? 'block' : 'none';
+  if (currentLibrary === 'plotly') resizePlotly3D();
+  if (currentLibrary === 'threejs') resizeThree3D();
 }
 
 /**
  * Handle window resize
  */
 export function handle3DResize() {
-  if (currentLibrary === 'plotly') {
-    resizePlotly3D();
-  }
+  if (currentLibrary === 'plotly') resizePlotly3D();
+  if (currentLibrary === 'threejs') resizeThree3D();
 }
 
 /**

@@ -41,6 +41,7 @@ import { axesPrimitives } from './space3d/scene3d.js';
 import { buildDrawList, drawScene3d, colorsFromTheme } from './space3d/render3d.js';
 import { attachCameraControls, autoAxisLimit, CAMERA_HINT, decideViewMode, hasGuidesChip, has3dObjects, normalizeView3d, scenePrimitives, serializeView3d, viewNotice } from './space3d/view3d.js';
 import { init3DLibrarySelector, getActive3DLibrary, render3DScene, show3DLibrarySelector, hide3DLibrarySelector, handle3DResize, onActive3DLibraryChange, updatePlotlyCamera } from './space3d/library-manager.js';
+import { initThree3DControls } from './space3d/three-renderer.js';
 
 const PALETTES={
   light:["#c0492f","#2d70b3","#2f7d5b","#6042a6","#d98324","#1d1d1f","#0a8aa6","#a8336e"],
@@ -3070,7 +3071,10 @@ const dataTable=createDataTable();
 
 function resize(){
   dpr=window.devicePixelRatio||1;
-  const r=cv.getBoundingClientRect();
+  // Canvas is hidden in Plotly/Three.js, so measure the visible stage.
+  const canvasRect=cv.getBoundingClientRect();
+  const r=canvasRect.width>0&&canvasRect.height>0
+    ?canvasRect:document.getElementById('stage').getBoundingClientRect();
   W=r.width; H=r.height;
   cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
   ctx.setTransform(dpr,0,0,dpr,0,0);
@@ -5057,8 +5061,8 @@ function render3d(){
   const box=axisBox(range);
   const primitives=[...axesPrimitives(box,{grid:view3d.grid,axisTickStep:view3d.axisTickStep}),...scenePrimitives(equations,{colorOf:eqColor,box})];
 
-  if(getActive3DLibrary()==='plotly'){
-    // Render with Plotly.js
+  if(getActive3DLibrary()==='plotly'||getActive3DLibrary()==='threejs'){
+    // Render with Plotly.js or Three.js (WebGL)
     render3DScene(primitives, {
       theme,
       colors,
@@ -5329,7 +5333,12 @@ document.getElementById('reset').onclick=()=>{
   draw(); scheduleSave();
 };
 attachCameraControls(cv,()=>view3d.camera,camera=>{ view3d.camera=camera; },draw,{
-  isActive:()=>view3d.mode==='3d',
+  isActive:()=>view3d.mode==='3d'&&getActive3DLibrary()==='default',
+  onCommit:scheduleSave,
+  defaultCamera:()=>defaultCamera3d(view3d.camera)
+});
+initThree3DControls(()=>view3d.camera,camera=>{view3d.camera=camera;},draw,{
+  isActive:()=>view3d.mode==='3d'&&getActive3DLibrary()==='threejs',
   onCommit:scheduleSave,
   defaultCamera:()=>defaultCamera3d(view3d.camera)
 });
@@ -5461,7 +5470,7 @@ initAlgebraWorkbench({insert:(command)=>{
 initSideResizer();
 init3DLibrarySelector();
 onActive3DLibraryChange(()=>{
-  draw();
+  resize();
   scheduleSave();
 });
 recompileAllEquations();

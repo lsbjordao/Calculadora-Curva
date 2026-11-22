@@ -390,16 +390,20 @@
 
   <main id="stage">
     <div id="3d-library-selector" class="library-selector-container" hidden>
-      <label for="3d-lib-select">Biblioteca 3D:</label>
-      <select id="3d-lib-select" class="library-selector" aria-label="Tecnologia de renderização 3D" title="Canvas 2D: projeção 3D com renderizador próprio; Plotly.js: renderização 3D interativa">
+      <label for="3d-lib-select">Motor 3D:</label>
+      <select id="3d-lib-select" class="library-selector" aria-label="Tecnologia de renderização 3D" title="Canvas 2D: projeção própria; Plotly.js: gráficos 3D; Three.js: WebGL com profundidade e transparência">
         <option value="default">Canvas 2D (renderizador próprio)</option>
         <option value="plotly">Plotly.js</option>
+        <option value="threejs">Three.js (WebGL)</option>
       </select>
     </div>
     <canvas id="cv" role="img" tabindex="0" aria-describedby="canvas-description">
       O gráfico é descrito no texto acessível logo após o canvas.
     </canvas>
     <div id="plotly-3d-container" style="display:none; width:100%; height:100%; position:absolute; top:0; left:0; background:var(--bg);"></div>
+    <div id="three-3d-container" role="img" tabindex="0" aria-label="Gráfico tridimensional Three.js. Arraste para girar, Shift para mover e use a roda para zoom." aria-describedby="canvas-description">
+      <div id="three-3d-status" role="status" aria-live="polite" hidden></div>
+    </div>
     <p id="canvas-description" class="sr-only">Gráfico ainda não carregado.</p>
     <div id="readout"></div>
     <div id="lesson-graph-toast" role="status" aria-live="polite" hidden></div>

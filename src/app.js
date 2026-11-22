@@ -5383,6 +5383,18 @@ if(axisRangeInput) axisRangeInput.addEventListener('change',()=>{
 });
 const fitBtn=document.getElementById('fit');
 if(fitBtn) fitBtn.onclick=fitToView;
+const installBtn=document.getElementById('install-app');
+let deferredInstall=null;
+window.addEventListener('beforeinstallprompt',event=>{
+  event.preventDefault();deferredInstall=event;
+  if(installBtn)installBtn.hidden=false;
+});
+if(installBtn)installBtn.onclick=async()=>{
+  if(!deferredInstall)return;
+  const prompt=deferredInstall;deferredInstall=null;installBtn.hidden=true;
+  await prompt.prompt();
+};
+window.addEventListener('appinstalled',()=>{deferredInstall=null;if(installBtn)installBtn.hidden=true;});
 const fullscreenBtn=document.getElementById('fullscreen');
 if(fullscreenBtn){
   fullscreenBtn.onclick=async()=>{

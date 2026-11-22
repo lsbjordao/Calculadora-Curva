@@ -1715,3 +1715,5 @@
 .gauss-steps-list{padding:0 2px 0 22px;max-height:350px;overflow:auto}.gauss-steps-list li{padding:5px 0;border-bottom:1px solid var(--panel-edge);font-size:12px}
 .gauss-step-matrix{white-space:pre;overflow:auto;padding:8px;background:var(--code-bg);font-family:var(--mono)}
 @media(max-width:650px){.workbench-body{grid-template-columns:1fr;padding:12px}.workbench-head,.workbench-footer{padding-left:12px;padding-right:12px}}
+
+#install-app[hidden]{display:none!important}

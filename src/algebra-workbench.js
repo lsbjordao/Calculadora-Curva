@@ -15,7 +15,7 @@ const OPS={
   ],
   systems:[['solveinfo','Analisar e resolver Ax = b'],['linsolve','Solução única'],['rrefinfo','Escalonar [A | b] com etapas']]
 };
-const unary=new Set(['norm','unit','det','inv','transpose','rank','rrefinfo','trace','eiginfo','lu','qr','svd','pinv']);
+const unary=new Set(['norm','unit','det','inv','transpose','rank','rrefinfo','trace','eiginfo','lu','qr','svd','pinv','matpow','scale']);
 const binary=new Set(['dot','vadd','vsub','cross','angle','proj','matmul','matadd','matsub']);
 const productShape=(A,B)=>A[0].length===B.length;
 const sameShape=(A,B)=>A.length===B.length&&A[0].length===B[0].length;
@@ -28,9 +28,9 @@ const syntax=A=>'['+A.map(row=>'['+row.map(String).join(',')+']').join(',')+']';
 const vectorSyntax=A=>'['+A[0].map(String).join(',')+']';
 export function buildWorkbenchCommand(kind,operation,A,B,k=2){
   if(!OPS[kind]?.some(([name])=>name===operation)) throw Error('Operação desconhecida.');
-  const a=checked(A,'A'),b=checked(B,'B');
+  const a=checked(A,'A'),b=(kind==='systems'||binary.has(operation))?checked(B,'B'):null;
   if(kind==='vectors'){
-    if(a.length!==1||b.length!==1||a[0].length!==b[0].length) throw Error('Os vetores precisam ter igual dimensão.');
+    if(a.length!==1||(b&&(b.length!==1||a[0].length!==b[0].length))) throw Error('Os vetores precisam ter igual dimensão.');
     if(operation==='cross'&&![2,3].includes(a[0].length)) throw Error('Produto vetorial: somente 2D ou 3D.');
     return 'calc: '+operation+'('+[vectorSyntax(a),...(unary.has(operation)?[]:[vectorSyntax(b)])].join(',')+')';
   }

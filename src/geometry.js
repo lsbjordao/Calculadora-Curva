@@ -5,7 +5,7 @@ import { det as matrixDet, trace as matrixTrace, eiginfo, dot as algebraDot, nor
 import { wants3d, parse3dCommand } from './space3d/geometry3d.js';
 
 const EPS=1e-9;
-const GEOMETRY_PARAM_NAMES=new Set(['a','b','c','d','k','m','n','p','q','r']);
+const GEOMETRY_PARAM_NAMES=new Set(['a','b','c','d','h','k','m','n','p','q','r']);
 
 const COMMAND_ALIASES={
   point:'point', points:'point', ponto:'point', pontos:'point',
@@ -1066,7 +1066,7 @@ export function extractGeometryParams(raw){
     if(match) text=match[2];
   }
   const names=new Set();
-  const re=/(^|[^A-Za-z0-9_])([abcdkmnpqr])(?=$|[^A-Za-z0-9_])/g;
+  const re=/(^|[^A-Za-z0-9_])([abcdhkmnpqr])(?=$|[^A-Za-z0-9_])/g;
   let m;
   while((m=re.exec(text))){
     if(GEOMETRY_PARAM_NAMES.has(m[2])) names.add(m[2]);

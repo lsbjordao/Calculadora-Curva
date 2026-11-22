@@ -120,7 +120,7 @@ function sectionCommand(body,ctx){
     }
     return core.evalScalar(part,ctx);
   };
-  const angleArgument=parts[1].match(/^angulo\\((.+)\\)$/i);
+  const angleArgument=parts[1].match(/^angulo\((.+)\)$/i);
   if(angleArgument){
     const values=[parts[0],angleArgument[1],...parts.slice(2)].map(sectionScalar);
     const [h,angle,aperture=1,vertexZ=0,azimuth=0,offset=.75]=values;

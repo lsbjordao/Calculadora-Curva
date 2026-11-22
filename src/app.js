@@ -381,7 +381,7 @@ function setupParams(eq, names){
   eq.params=sanitizeParams(eq.params);
   names.forEach(name=>{
     if(!Number.isFinite(eq.params[name])){
-      const isAngled=/^\\s*secao\\s*:[^\\n]*angulo\\(/i.test(eq.text);
+      const isAngled=/^\s*secao\s*:[^\n]*angulo\(/i.test(eq.text);
       eq.params[name]=isAngled&&name==='b'?.75:isAngled&&name==='q'?0:PARAM_DEFAULTS[name]??1;
     }
   });

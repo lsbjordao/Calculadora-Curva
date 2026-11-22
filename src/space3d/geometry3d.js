@@ -110,7 +110,17 @@ function scenePoint(point){
 function sectionCommand(body,ctx){
   const parts=core.splitTopAny(String(body),',').map(x=>x.trim());
   if(parts.length<2||parts.length>5)throw new Error('Seção: use secao: h,k[,a,d,p] (altura, inclinação, abertura, vértice e azimute).');
-  const [h,k,aperture,vertexZ,azimuth]=parts.map(part=>core.evalScalar(part,ctx));
+  // "h" is intentionally scoped to this geometry command. The general
+  // parser must keep h(x) available as a user-defined function.
+  const sectionScalar=part=>{
+    if(part==='h'){
+      const value=ctx.params?.h;
+      if(!Number.isFinite(value))throw new Error('Parâmetro h sem valor válido.');
+      return value;
+    }
+    return core.evalScalar(part,ctx);
+  };
+  const [h,k,aperture,vertexZ,azimuth]=parts.map(sectionScalar);
   const section=makeConicSectionScene(h,k,{aperture:aperture??1,vertexZ:vertexZ??0,azimuth:azimuth??0});
   if(!section.count)throw new Error('O plano não corta a parte visível do cone; ajuste h ou k.');
   const result=result3('section','seção do cone');

@@ -43,7 +43,7 @@ function realRoot(n, v){
   }
   return Math.pow(v, 1/n);
 }
-const PARAM_NAMES = new Set(['a','b','c','d','h','i','j','k','m','n','p','q','r']);
+const PARAM_NAMES = new Set(['a','b','c','d','i','j','k','m','n','p','q','r']);
 
 // Second variable for implicit relations f(x,y)=0. The compiled function takes x
 // as its argument; the 'y' token reads this module state, which the implicit

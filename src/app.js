@@ -49,10 +49,10 @@ const PALETTES={
   light:["#c0492f","#2d70b3","#2f7d5b","#6042a6","#d98324","#1d1d1f","#0a8aa6","#a8336e"],
   dark: ["#ef6a52","#5aa0e0","#46b888","#9a7ce0","#f0a64e","#d8dde3","#39c0dc","#e06aa0"]
 };
-const PARAM_DEFAULTS={a:1,b:0,c:0,d:1,i:1,j:1,k:1,m:1,n:10,p:1,q:1,r:1};
+const PARAM_DEFAULTS={a:1,b:0,c:0,d:1,h:2,i:1,j:1,k:1,m:1,n:10,p:1,q:1,r:1};
 const PARAM_LIMITS={
   a:{min:-5,max:5,step:0.1}, b:{min:-10,max:10,step:0.1}, c:{min:-10,max:10,step:0.1}, d:{min:-10,max:10,step:0.1},
-  k:{min:-8,max:8,step:0.1}, m:{min:-8,max:8,step:0.1}, n:{min:-100,max:100,step:1},
+  h:{min:0.25,max:4.5,step:0.05}, k:{min:-8,max:8,step:0.1}, m:{min:-8,max:8,step:0.1}, n:{min:-100,max:100,step:1},
   p:{min:-8,max:8,step:0.1}, q:{min:-8,max:8,step:0.1}, r:{min:-8,max:8,step:0.1}, i:{min:-100,max:100,step:1}, j:{min:-100,max:100,step:1}
 };
 const DEFAULT_SIDE_WIDTH=340;
@@ -1656,13 +1656,23 @@ function renderRows(){
       paramControls.innerHTML='';
       if(!eq.paramNames?.length) return;
       eq.paramNames.forEach(name=>{
-        const limits=PARAM_LIMITS[name] || {min:-5,max:5,step:0.1};
+        // Limits for conic-section parameters must not change the same symbols
+        // used in unrelated matrix and function expressions.
+        const isSection=/^\s*(?:secao|seccao|secaocone|section)\s*:/i.test(eq.text);
+        const sectionControls={
+          h:{min:0.25,max:4.5,step:0.05,label:'h · altura do plano ao vértice'},
+          k:{min:-3,max:3,step:0.05,label:'k · inclinação do plano'},
+          a:{min:0.4,max:2.5,step:0.05,label:'a · abertura do cone'},
+          d:{min:-4,max:4,step:0.1,label:'d · altura do vértice'},
+          p:{min:-3.14,max:3.14,step:0.05,label:'p · rotação do plano (rad)'}
+        };
+        const limits=isSection&&sectionControls[name]||PARAM_LIMITS[name]||{min:-5,max:5,step:0.1};
         const param=document.createElement('label');
         param.className='param-control';
         param.dataset.param=name;
         param.dataset.lessonField='param';
         const label=document.createElement('span');
-        label.textContent=name;
+        label.textContent=limits.label||name;
         const range=document.createElement('input');
         range.type='range';
         range.min=limits.min;

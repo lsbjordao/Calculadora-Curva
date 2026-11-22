@@ -463,10 +463,10 @@ export const PRESETS=[
     label:'Seções do cone e circunferência',
     view:{cx:0,cy:0,scale:58},
     equations:[
-      {text:'secao: 2,k',params:{k:0},name:'Circunferência: plano horizontal'},
-      {text:'secao: 2,k',params:{k:0.5},name:'Elipse: plano oblíquo',visible:false},
-      {text:'secao: 2,k',params:{k:1},name:'Parábola: plano paralelo à geratriz',visible:false},
-      {text:'secao: 2,k',params:{k:1.6},name:'Hipérbole: plano inclinado',visible:false}
+      {text:'secao: h,k,a,d,p',params:{h:2,k:0,a:1,d:0,p:0},name:'Circunferência: plano horizontal'},
+      {text:'secao: h,k,a,d,p',params:{h:2,k:0.5,a:1,d:0,p:0},name:'Elipse: plano oblíquo',visible:false},
+      {text:'secao: h,k,a,d,p',params:{h:2,k:1,a:1,d:0,p:0},name:'Parábola: plano paralelo à geratriz',visible:false},
+      {text:'secao: h,k,a,d,p',params:{h:2,k:1.6,a:1,d:0,p:0},name:'Hipérbole: plano inclinado',visible:false}
     ]
   },
   {
@@ -474,9 +474,9 @@ export const PRESETS=[
     label:'Hipérbole e planos (3D)',
     view:{cx:0,cy:0,scale:58},
     equations:[
-      {text:'secao: 2,k',params:{k:1.6},name:'Cone duplo + plano secante + hipérbole'},
-      {text:'secao: 2,k',params:{k:0},name:'Comparar com seção circular',visible:false},
-      {text:'secao: 2,k',params:{k:0.5},name:'Comparar com seção elíptica',visible:false}
+      {text:'secao: h,k,a,d,p',params:{h:2,k:1.6,a:1,d:0,p:0},name:'Cone duplo + plano secante + hipérbole'},
+      {text:'secao: h,k,a,d,p',params:{h:2,k:0,a:1,d:0,p:0},name:'Comparar com seção circular',visible:false},
+      {text:'secao: h,k,a,d,p',params:{h:2,k:0.5,a:1,d:0,p:0},name:'Comparar com seção elíptica',visible:false}
     ]
   },
   {

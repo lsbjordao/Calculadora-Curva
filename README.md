@@ -200,3 +200,10 @@ e `|k|>1` hipérbole. O modelo representa apenas a janela finita
 do cone, portanto as seções abertas ficam truncadas nos limites de desenho.
 Os presets trazem variantes inicialmente ocultas; mostre uma por vez
 para comparar planos sem sobrepor quatro cones.
+
+
+### Parâmetros geométricos das seções cônicas (3D)
+
+Os presets agora usam a expressão `secao: h,k,a,d,p`. Os controles são: h (altura do plano em relação ao vértice), k (inclinação), a (abertura radial do cone), d (deslocamento vertical do vértice) e p (rotação azimutal do plano, em radianos).
+
+A superfície é `x²+y²=a²(z-d)²` e o plano `z=d+h+k(x cos(p)+y sin(p))`. O limite entre elipse e hipérbole é `|a*k|=1`. É mantida a sintaxe original `secao: 2,k` (a=1, d=p=0). Linhas ocultas nos presets permanecem ocultas até que o usuário ative o olho.

@@ -989,7 +989,7 @@ export const LESSONS=[
     steps:[
       {
         title:'Seções do cone e circunferência',
-        text:'No espaço, a circunferência aparece quando um plano horizontal z = 2 corta o cone duplo x² + y² = z². A interseção rosa é o conjunto de pontos que pertencem simultaneamente ao cone azul e ao plano amarelo.',
+        text:'No espaço, a circunferência aparece quando o plano horizontal z = d+h corta o cone x²+y²=a²(z-d)². h regula o tamanho da seção, a regula a abertura e d desloca o vértice. A interseção rosa é o conjunto de pontos que pertencem simultaneamente ao cone azul e ao plano amarelo.',
         focus:'Gire o gráfico 3D e observe que a curva rosa pertence às duas superfícies. Em k = 0, ela é um círculo de raio 2.',
         checkpoint:{
           prompt:'Checkpoint: altere o parâmetro k de 0 para 0.3 e veja o círculo virar elipse.',
@@ -998,7 +998,7 @@ export const LESSONS=[
           check:{type:'number-param',eq:0,param:'k',value:0.3,tol:1e-9}
         },
         scene:{view:{cx:0,cy:0,scale:58},equations:[
-          {text:'secao: 2,k',params:{k:0},name:'Circunferência no plano horizontal'}
+          {text:'secao: h,k,a,d,p',params:{h:2,k:0,a:1,d:0,p:0},name:'Circunferência no plano horizontal'}
         ]}
       },
       {
@@ -1012,12 +1012,12 @@ export const LESSONS=[
           check:{type:'number-param',eq:0,param:'k',value:0.8,tol:1e-9}
         },
         scene:{view:{cx:0,cy:0,scale:58},equations:[
-          {text:'secao: 2,k',params:{k:0.5},name:'Elipse sobre o cone'}
+          {text:'secao: h,k,a,d,p',params:{h:2,k:0.5,a:1,d:0,p:0},name:'Elipse sobre o cone'}
         ]}
       },
       {
         title:'Parábola e geratriz',
-        text:'Em |k| = 1 o plano torna-se paralelo a uma geratriz do cone. A seção é uma parábola aberta; no desenho finito, apenas um trecho aparece.',
+        text:'Em |a·k| = 1 o plano torna-se paralelo a uma geratriz do cone. A seção é uma parábola aberta; no desenho finito, apenas um trecho aparece.',
         focus:'Observe o ramo rosa estender-se até a borda do cone desenhado.',
         checkpoint:{
           prompt:'Checkpoint: aumente a inclinação para k = 1.6 para produzir uma hipérbole.',
@@ -1026,12 +1026,12 @@ export const LESSONS=[
           check:{type:'number-param',eq:0,param:'k',value:1.6,tol:1e-9}
         },
         scene:{view:{cx:0,cy:0,scale:58},equations:[
-          {text:'secao: 2,k',params:{k:1},name:'Parábola como seção'}
+          {text:'secao: h,k,a,d,p',params:{h:2,k:1,a:1,d:0,p:0},name:'Parábola como seção'}
         ]}
       },
       {
         title:'Hipérbole e planos secantes',
-        text:'Com |k| > 1, o plano alcança as duas metades do cone duplo. A interseção possui dois ramos desconectados — a hipérbole — que se prolongariam indefinidamente num cone sem limites.',
+        text:'Com |a·k| > 1, o plano alcança as duas metades do cone duplo. A interseção possui dois ramos desconectados — a hipérbole — que se prolongariam indefinidamente num cone sem limites.',
         focus:'Gire a cena e identifique um ramo em cada metade do cone; compare com o plano horizontal da circunferência.',
         checkpoint:{
           prompt:'Checkpoint: mude k para 0 e recupere a seção circular.',
@@ -1040,7 +1040,7 @@ export const LESSONS=[
           check:{type:'number-param',eq:0,param:'k',value:0,tol:1e-9}
         },
         scene:{view:{cx:0,cy:0,scale:58},equations:[
-          {text:'secao: 2,k',params:{k:1.6},name:'Hipérbole do cone duplo'}
+          {text:'secao: h,k,a,d,p',params:{h:2,k:1.6,a:1,d:0,p:0},name:'Hipérbole do cone duplo'}
         ]}
       }
     ]

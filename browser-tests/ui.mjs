@@ -96,6 +96,27 @@ try{
   nodeAssert.equal(await page.locator('.field').count(),3);
   nodeAssert.equal(await toggle.getAttribute('data-mode'),'3d');
   await page.screenshot({path:resolve(screenshots,'desktop-hiperbole-plano-cone-3d.png')});
+  // The section preset must expose independent shape, placement and
+  // rotation controls; modifying a slider must change the visible 3D scene.
+  const firstConic=page.locator('.row').first();
+  nodeAssert.equal(await firstConic.locator('.param-control').count(),5);
+  const initialImage=await page.locator('#stage').screenshot();
+  for(const [name,value] of [['h','3'],['a','1.5'],['d','1.1'],['p','0.7']]){
+    await firstConic.locator('.param-control[data-param="'+name+'"] input[type="number"]').fill(value);
+    await page.waitForTimeout(120);
+  }
+  const modifiedImage=await page.locator('#stage').screenshot();
+  nodeAssert.notDeepEqual(modifiedImage,initialImage,'Parâmetros devem alterar o gráfico 3D');
+  const geometryDownload=page.waitForEvent('download');
+  await page.click('#project-export');
+  const geometryFile=await geometryDownload;
+  const geometryState=JSON.parse(await readFile(await geometryFile.path(),'utf8')).state;
+  nodeAssert.equal(geometryState.equations[0].params.h,3);
+  nodeAssert.equal(geometryState.equations[0].params.a,1.5);
+  nodeAssert.equal(geometryState.equations[0].params.d,1.1);
+  nodeAssert.equal(geometryState.equations[0].params.p,.7);
+  await page.screenshot({path:resolve(screenshots,'desktop-hiperbole-parametros-ajustados.png')});
+
   await toggle.click();
   nodeAssert.equal(await toggle.getAttribute('data-mode'),'2d');
   await toggle.click();

@@ -1668,7 +1668,7 @@ function renderRows(){
           h:{min:0.25,max:4.5,step:0.05,label:'h · altura do plano ao vértice'},
           k:{min:-3,max:3,step:0.05,label:'k · inclinação (razão)'}, 
           q:{min:-90,max:90,step:1,label:'q · inclinação do plano (°), até vertical'},
-          b:{min:0.1,max:4,step:0.05,label:'b · afastamento horizontal do plano'},
+          b:{min:-4,max:4,step:0.05,label:'b · afastamento horizontal do plano (±X)'},
           a:{min:0.4,max:2.5,step:0.05,label:'a · abertura do cone'},
           d:{min:-4,max:4,step:0.1,label:'d · altura do vértice'},
           p:{min:-3.14,max:3.14,step:0.05,label:'p · rotação do plano (rad)'}

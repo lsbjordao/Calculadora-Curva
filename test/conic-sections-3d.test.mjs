@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {classifyConicSection,coneSurface,conePlaneIntersection,makeConicSectionScene} from '../src/space3d/conic-sections.js';
 import {parseGeometryInput} from '../src/geometry.js';
 import {PRESETS} from '../src/presets.js';
+import {LESSONS,lessonCheckpoints} from '../src/lessons.js';
 import {scenePrimitives,has3dObjects,autoAxisLimit} from '../src/space3d/view3d.js';
 import {prepareThreePrimitives} from '../src/space3d/three-renderer.js';
 import {primitivesToPlotlyData} from '../src/space3d/plotly-renderer.js';
@@ -81,4 +82,21 @@ test('presets de cônicas 3D são registrados e não confundidos com análise pl
   assert.equal(hyperbola.equations[0].visible,undefined);
   assert.ok(hyperbola.equations.slice(1).every(e=>e.visible===false));
   assert.equal(PRESETS.find(p=>p.id==='conic-analysis').equations.length,4);
+});
+
+test('aula Cônicas e quádricas apresenta as quatro seções do cone no 3D',()=>{
+  const lesson=LESSONS.find(x=>x.id==='conic-sections-3d');
+  assert.ok(lesson);
+  assert.equal(lesson.steps.length,4);
+  assert.equal(lesson.steps[0].title,'Seções do cone e circunferência');
+  assert.deepEqual(lesson.steps.map(step=>step.scene.equations[0].params.k),[0,.5,1,1.6]);
+  for(const step of lesson.steps){
+    const entry=step.scene.equations[0];
+    const r=parseGeometryInput(entry.text,{params:entry.params});
+    assert.equal(r.dim,3);
+    assert.ok(!r.error);
+    const checkpoints=lessonCheckpoints(step);
+    assert.ok(checkpoints.length>=2);
+    assert.equal(checkpoints.at(-1).check.type,'ack');
+  }
 });

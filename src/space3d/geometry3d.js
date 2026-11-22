@@ -9,7 +9,7 @@
 
 import { _geometryCore as core } from '../geometry.js';
 import { compile, setImplicitY } from '../parser.js';
-import { makeConicSectionScene } from './conic-sections.js';
+import { makeConicSectionScene, makeAngledConicSectionScene } from './conic-sections.js';
 
 const EPS=1e-9;
 // Object names: identifiers, plus π, π1… for planes (§7).
@@ -109,7 +109,7 @@ function scenePoint(point){
 
 function sectionCommand(body,ctx){
   const parts=core.splitTopAny(String(body),',').map(x=>x.trim());
-  if(parts.length<2||parts.length>5)throw new Error('Seção: use secao: h,k[,a,d,p] (altura, inclinação, abertura, vértice e azimute).');
+  if(parts.length<2||parts.length>6)throw new Error('Seção: use secao: h,k[,a,d,p] ou secao: h,angulo(q),a,d,p,b.');
   // "h" is intentionally scoped to this geometry command. The general
   // parser must keep h(x) available as a user-defined function.
   const sectionScalar=part=>{
@@ -120,6 +120,18 @@ function sectionCommand(body,ctx){
     }
     return core.evalScalar(part,ctx);
   };
+  const angleArgument=parts[1].match(/^angulo\\((.+)\\)$/i);
+  if(angleArgument){
+    const values=[parts[0],angleArgument[1],...parts.slice(2)].map(sectionScalar);
+    const [h,angle,aperture=1,vertexZ=0,azimuth=0,offset=.75]=values;
+    const section=makeAngledConicSectionScene(h,angle,{aperture,vertexZ,azimuth,offset});
+    if(!section.count)throw new Error('Plano fora da janela 3D; ajuste a altura ou o afastamento.');
+    const result=result3('section','seção do cone');
+    result.scene3d=section.scene;result.info=section.info;
+    result.section={kind:section.type,h,angle,aperture,vertexZ,azimuth,offset};
+    return result;
+  }
+  if(parts.length>5)throw new Error('Na sintaxe antiga use secao: h,k[,a,d,p].');
   const [h,k,aperture,vertexZ,azimuth]=parts.map(sectionScalar);
   const section=makeConicSectionScene(h,k,{aperture:aperture??1,vertexZ:vertexZ??0,azimuth:azimuth??0});
   if(!section.count)throw new Error('O plano não corta a parte visível do cone; ajuste h ou k.');

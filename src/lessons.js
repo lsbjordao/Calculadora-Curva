@@ -983,6 +983,69 @@ export const LESSONS=[
     'Circunferência, elipse, hipérbole e parábola como repertório gráfico inicial.'
   ),
   {
+    id:'conic-sections-3d',
+    label:'Cônicas e quádricas (3D)',
+    summary:'Seções do cone duplo: circunferência, elipse, parábola e hipérbole por planos secantes.',
+    steps:[
+      {
+        title:'Seções do cone e circunferência',
+        text:'No espaço, a circunferência aparece quando um plano horizontal z = 2 corta o cone duplo x² + y² = z². A interseção rosa é o conjunto de pontos que pertencem simultaneamente ao cone azul e ao plano amarelo.',
+        focus:'Gire o gráfico 3D e observe que a curva rosa pertence às duas superfícies. Em k = 0, ela é um círculo de raio 2.',
+        checkpoint:{
+          prompt:'Checkpoint: altere o parâmetro k de 0 para 0.3 e veja o círculo virar elipse.',
+          success:'O plano foi inclinado.',
+          next:'Com |k| entre 0 e 1, a seção é uma elipse fechada, e não uma circunferência.',
+          check:{type:'number-param',eq:0,param:'k',value:0.3,tol:1e-9}
+        },
+        scene:{view:{cx:0,cy:0,scale:58},equations:[
+          {text:'secao: 2,k',params:{k:0},name:'Circunferência no plano horizontal'}
+        ]}
+      },
+      {
+        title:'Elipse e plano oblíquo',
+        text:'Ao inclinar o plano com 0 < |k| < 1, ele continua cruzando apenas uma das metades do cone. A seção fica oval e fechada: uma elipse.',
+        focus:'Compare a elipse com o círculo anterior e observe a mudança da inclinação do plano.',
+        checkpoint:{
+          prompt:'Checkpoint: aumente k para 0.8, mantendo |k| menor que 1.',
+          success:'A seção elíptica foi alongada.',
+          next:'Quanto mais perto da inclinação de uma geratriz, mais alongada fica a elipse.',
+          check:{type:'number-param',eq:0,param:'k',value:0.8,tol:1e-9}
+        },
+        scene:{view:{cx:0,cy:0,scale:58},equations:[
+          {text:'secao: 2,k',params:{k:0.5},name:'Elipse sobre o cone'}
+        ]}
+      },
+      {
+        title:'Parábola e geratriz',
+        text:'Em |k| = 1 o plano torna-se paralelo a uma geratriz do cone. A seção é uma parábola aberta; no desenho finito, apenas um trecho aparece.',
+        focus:'Observe o ramo rosa estender-se até a borda do cone desenhado.',
+        checkpoint:{
+          prompt:'Checkpoint: aumente a inclinação para k = 1.6 para produzir uma hipérbole.',
+          success:'O plano passou a atravessar as duas metades do cone.',
+          next:'Agora a interseção apresenta dois ramos: é uma hipérbole.',
+          check:{type:'number-param',eq:0,param:'k',value:1.6,tol:1e-9}
+        },
+        scene:{view:{cx:0,cy:0,scale:58},equations:[
+          {text:'secao: 2,k',params:{k:1},name:'Parábola como seção'}
+        ]}
+      },
+      {
+        title:'Hipérbole e planos secantes',
+        text:'Com |k| > 1, o plano alcança as duas metades do cone duplo. A interseção possui dois ramos desconectados — a hipérbole — que se prolongariam indefinidamente num cone sem limites.',
+        focus:'Gire a cena e identifique um ramo em cada metade do cone; compare com o plano horizontal da circunferência.',
+        checkpoint:{
+          prompt:'Checkpoint: mude k para 0 e recupere a seção circular.',
+          success:'A seção voltou a ser uma circunferência.',
+          next:'É a mesma superfície cônica: a família da curva depende da orientação do plano secante.',
+          check:{type:'number-param',eq:0,param:'k',value:0,tol:1e-9}
+        },
+        scene:{view:{cx:0,cy:0,scale:58},equations:[
+          {text:'secao: 2,k',params:{k:1.6},name:'Hipérbole do cone duplo'}
+        ]}
+      }
+    ]
+  },
+  {
     id:'limits-continuity',
     label:'Limites: tendência',
     summary:'Salto, furo, continuidade e infinito na ordem dos capítulos de limites.',

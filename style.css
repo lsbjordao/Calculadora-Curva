@@ -1717,3 +1717,19 @@
 @media(max-width:650px){.workbench-body{grid-template-columns:1fr;padding:12px}.workbench-head,.workbench-footer{padding-left:12px;padding-right:12px}}
 
 #install-app[hidden]{display:none!important}
+
+/* WebGL Three.js occupies the same stage as the other renderers. */
+#three-3d-container{
+  position:absolute;inset:0;width:100%;height:100%;display:none;
+  background:var(--bg);overflow:hidden;touch-action:none;cursor:grab;
+  user-select:none;-webkit-user-select:none;
+}
+#three-3d-container:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
+#three-3d-container canvas{display:block;width:100%;height:100%;pointer-events:none}
+#three-3d-status{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  background:var(--glass);color:var(--ink);border:1px solid var(--panel-edge);
+  padding:12px 16px;border-radius:10px;max-width:min(440px,88%);
+  font-size:13px;line-height:1.4;text-align:center;z-index:4;pointer-events:none;
+}
+#three-3d-status[hidden]{display:none}

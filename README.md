@@ -145,3 +145,10 @@ O modo offline inclui os arquivos locais; o renderizador Plotly carregado via CD
 exige rede, portanto escolha **Curva 3D (Nativa)** para trabalhar desconectado.
 
 Os novos testes estão em `test/gaal-integration.test.mjs` e executam com `npm test`.
+
+
+### Three.js (WebGL): terceiro motor 3D
+
+A lista **Motor 3D** oferece **Canvas 2D (renderizador próprio)**, **Plotly.js** e **Three.js (WebGL)**. A opção Three.js usa o pacote `three` v0.187.0 por importação dinâmica de CDN, apenas quando selecionada. Ela desenha planos transparentes, malhas, linhas, vetores, pontos e legendas com profundidade WebGL e reutiliza a câmera e os dados geométricos da Curva.
+
+Para sistemas `solveinfo(A,b)` de ordem 3×3, cada plano tem sua própria cor e o ponto de solução recebe destaque. O modo Three.js exige WebGL e conexão na primeira importação do módulo; se não estiver disponível, selecione Canvas 2D ou Plotly.js. O modo Canvas 2D não depende da CDN. Three.js utiliza licença MIT.

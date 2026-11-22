@@ -77,5 +77,5 @@ test('seletor 3D identifica Canvas 2D e Plotly.js sem atribuir biblioteca inexis
   const select=html.match(/<select id="3d-lib-select"[\s\S]*?<\/select>/)?.[0] || '';
   assert.match(select,/<option value="default">Canvas 2D \(renderizador próprio\)<\/option>/);
   assert.match(select,/<option value="plotly">Plotly.js<\/option>/);
-  assert.doesNotMatch(select,/Three\.js/i);
+  assert.match(select,/<option value="threejs">Three\.js \(WebGL\)<\/option>/);
 });

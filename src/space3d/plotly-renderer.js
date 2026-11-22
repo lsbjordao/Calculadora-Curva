@@ -38,7 +38,7 @@ export function cameraToPlotlyEye(camera) {
   }
   const basis = cameraBasis(camera);
   const { forward, up } = basis;
-  const dist = 2.2;
+  const dist = 2.35;
   return {
     eye: {
       x: forward[0] * dist,
@@ -154,7 +154,7 @@ export function primitivesToPlotlyData(primitives, options = {}) {
         break;
       }
       case 'label': {
-        if (!prim.axisName && prim.role !== 'axis' && Array.isArray(prim.p)) {
+        if (prim.role !== 'tick' && Array.isArray(prim.p)) {
           labels.push(prim);
         }
         break;
@@ -379,8 +379,9 @@ export function primitivesToPlotlyData(primitives, options = {}) {
     });
   }
 
-  // 6. Explicit labels
+  // 6. Explicit labels (including axis 'x', 'y', 'z' labels at the axis tips)
   for (const lb of labels) {
+    const isAxisName = lb.axisName || lb.role === 'axis';
     data.push({
       type: 'scatter3d',
       mode: 'text',
@@ -389,6 +390,11 @@ export function primitivesToPlotlyData(primitives, options = {}) {
       z: [lb.p[2]],
       text: [lb.text],
       textposition: 'top center',
+      textfont: {
+        color: isAxisName ? (isDark ? '#cbd5e1' : '#334155') : defaultObjColor,
+        size: isAxisName ? 14 : 12,
+        family: 'var(--sans, system-ui, sans-serif)'
+      },
       hoverinfo: 'skip',
       showlegend: false
     });
@@ -413,13 +419,11 @@ export async function renderPlotly3D(primitives, options = {}) {
   const range = Number.isFinite(options.range) && options.range > 0 ? options.range : 5;
   const showGrid = options.grid !== false;
 
-  // Refined palette matching elegant mathematical visualization
-  const bgColor = isDark ? '#111216' : '#ffffff';
-  const paneBgColor = isDark ? 'rgba(22, 26, 34, 0.75)' : 'rgba(245, 247, 250, 0.75)';
+  // Use the exact page background color so the 3D scene seamlessly matches the page
+  const bgColor = options.colors?.bg || (isDark ? '#0d1017' : '#ffffff');
   const textColor = isDark ? '#e2e8f0' : '#1e293b';
   const tickColor = isDark ? '#94a3b8' : '#64748b';
   const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.07)';
-  const zeroLineColor = isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.35)';
 
   const data = primitivesToPlotlyData(primitives, options);
 
@@ -450,20 +454,21 @@ export async function renderPlotly3D(primitives, options = {}) {
       family: 'var(--sans, system-ui, -apple-system, sans-serif)',
       size: 11
     },
-    margin: { l: 0, r: 0, t: 0, b: 0 },
+    margin: { l: 30, r: 30, t: 30, b: 30 },
     showlegend: false,
     scene: {
       aspectmode: 'cube',
       xaxis: {
-        title: { text: 'x', font: { size: 12, color: textColor } },
+        title: {
+          text: 'x',
+          font: { size: 14, color: isDark ? '#f1f5f9' : '#0f172a' }
+        },
         range: [-range, range],
-        backgroundcolor: paneBgColor,
+        showbackground: false,
+        backgroundcolor: bgColor,
         gridcolor: gridColor,
         gridwidth: 1,
-        showbackground: true,
-        zerolinecolor: zeroLineColor,
-        zerolinewidth: 2,
-        showzerolines: true,
+        showzerolines: false,
         showgrid: showGrid,
         showspikes: true,
         spikesides: true,
@@ -472,15 +477,16 @@ export async function renderPlotly3D(primitives, options = {}) {
         tickfont: { size: 10, color: tickColor }
       },
       yaxis: {
-        title: { text: 'y', font: { size: 12, color: textColor } },
+        title: {
+          text: 'y',
+          font: { size: 14, color: isDark ? '#f1f5f9' : '#0f172a' }
+        },
         range: [-range, range],
-        backgroundcolor: paneBgColor,
+        showbackground: false,
+        backgroundcolor: bgColor,
         gridcolor: gridColor,
         gridwidth: 1,
-        showbackground: true,
-        zerolinecolor: zeroLineColor,
-        zerolinewidth: 2,
-        showzerolines: true,
+        showzerolines: false,
         showgrid: showGrid,
         showspikes: true,
         spikesides: true,
@@ -489,15 +495,16 @@ export async function renderPlotly3D(primitives, options = {}) {
         tickfont: { size: 10, color: tickColor }
       },
       zaxis: {
-        title: { text: 'z', font: { size: 12, color: textColor } },
+        title: {
+          text: 'z',
+          font: { size: 14, color: isDark ? '#f1f5f9' : '#0f172a' }
+        },
         range: [-range, range],
-        backgroundcolor: paneBgColor,
+        showbackground: false,
+        backgroundcolor: bgColor,
         gridcolor: gridColor,
         gridwidth: 1,
-        showbackground: true,
-        zerolinecolor: zeroLineColor,
-        zerolinewidth: 2,
-        showzerolines: true,
+        showzerolines: false,
         showgrid: showGrid,
         showspikes: true,
         spikesides: true,

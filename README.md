@@ -212,3 +212,18 @@ A superfície é `x²+y²=a²(z-d)²` e o plano `z=d+h+k(x cos(p)+y sin(p))`. O 
 ### Inclinação até plano vertical exato
 
 Os presets de **Cônicas e quádricas (3D)** utilizam agora `secao: h,angulo(q),a,d,p,b`. O parâmetro `q` é o ângulo de inclinação em graus, com slider de −90° até +90°; ambos os extremos são planos realmente verticais. O controle `b` é o afastamento horizontal positivo do plano, que preserva uma hipérbole não degenerada em ±90°. Os demais controles h, a, d e p foram preservados. A condição para a parábola é `a*|tan(q)|=1`; no ângulo de 90° a seção é hiperbólica. O formato antigo `secao: h,k,a,d,p` continua funcionando com k como coeficiente angular.
+
+
+### Afastamento horizontal do plano atravessando o eixo X
+
+Nos presets **Cônicas e quádricas (3D)**, o controle `b` agora varia de
+**−4 a +4**, incluindo **0**. Com `q=90°` e `p=0`, a equação do plano é
+`x=−b`; logo, `b=0` coloca o plano exatamente sobre `x=0`. Os valores
+negativos movem o plano para o lado oposto do eixo.
+
+Com `q=±90°` e `b=0`, o plano passa pelo vértice do cone e a seção é
+**degenerada: duas retas geratrizes concorrentes**, não uma hipérbole.
+A calculadora exibe essas duas retas corretamente. Com outras inclinações,
+o plano pode passar pelo vértice para alguns valores negativos de `b`;
+esses casos também são tratados como cônicas degeneradas. A sintaxe
+existente `secao: h,angulo(q),a,d,p,b` e os presets são preservados.

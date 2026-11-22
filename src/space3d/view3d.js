@@ -201,7 +201,9 @@ export function contourSegments(f, area, n = 64) {
 // Copies each primitive with the line's color, width and dash, faces/planes
 // semi-transparent, aux segments dashed (the renderer also lightens role aux).
 function styled(prim, eq, color) {
-  const out = {...prim, color};
+  // Uma linha solveinfo contém três planos distintos. Preservar suas cores
+  // especiais sem alterar a cor uniforme das demais figuras da Curva.
+  const out = {...prim, color:prim.systemPlane||prim.systemSolution ? prim.color||color : color};
   if (eq.showGeoLabels === false) {
     if (prim.kind === 'label') return null;
     delete out.label;

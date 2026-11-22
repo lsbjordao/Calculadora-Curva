@@ -2,7 +2,7 @@
 
 /**
  * 3D Library Manager
- * Handles switching between the native Canvas 2D renderer and Plotly.js 3D renderer
+ * Handles switching between the custom Canvas 2D (browser API) renderer and Plotly.js 3D renderer
  */
 
 import { renderPlotly3D, clearPlotly3D, resizePlotly3D, updatePlotlyCamera } from './plotly-renderer.js';

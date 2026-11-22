@@ -44,10 +44,13 @@ test('sistema 3x3 gera três planos e uma interseção',()=>{
   near(solution,[2,3,4]);
   const scene=buildSystemScene3D(A,b,solution);
   assert.equal(scene.filter(x=>x.kind==='plane').length,3);
+  assert.equal(new Set(scene.filter(x=>x.kind==='plane').map(x=>x.color)).size,3);
   assert.equal(scene.filter(x=>x.kind==='point').length,1);
   const eq={kind:'result',visible:true,error:false,showAlgebraSystem:true,systemScene3d:scene,text:'calc: solveinfo(...)'};
   assert.ok(has3dObjects([eq]));
   assert.equal(scenePrimitives([eq]).filter(x=>x.kind==='plane').length,3);
+  assert.equal(new Set(scenePrimitives([eq],{colorOf:()=> '#000000'}).filter(x=>x.kind==='plane').map(x=>x.color)).size,3);
+  assert.ok(scenePrimitives([eq],{colorOf:()=> '#000000'}).find(x=>x.kind==='point').color!=='#000000');
   assert.ok(autoAxisLimit([eq])>=5);
   assert.equal(viewNotice(eq,'3d'),'');
   const none=buildSystemScene3D(A,b,null);

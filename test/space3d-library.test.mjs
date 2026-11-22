@@ -72,6 +72,8 @@ test('primitivesToPlotlyData converts points, segments, arrows and planes', () =
   assert.deepEqual(pointTrace.y, [2]);
   assert.deepEqual(pointTrace.z, [3]);
   assert.equal(pointTrace.text?.[0], 'A');
+  assert.equal(pointTrace.marker.size, 4, 'Point markers must stay discreet');
+  assert.equal(pointTrace.marker.line.width, 0.5);
   assert.ok(pointTrace.hovertemplate.includes('%{x}'), 'Hovertemplate must include %{x}');
   assert.ok(pointTrace.hovertemplate.includes('%{y}'), 'Hovertemplate must include %{y}');
   assert.ok(pointTrace.hovertemplate.includes('%{z}'), 'Hovertemplate must include %{z}');

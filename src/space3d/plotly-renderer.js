@@ -9,6 +9,7 @@ import { clipLineToBox, clipPlaneToBox } from './scene3d.js';
 import { cameraBasis } from './camera.js';
 
 let currentPlotlyScene = null;
+const FONT_FAMILY = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
 
 /**
  * Convert color input to valid hex/rgb color string
@@ -31,7 +32,7 @@ function toColor(color, fallback = '#2d70b3') {
 export function cameraToPlotlyEye(camera) {
   if (!camera) {
     return {
-      eye: { x: 1.6, y: 1.6, z: 1.3 },
+      eye: { x: 1.65, y: 1.65, z: 1.35 },
       up: { x: 0, y: 0, z: 1 },
       center: { x: 0, y: 0, z: 0 }
     };
@@ -329,7 +330,7 @@ export function primitivesToPlotlyData(primitives, options = {}) {
       textfont: {
         color: color,
         size: 13,
-        family: 'var(--sans, system-ui, sans-serif)'
+        family: FONT_FAMILY
       },
       marker: {
         size: 4,
@@ -359,15 +360,15 @@ export function primitivesToPlotlyData(primitives, options = {}) {
       textfont: {
         color: color,
         size: 13,
-        family: 'var(--sans, system-ui, sans-serif)'
+        family: FONT_FAMILY
       },
       marker: {
-        size: pt.role === 'aux' ? 5 : 7,
+        size: pt.role === 'aux' ? 3 : 4,
         color: color,
         opacity: 0.95,
         line: {
           color: isDark ? '#ffffff' : '#000000',
-          width: 1
+          width: 0.5
         }
       },
       name: pt.label || 'Ponto',
@@ -379,9 +380,9 @@ export function primitivesToPlotlyData(primitives, options = {}) {
     });
   }
 
-  // 6. Explicit labels (including axis 'x', 'y', 'z' labels at the axis tips)
+  // 6. Other scene labels
   for (const lb of labels) {
-    const isAxisName = lb.axisName || lb.role === 'axis';
+    if (lb.axisName || lb.role === 'axis') continue;
     data.push({
       type: 'scatter3d',
       mode: 'text',
@@ -391,9 +392,9 @@ export function primitivesToPlotlyData(primitives, options = {}) {
       text: [lb.text],
       textposition: 'top center',
       textfont: {
-        color: isAxisName ? (isDark ? '#cbd5e1' : '#334155') : defaultObjColor,
-        size: isAxisName ? 14 : 12,
-        family: 'var(--sans, system-ui, sans-serif)'
+        color: defaultObjColor,
+        size: 12,
+        family: FONT_FAMILY
       },
       hoverinfo: 'skip',
       showlegend: false
@@ -439,7 +440,7 @@ export async function renderPlotly3D(primitives, options = {}) {
       bgcolor: isDark ? '#1a202c' : '#ffffff',
       bordercolor: isDark ? '#4a5568' : '#cbd5e1',
       font: {
-        family: 'var(--sans, system-ui, sans-serif)',
+        family: FONT_FAMILY,
         size: 12,
         color: isDark ? '#f7fafc' : '#0f172a'
       }
@@ -451,7 +452,7 @@ export async function renderPlotly3D(primitives, options = {}) {
     },
     font: {
       color: textColor,
-      family: 'var(--sans, system-ui, -apple-system, sans-serif)',
+      family: FONT_FAMILY,
       size: 11
     },
     margin: { l: 30, r: 30, t: 30, b: 30 },
@@ -459,10 +460,7 @@ export async function renderPlotly3D(primitives, options = {}) {
     scene: {
       aspectmode: 'cube',
       xaxis: {
-        title: {
-          text: 'x',
-          font: { size: 14, color: isDark ? '#f1f5f9' : '#0f172a' }
-        },
+        title: { text: '' },
         range: [-range, range],
         showbackground: false,
         backgroundcolor: bgColor,
@@ -474,13 +472,10 @@ export async function renderPlotly3D(primitives, options = {}) {
         spikesides: true,
         spikethickness: 2,
         spikecolor: isDark ? '#38bdf8' : '#0284c7',
-        tickfont: { size: 10, color: tickColor }
+        tickfont: { size: 10, color: tickColor, family: FONT_FAMILY }
       },
       yaxis: {
-        title: {
-          text: 'y',
-          font: { size: 14, color: isDark ? '#f1f5f9' : '#0f172a' }
-        },
+        title: { text: '' },
         range: [-range, range],
         showbackground: false,
         backgroundcolor: bgColor,
@@ -492,13 +487,10 @@ export async function renderPlotly3D(primitives, options = {}) {
         spikesides: true,
         spikethickness: 2,
         spikecolor: isDark ? '#4ade80' : '#16a34a',
-        tickfont: { size: 10, color: tickColor }
+        tickfont: { size: 10, color: tickColor, family: FONT_FAMILY }
       },
       zaxis: {
-        title: {
-          text: 'z',
-          font: { size: 14, color: isDark ? '#f1f5f9' : '#0f172a' }
-        },
+        title: { text: '' },
         range: [-range, range],
         showbackground: false,
         backgroundcolor: bgColor,
@@ -510,8 +502,34 @@ export async function renderPlotly3D(primitives, options = {}) {
         spikesides: true,
         spikethickness: 2,
         spikecolor: isDark ? '#c084fc' : '#9333ea',
-        tickfont: { size: 10, color: tickColor }
+        tickfont: { size: 10, color: tickColor, family: FONT_FAMILY }
       },
+      annotations: [
+        {
+          showarrow: false,
+          x: range * 0.97,
+          y: 0,
+          z: 0,
+          text: '<b>x</b>',
+          font: { size: 16, color: isDark ? '#38bdf8' : '#0284c7', family: FONT_FAMILY }
+        },
+        {
+          showarrow: false,
+          x: 0,
+          y: range * 0.97,
+          z: 0,
+          text: '<b>y</b>',
+          font: { size: 16, color: isDark ? '#4ade80' : '#16a34a', family: FONT_FAMILY }
+        },
+        {
+          showarrow: false,
+          x: 0,
+          y: 0,
+          z: range * 0.97,
+          text: '<b>z</b>',
+          font: { size: 16, color: isDark ? '#c084fc' : '#9333ea', family: FONT_FAMILY }
+        }
+      ],
       camera: {
         ...sceneCamera,
         projection: { type: projectionType }

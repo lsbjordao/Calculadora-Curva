@@ -1555,3 +1555,65 @@
   #grid-algebra { max-height: 240px; }
   #rows:has(.algebra-result), #rows:has(.transform-controls) { max-height: 320px; }
 }
+
+/* 3D Library Selector */
+.library-selector-container {
+  position: absolute;
+  top: 12px;
+  right: 54px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--glass);
+  padding: 0 10px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-edge);
+  font-size: 0.85rem;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 1px 2px rgba(20,25,35,.06);
+}
+
+.library-selector-container[hidden] {
+  display: none !important;
+}
+
+.library-selector-container label {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.library-selector {
+  background: var(--field);
+  color: var(--ink);
+  border: 1px solid var(--field-edge);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-family: var(--sans);
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.library-selector:hover {
+  border-color: var(--accent);
+}
+
+.library-selector:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+@media (max-width: 720px) {
+  .library-selector-container {
+    top: auto;
+    bottom: 12px;
+    right: 12px;
+  }
+}
+

@@ -6,6 +6,7 @@
 <title>Curva — calculadora gráfica</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZY39XW7VQT"></script>
@@ -382,9 +383,17 @@
   <div id="side-resizer" role="separator" aria-orientation="vertical" aria-label="Redimensionar barra lateral" tabindex="0"></div>
 
   <main id="stage">
+    <div id="3d-library-selector" class="library-selector-container" hidden>
+      <label for="3d-lib-select">Biblioteca 3D:</label>
+      <select id="3d-lib-select" class="library-selector" aria-label="Biblioteca para gráfico 3D">
+        <option value="default">Curva 3D (Nativa)</option>
+        <option value="plotly">Plotly.js</option>
+      </select>
+    </div>
     <canvas id="cv" role="img" tabindex="0" aria-describedby="canvas-description">
       O gráfico é descrito no texto acessível logo após o canvas.
     </canvas>
+    <div id="plotly-3d-container" style="display:none; width:100%; height:100%; position:absolute; top:0; left:0;"></div>
     <p id="canvas-description" class="sr-only">Gráfico ainda não carregado.</p>
     <div id="readout"></div>
     <div id="lesson-graph-toast" role="status" aria-live="polite" hidden></div>

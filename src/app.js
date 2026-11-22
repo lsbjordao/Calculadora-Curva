@@ -39,6 +39,7 @@ import { createCamera, zoomCamera, presetView, fitCameraScale } from './space3d/
 import { axesPrimitives } from './space3d/scene3d.js';
 import { buildDrawList, drawScene3d, colorsFromTheme } from './space3d/render3d.js';
 import { attachCameraControls, autoAxisLimit, CAMERA_HINT, decideViewMode, hasGuidesChip, has3dObjects, normalizeView3d, scenePrimitives, serializeView3d, viewNotice } from './space3d/view3d.js';
+import { init3DLibrarySelector, getActive3DLibrary, render3DScene, show3DLibrarySelector, hide3DLibrarySelector, handle3DResize, onActive3DLibraryChange, updatePlotlyCamera } from './space3d/library-manager.js';
 
 const PALETTES={
   light:["#c0492f","#2d70b3","#2f7d5b","#6042a6","#d98324","#1d1d1f","#0a8aa6","#a8336e"],
@@ -3072,6 +3073,7 @@ function resize(){
   cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
   ctx.setTransform(dpr,0,0,dpr,0,0);
   fitCameraToViewport();
+  handle3DResize();
   draw();
 }
 function initSideResizer(){
@@ -5046,12 +5048,32 @@ function render3d(){
   const range=activeAxisRange();
   if(range!==view3dFitAxisRange) fitCameraToViewport();
   const colors=colorsFromTheme(getCss);
-  ctx.save();
-  ctx.fillStyle=colors.bg;
-  ctx.fillRect(0,0,W,H);
-  ctx.restore();
-  const primitives=[...axesPrimitives(axisBox(range),{grid:view3d.grid,axisTickStep:view3d.axisTickStep}),...scenePrimitives(equations,{colorOf:eqColor})];
-  drawScene3d(ctx,buildDrawList(primitives,view3d.camera,{width:W,height:H}),colors);
+  
+  // Show library selector when in 3D mode
+  show3DLibrarySelector();
+  
+  const box=axisBox(range);
+  const primitives=[...axesPrimitives(box,{grid:view3d.grid,axisTickStep:view3d.axisTickStep}),...scenePrimitives(equations,{colorOf:eqColor,box})];
+
+  if(getActive3DLibrary()==='plotly'){
+    // Render with Plotly.js
+    render3DScene(primitives, {
+      theme,
+      colors,
+      range,
+      box,
+      grid:view3d.grid,
+      camera:view3d.camera
+    });
+  } else {
+    // Render with native Curva 3D
+    ctx.save();
+    ctx.fillStyle=colors.bg;
+    ctx.fillRect(0,0,W,H);
+    ctx.restore();
+    drawScene3d(ctx,buildDrawList(primitives,view3d.camera,{width:W,height:H}),colors);
+  }
+  
   readout.style.display='none';
   const card=document.getElementById('analysis');
   if(card) card.style.display='none';
@@ -5064,6 +5086,10 @@ function render(){
   syncViewMode();
   ctx.clearRect(0,0,W,H);
   if(view3d.mode==='3d'){ render3d(); return; }
+  
+  // Hide library selector when not in 3D mode
+  hide3DLibrarySelector();
+  
   drawGrid();
   equations.forEach(eq=>{
     if(eq.kind==='parametric') drawParametric(eq);
@@ -5309,7 +5335,14 @@ const viewModeBtn=document.getElementById('view-mode');
 if(viewModeBtn) viewModeBtn.onclick=()=>setViewMode(view3d.mode==='3d'?'2d':'3d');
 ['xy','xz','yz','iso'].forEach(name=>{
   const button=document.getElementById('view-'+name);
-  if(button) button.onclick=()=>{ view3d.camera=createCamera({...view3d.camera,...presetView(name)}); draw(); scheduleSave(); };
+  if(button) button.onclick=()=>{
+    view3d.camera=createCamera({...view3d.camera,...presetView(name)});
+    if(getActive3DLibrary()==='plotly'){
+      updatePlotlyCamera(view3d.camera);
+    }
+    draw();
+    scheduleSave();
+  };
 });
 const viewProjBtn=document.getElementById('view-proj');
 if(viewProjBtn) viewProjBtn.onclick=()=>{
@@ -5396,6 +5429,11 @@ initLessons();
 initHelp();
 initGeoBuilder();
 initSideResizer();
+init3DLibrarySelector();
+onActive3DLibraryChange(()=>{
+  draw();
+  scheduleSave();
+});
 recompileAllEquations();
 applyTheme();
 updateGridModeButton();

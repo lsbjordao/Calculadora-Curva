@@ -40,7 +40,7 @@ test('rotação contínua entre circunferência, elipse, parábola, hipérbole e
   }
   assert.equal(classifyAngledConicSection(30,Math.sqrt(3)),'parabola');
   assert.throws(()=>classifyAngledConicSection(91),/90/);
-  assert.throws(()=>conePlaneIntersectionAngle(2,90,{offset:0}),/afastamento/);
+  assert.equal(makeAngledConicSectionScene(2,90,{offset:0}).type,'two-lines');
 });
 test('comando angular com parâmetro q mantém compatibilidade com comando clássico k',()=>{
   const expr='secao: h,angulo(q),a,d,p,b';
@@ -70,5 +70,70 @@ test('presets 3D apresentam inclinação angular e afastamento horizontal',()=>{
     assert.ok(entry.params.b>0);
     const g=parseGeometryInput(entry.text,{params:entry.params});
     assert.ok(!g.error,String(g.error));
+  }
+});
+
+
+test('b percorre os lados do eixo X e atravessa exatamente x=0 com q=90°',()=>{
+  const h=2, a=1.1;
+  for(const b of [-3,-1,0,1,3]){
+    const section=makeAngledConicSectionScene(h,90,{aperture:a,offset:b});
+    assert.ok(section.count>0,'Seção deve existir para b='+b);
+    const plane=section.scene.find(p=>p.sectionPlane);
+    assert.ok(plane,'Plano deve permanecer visível');
+    assert.ok(plane.points.every(p=>Math.abs(p[0]+b)<1e-7));
+    const curve=section.scene.filter(p=>p.sectionCurve);
+    assert.ok(curve.length>0);
+    for(const segment of curve)for(const point of [segment.a,segment.b]){
+      const [x,y,z]=point;
+      near(x,-b,1e-7);
+      near(x*x+y*y,a*a*z*z,1e-6);
+    }
+    const obj=parseGeometryInput('secao: h,angulo(q),a,d,p,b',
+      {params:{h,q:90,a,d:0,p:0,b}});
+    assert.ok(!obj.error,String(obj.error));
+    assert.equal(obj.section.offset,b);
+    assert.equal(obj.section.kind,b===0?'two-lines':'hyperbola');
+    const eq={kind:'geometry',visible:true,error:false,geometry:obj};
+    const primitives=scenePrimitives([eq],{colorOf:()=> '#000'});
+    assert.ok(prepareThreePrimitives(primitives).some(p=>p.sectionCurve));
+    assert.ok(primitivesToPlotlyData(primitives,{range:8}).some(p=>p.type==='scatter3d'));
+  }
+});
+test('b=0 em q=±90° produz duas geratrizes concorrentes pelo vértice',()=>{
+  for(const q of [-90,90]){
+    const scene=makeAngledConicSectionScene(2,q,{vertexZ:1.4,azimuth:.6,aperture:1.5,offset:0});
+    assert.equal(scene.type,'two-lines');
+    const segments=scene.scene.filter(p=>p.sectionCurve);
+    assert.equal(segments.length,2);
+    assert.match(scene.info.join(' '),/degenerada/);
+    for(const segment of segments){
+      assert.ok(segment.degenerate);
+      for(const [x,y,z] of [segment.a,segment.b]){
+        const u=x*Math.cos(.6)+y*Math.sin(.6);
+        near(u,0);
+        near(x*x+y*y,1.5**2*(z-1.4)**2,1e-6);
+      }
+      near((segment.a[0]+segment.b[0])/2,0);
+      near((segment.a[1]+segment.b[1])/2,0);
+      near((segment.a[2]+segment.b[2])/2,1.4);
+    }
+  }
+});
+test('ao cruzar o vértice em outras inclinações, cônicas degeneradas continuam visíveis',()=>{
+  const h=2;
+  const cases=[
+    {q:60,b:-h*Math.cos(Math.PI/3)/Math.sin(Math.PI/3),type:'two-lines',lines:2},
+    {q:45,b:-h,type:'one-line',lines:1},
+    {q:30,b:-h*Math.cos(Math.PI/6)/Math.sin(Math.PI/6),type:'vertex-point',lines:0}
+  ];
+  for(const {q,b,type,lines} of cases){
+    const s=makeAngledConicSectionScene(h,q,{offset:b});
+    assert.equal(s.type,type);
+    assert.equal(s.scene.filter(p=>p.sectionCurve).length,lines);
+    assert.ok(s.count>0);
+    const entry=parseGeometryInput('secao: h,angulo(q),a,d,p,b',
+      {params:{h,q,a:1,d:0,p:0,b}});
+    assert.ok(!entry.error,'Geometria degenerada deve ser válida: '+String(entry.error));
   }
 });

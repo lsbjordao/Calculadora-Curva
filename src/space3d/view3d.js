@@ -29,7 +29,7 @@ export function showsGuides(eq) {
 export const CAMERA_HINT = 'arraste para girar · Shift+arraste para mover · roda para zoom · duplo clique volta';
 
 export function has3dObjects(equations = []) {
-  return equations.some(eq => eq?.visible !== false && !eq?.error && (is3dEquation(eq) || (eq.showAlgebraSystem && eq.systemScene3d?.length)));
+  return equations.some(eq => eq?.visible !== false && !eq?.error && (is3dEquation(eq) || (eq.showAlgebraSystem && eq.systemScene3d?.length) || (eq.showAlgebraTransform3d && eq.transformScene3d?.length)));
 }
 
 export function autoAxisLimit(equations = [], minimum = 5) {
@@ -63,6 +63,7 @@ export function autoAxisLimit(equations = [], minimum = 5) {
   equations.forEach(eq => {
     if (!eq || eq.visible === false || eq.error) return;
     if(eq.showAlgebraSystem && eq.systemScene3d)eq.systemScene3d.forEach(includeScene);
+    if(eq.showAlgebraTransform3d && eq.transformScene3d)eq.transformScene3d.forEach(includeScene);
     if(eq.kind!=='geometry')return;
     const geometry = eq.geometry;
     if (!geometry) return;
@@ -96,7 +97,7 @@ function scene2dOf(eq) {
 
 export function viewNotice(eq, mode) {
   if (!eq || eq.error || !String(eq.text ?? '').trim()) return '';
-  if (mode === '3d') return scene2dOf(eq) || is3dEquation(eq) || (eq.showAlgebraSystem && eq.systemScene3d?.length) ? '' : NOTICE_3D;
+  if (mode === '3d') return scene2dOf(eq) || is3dEquation(eq) || (eq.showAlgebraSystem && eq.systemScene3d?.length) || (eq.showAlgebraTransform3d && eq.transformScene3d?.length) ? '' : NOTICE_3D;
   return is3dEquation(eq) ? NOTICE_2D : '';
 }
 
@@ -203,7 +204,7 @@ export function contourSegments(f, area, n = 64) {
 function styled(prim, eq, color) {
   // Uma linha solveinfo contém três planos distintos. Preservar suas cores
   // especiais sem alterar a cor uniforme das demais figuras da Curva.
-  const out = {...prim, color:prim.systemPlane||prim.systemSolution ? prim.color||color : color};
+  const out = {...prim, color:prim.systemPlane||prim.systemSolution||prim.transform3d ? prim.color||color : color};
   if (eq.showGeoLabels === false) {
     if (prim.kind === 'label') return null;
     delete out.label;
@@ -224,7 +225,9 @@ export function scenePrimitives(equations = [], {colorOf = () => '', box = defau
   const prims = [];
   for (const eq of equations) {
     if (!eq || eq.visible === false || eq.error) continue;
-    const source = eq.showAlgebraSystem && eq.systemScene3d ? eq.systemScene3d : is3dEquation(eq) ? eq.geometry.scene3d : promote2d(scene2dOf(eq), box);
+    const source = eq.showAlgebraTransform3d && eq.transformScene3d ? eq.transformScene3d
+      : eq.showAlgebraSystem && eq.systemScene3d ? eq.systemScene3d
+      : is3dEquation(eq) ? eq.geometry.scene3d : promote2d(scene2dOf(eq), box);
     if (!Array.isArray(source) || !source.length) continue;
     const color = colorOf(eq), guides = showsGuides(eq);
     for (const prim of source) {

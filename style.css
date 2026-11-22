@@ -1741,3 +1741,11 @@
 .project-actions button:hover{border-color:var(--accent)}
 .project-status{margin:6px 2px 0;font-size:12px;color:var(--muted);min-height:0}
 .project-status:empty{display:none}.project-status[data-error="1"]{color:var(--danger)}
+
+/* Three-dimensional matrix transformations; shares the existing result panel. */
+.transform3d-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:9px 2px}
+.transform3d-controls button,.transform3d-controls select{cursor:pointer;border:1px solid var(--field-edge);
+  border-radius:6px;color:var(--ink);background:var(--field);padding:6px 9px}
+.transform3d-controls label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink)}
+.transform3d-controls input[type="range"]{min-width:130px;flex:1}
+.transform3d-controls output,.transform3d-controls p{flex-basis:100%;font-size:12px;margin:2px 0;color:var(--muted)}

@@ -168,3 +168,18 @@ equações, configurações, anotações, parâmetros e câmera. Importação va
 a estrutura e limita o tamanho a 2 MB; não interpreta código do JSON.
 Use **Desfazer** para voltar à sessão anterior. Um arquivo de projeto
 é diferente do link por comandos `?cmd=`, que não inclui a câmera.
+
+
+## Transformações de matrizes 3×3 (novidade)
+
+Para uma matriz 3×3, por exemplo
+`calc: [[2,0,0],[0,1,0],[0,0,0.5]]`,
+abra **transformação 3D** no resultado. A cena exibe o cubo unitário
+(original e transformado) e três vetores da base. Use o controle de tempo,
+**iniciar / pausar / reiniciar** e os modos **Identidade → A** ou
+**SVD: Vᵀ → Σ → U**. Alterar a matriz recalcula a geometria sem alterar
+a entrada. As cores dos três vetores são consistentes nos renderizadores.
+
+As transformações são modelos visuais de interpolação, não uma solução
+simbólica dos autovalores. A interpolação linear e os estágios da SVD podem
+atravessar matrizes singulares e inverter orientações.

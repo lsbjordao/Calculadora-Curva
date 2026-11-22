@@ -43,6 +43,7 @@ import { buildDrawList, drawScene3d, colorsFromTheme } from './space3d/render3d.
 import { attachCameraControls, autoAxisLimit, CAMERA_HINT, decideViewMode, hasGuidesChip, has3dObjects, normalizeView3d, scenePrimitives, serializeView3d, viewNotice } from './space3d/view3d.js';
 import { init3DLibrarySelector, getActive3DLibrary, render3DScene, show3DLibrarySelector, hide3DLibrarySelector, handle3DResize, onActive3DLibraryChange, updatePlotlyCamera } from './space3d/library-manager.js';
 import { initThree3DControls } from './space3d/three-renderer.js';
+import { createTransform3DControls } from './space3d/transform3d.js';
 
 const PALETTES={
   light:["#c0492f","#2d70b3","#2f7d5b","#6042a6","#d98324","#1d1d1f","#0a8aa6","#a8336e"],
@@ -78,6 +79,7 @@ const equations=[];
 let algebraSymbols=createAlgebraSymbols([]);
 const resultRefreshers=new Map();
 const transformControllers=new Map();
+const transform3dControllers=new Map();
 let selectedEquationId=null;
 const view={cx:0, cy:0, scale:38};
 // 3D view (§5.1, §7a.10): mode, orbital camera and floor grid. view3dFit is the
@@ -186,6 +188,7 @@ function serializeEq(eq){
     histNormal:eq.histNormal,
     statsPop:eq.statsPop,
     showAlgebraTransform:!!eq.showAlgebraTransform,
+    showAlgebraTransform3d:!!eq.showAlgebraTransform3d,
     showAlgebraSystem:!!eq.showAlgebraSystem,
     showResultTable:eq.showResultTable
   };
@@ -788,7 +791,7 @@ function eqDeriv2Fn(eq){
 function recompileEq(eq, geometryRegistry=null){
   eq.analysisCache=null;
   eq.intCache=null;
-  eq.algebraResult=null; eq.algebraInput=null; eq.errorMessage=null; eq.systemScene=null; eq.systemScene3d=null;
+  eq.algebraResult=null; eq.algebraInput=null; eq.errorMessage=null; eq.systemScene=null; eq.systemScene3d=null; eq.transformScene3d=null;
   eq.kind='function'; eq.ineqOp=null; eq.domain=null;
   eq.fn=null; eq.xFn=null; eq.yFn=null; eq.rFn=null; eq.points=null; eq.pointSource=null; eq.pointLabel=null; eq.histSource=null; eq.valueFn=null; eq.fitInfo=null; eq.fitSpec=null; eq.fitSource=null; eq.regInfo=null; eq.defName=null; eq.geometry=null;
   eq.deriv1=null; eq.deriv2=null; eq.antider=null;
@@ -1356,6 +1359,7 @@ function renderContextActions(eq, target){
 
 function renderRows(){
   transformControllers.forEach(controller=>controller.dispose()); transformControllers.clear();
+  transform3dControllers.forEach(controller=>controller.dispose()); transform3dControllers.clear();
   resultRefreshers.clear();
   rowsEl.innerHTML='';
   equations.forEach((eq,index)=>{
@@ -1552,6 +1556,47 @@ function renderRows(){
     const transformZone=document.createElement('details');
     const transformSummary=document.createElement('summary'); transformSummary.textContent='transformação 2D';
     const transformHost=document.createElement('div'); transformZone.append(transformSummary,transformHost);
+    const transform3dZone=document.createElement('details');
+    const transform3dSummary=document.createElement('summary');
+    transform3dSummary.textContent='transformação 3D';
+    const transform3dHost=document.createElement('div');
+    transform3dZone.append(transform3dSummary,transform3dHost);
+    let matrix3dSignature='';
+    const getTransformMatrix3d=()=>{
+      const value=eq.algebraResult?.kind==='svd' ? eq.algebraInput : eq.algebraResult?.value;
+      return Array.isArray(value)&&value.length===3&&value.every(row=>
+        Array.isArray(row)&&row.length===3&&row.every(Number.isFinite)) ? value : null;
+    };
+    const refreshTransform3d=()=>{
+      const matrix=!eq.error&&getTransformMatrix3d();
+      transform3dZone.hidden=!matrix;
+      const active=!!matrix&&!!eq.showAlgebraTransform3d;
+      transform3dZone.open=active;
+      if(!active){
+        transform3dControllers.get(eq.id)?.dispose();
+        transform3dControllers.delete(eq.id);
+        eq.transformScene3d=null;
+        return;
+      }
+      const signature=JSON.stringify(matrix),controller=transform3dControllers.get(eq.id);
+      if(controller){
+        if(signature!==matrix3dSignature)controller.refresh();
+      }else{
+        transform3dHost.replaceChildren();
+        transform3dControllers.set(eq.id,createTransform3DControls(transform3dHost,{
+          getMatrix:getTransformMatrix3d,
+          onScene:scene=>{eq.transformScene3d=scene;draw();},
+          onChange:()=>notifyLessonAction('transform')
+        }));
+      }
+      matrix3dSignature=signature;
+    };
+    transform3dZone.addEventListener('toggle',()=>{
+      if(!getTransformMatrix3d())return;
+      eq.showAlgebraTransform3d=transform3dZone.open;
+      refreshTransform3d();
+      draw();scheduleSave();
+    });
     let matrixSignature='';
     const getTransformMatrix=()=>{
       const value=eq.geometry?.matrix?.values || (eq.algebraResult?.kind==='svd' ? eq.algebraInput : eq.algebraResult?.value);
@@ -1600,6 +1645,7 @@ function renderRows(){
       }
       renderStepsZone(eq, stepsZone);
       refreshTransform();
+      refreshTransform3d();
     };
     resultRefreshers.set(eq.id,()=>{row.dataset.err=eq.error?'1':'0';row.dataset.kind=eq.kind;refreshMathInfo();renderCurveSummary(summary,eq);});
     const refreshOps=()=>opControls.render(eq, opTools, ()=>{
@@ -1906,7 +1952,7 @@ function renderRows(){
     refreshParamControls();
     refreshOps();
     refreshDataTable();
-    body.append(wrap,contextActions,controls,info,stepsZone,paramControls,transformZone,opTools,tableZone);
+    body.append(wrap,contextActions,controls,info,stepsZone,paramControls,transformZone,transform3dZone,opTools,tableZone);
     row.append(head,summary,body);
     rowsEl.appendChild(row);
   });
@@ -2363,6 +2409,7 @@ document.getElementById('add').onclick=()=>addEquation('');
 
 function applyEquationOptions(eq, options={}){
   eq.showAlgebraTransform=!!options.showAlgebraTransform;
+  eq.showAlgebraTransform3d=!!options.showAlgebraTransform3d;
   eq.showAlgebraSystem=!!options.showAlgebraSystem;
   eq.name=typeof options.name==='string' ? options.name.trim().slice(0,80) : '';
   eq.collapsed=!!options.collapsed;

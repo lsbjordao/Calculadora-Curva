@@ -41,6 +41,16 @@ export function buildTransformScene(A, options = {}) {
 }
 export const decomposeTransform = A => svd(A);
 
+export function buildSystemScene3D(A,b,solution){
+  if(!Array.isArray(A)||A.length!==3||A.some(r=>!Array.isArray(r)||r.length!==3)||!Array.isArray(b)||b.length!==3)return null;
+  b=b.map(x=>Array.isArray(x)?x[0]:x);
+  if(A.some(r=>r.some(x=>!Number.isFinite(x)))||b.some(x=>!Number.isFinite(x)))return null;
+  const scene=A.flatMap((row,i)=>Math.hypot(...row)>1e-12?
+    [{kind:'plane',n:[...row],d:b[i],label:'Equação '+(i+1),alpha:.18}]:[]);
+  if(Array.isArray(solution)&&solution.length===3&&solution.every(Number.isFinite))
+    scene.push({kind:'point',p:[...solution],label:'Solução'});
+  return scene;
+}
 export function buildSystemScene(A,b,solution) {
   if(A.length!==2 || A[0].length!==2 || b.length!==2) return null;
   b=b.flat();

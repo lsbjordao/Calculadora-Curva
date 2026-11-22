@@ -82,7 +82,7 @@ function metadataText(key, value) {
 export function renderAlgebraResult(host, result) {
   host.replaceChildren(); host.classList.add('algebra-result');
   host.setAttribute('aria-live','polite');
-  const title = {scalar:'Resultado',vector:'Vetor',matrix:'Matriz',solveinfo:'Análise do sistema',lstsq:'Mínimos quadrados',eiginfo:'Autovalores e autovetores',qr:'A = Q R',svd:'A = U Σ Vᵀ',lu:'P A = L U',pinv:'Pseudoinversa'}[result.kind] || 'Resultado';
+  const title = {rrefinfo:'Gauss–Jordan: etapas',scalar:'Resultado',vector:'Vetor',matrix:'Matriz',solveinfo:'Análise do sistema',lstsq:'Mínimos quadrados',eiginfo:'Autovalores e autovetores',qr:'A = Q R',svd:'A = U Σ Vᵀ',lu:'P A = L U',pinv:'Pseudoinversa'}[result.kind] || 'Resultado';
   host.appendChild(el('strong','algebra-result-title',title));
   const shape = result.shape?.length ? result.shape.join('×') : 'escalar';
   const inputs = result.inputShapes?.length ? result.inputShapes.map(s => s.length ? s.join('×') : 'escalar').join(', ')+' → ' : '';
@@ -94,6 +94,18 @@ export function renderAlgebraResult(host, result) {
   for (const field of ['Q','R','P','L','U','S','Vt']) if (result[field]) host.appendChild(MatrixResultView(result[field],field === 'Vt' ? 'Vᵀ' : field === 'S' ? 'Valores singulares' : field));
   if (result.eigenvectors) host.appendChild(MatrixResultView(result.eigenvectors,'Autovetores (um por linha)'));
   if (result.kind === 'eiginfo') host.appendChild(el('p','','A v = λ v. Autovalores em ordem crescente; vetores normalizados.'));
+  if(result.kind==='rrefinfo'&&result.steps){
+    const details=el('details','gauss-steps');
+    details.appendChild(el('summary','',result.steps.length+' etapas de Gauss–Jordan'));
+    const items=el('ol','gauss-steps-list');
+    for(const step of result.steps){
+      const item=el('li');item.appendChild(el('strong','',step.operation));
+      const pre=el('pre','gauss-step-matrix');
+      pre.textContent=step.matrix.map(row=>row.map(formatAlgebraNumber).join('   ')).join('\n');
+      item.appendChild(pre);items.appendChild(item);
+    }
+    details.appendChild(items);host.appendChild(details);
+  }
   const properties = el('dl','algebra-properties');
   Object.entries(result.metadata || {}).forEach(([key,value]) => {
     if (value == null || !labels[key]) return;

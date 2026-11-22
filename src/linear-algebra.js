@@ -55,6 +55,7 @@ function dimensions(m, n) {
 }
 export function dot(u, v) { pair(u, v); return rawDot(u, v); }
 export function norm(v) { validateVector(v); return Math.hypot(...v); }
+export function unit(v) {const n=norm(v);if(!n)fail('ZERO_VECTOR','O vetor nulo não possui versor.');return v.map(x=>x/n);}
 export function vadd(u, v) { pair(u, v); return u.map((x, i) => x + v[i]); }
 export function vsub(u, v) { pair(u, v); return u.map((x, i) => x - v[i]); }
 // Scalar multiple of a vector or, elementwise, of a matrix: scale(2,A) = 2A.
@@ -110,6 +111,12 @@ export function trace(A) { square(A); return A.reduce((s, row, i) => s + row[i],
 export function eye(n) { dimensions(n, n); return rawEye(n); }
 export function zeros(m, n) { dimensions(m, n); return rawZeros(m, n); }
 export function frobenius(A) { validateMatrix(A); return Math.hypot(...A.flat()); }
+export function matpow(A,n){
+  const size=square(A);if(!Number.isInteger(n)||Math.abs(n)>100)fail('POWER','Expoente inteiro entre −100 e 100 esperado.');
+  let base=n<0?inv(A):A.map(row=>[...row]), out=eye(size),k=Math.abs(n);
+  while(k){if(k%2)out=matmul(out,base);k=Math.floor(k/2);if(k)base=matmul(base,base);}
+  return out;
+}
 function relativeResidual(A, B) {
   const s = Math.max(maxAbs(A), maxAbs(B)) || 1;
   return Math.hypot(...A.flatMap((r, i) => r.map((x, j) => x/s-B[i][j]/s))) /
@@ -164,28 +171,38 @@ function rhs(A, b) {
   return v;
 }
 export function linsolve(A, b) { const v = rhs(A, b); return factoredSolve(factor(A), v); }
-function reduce(A) {
+function reduce(A,{record=false}={}) {
   validateMatrix(A);
-  const {matrix:M} = scaled(A), m = M.length, n = M[0].length, tol = tolerance(m, n), pivots = [];
+  const {matrix:M,scale} = scaled(A), m = M.length, n = M[0].length, tol = tolerance(m, n), pivots = [];
+  const steps=[];const snap=(operation)=>{if(record&&steps.length<160)steps.push({operation,matrix:M.map(row=>[...row])});};
+  snap(scale===1?'Matriz inicial':'Normalização numérica da matriz (dividir por '+scale+')');
   let row = 0;
   for (let col = 0; col < n && row < m; col++) {
     let p = row;
     for (let i = row+1; i < m; i++) if (Math.abs(M[i][col]) > Math.abs(M[p][col])) p = i;
     if (Math.abs(M[p][col]) <= tol) { for (let i = row; i < m; i++) M[i][col] = 0; continue; }
-    [M[p], M[row]] = [M[row], M[p]];
+    if(p!==row){[M[p], M[row]] = [M[row], M[p]];snap('Trocar L'+(p+1)+' ↔ L'+(row+1));}
     const pivot = M[row][col];
-    M[row] = M[row].map(x => x/pivot); M[row][col] = 1;
+    M[row] = M[row].map(x => x/pivot); M[row][col] = 1;snap('Normalizar L'+(row+1)+' pelo pivô '+pivot);
     for (let i = 0; i < m; i++) if (i !== row) {
       const f = M[i][col];
+      if(Math.abs(f)<=tol){M[i][col]=0;continue;}
       for (let j = 0; j < n; j++) M[i][j] -= f*M[row][j];
-      M[i][col] = 0;
+      M[i][col] = 0;snap('L'+(i+1)+' ← L'+(i+1)+' − ('+f+')L'+(row+1));
     }
     pivots.push(col); row++;
   }
-  return { matrix:M, pivots };
+  return { matrix:M, pivots, steps, tol };
 }
 export function rref(A) { return reduce(A).matrix; }
 export function rank(A) { return reduce(A).pivots.length; }
+export function rrefinfo(A){
+  validateMatrix(A,'matriz',true);
+  const r=reduce(A,{record:true});
+  return {kind:'rrefinfo',shape:[A.length,A[0].length],value:r.matrix,steps:r.steps,
+    metadata:{rank:r.pivots.length,method:'Gauss–Jordan com pivotamento parcial',threshold:r.tol},
+    warnings:r.steps.length>=160?['Exibidas somente 160 etapas.']:[]};
+}
 const structured = (kind, shape, fields, metadata = {}, warnings = []) => ({kind, shape, ...fields, metadata, warnings});
 const illWarning = condition => condition > 1e10 ? ['Matriz numericamente mal condicionada; os resultados podem perder precisão.'] : [];
 function conditionInfinity(A, inverse) {
@@ -453,7 +470,7 @@ export function eiginfo(A) {
 export function eig(A) { return eiginfo(A).value; }
 export function eigenvectors(A) { return eiginfo(A).eigenvectors; }
 
-export const algebraFunctions = Object.freeze({dot,norm,vadd,vsub,scale,angle,proj,cross,matadd,matsub,matmul,transpose,det,trace,inv,rank,rref,eye,zeros,frobenius,linsolve,solveinfo,eig,eigenvectors,eiginfo,lu,qr,svd,pinv,lstsq});
+export const algebraFunctions = Object.freeze({dot,norm,unit,vadd,vsub,scale,angle,proj,cross,matadd,matsub,matmul,matpow,transpose,det,trace,inv,rank,rref,rrefinfo,eye,zeros,frobenius,linsolve,solveinfo,eig,eigenvectors,eiginfo,lu,qr,svd,pinv,lstsq});
 export const algebraArities = Object.freeze(Object.fromEntries(Object.entries(algebraFunctions).map(([name,fn]) => [name,fn.length])));
 export function callAlgebra(name, args) {
   const fn = algebraFunctions[name];

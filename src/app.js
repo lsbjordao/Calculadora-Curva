@@ -34,7 +34,8 @@ import { describeCanvas, formatMathVisual } from './accessibility.js';
 import { isStructuredResult, resultInfo, renderAlgebraResult } from './algebra-ui.js';
 import { matrixInfo } from './linear-algebra.js';
 import { algebraDeclaration, createAlgebraSymbols } from './algebra-symbols.js';
-import { createTransformControls, buildSystemScene } from './linear-transform-view.js';
+import { createTransformControls, buildSystemScene, buildSystemScene3D } from './linear-transform-view.js';
+import { initAlgebraWorkbench } from './algebra-workbench.js';
 import { createCamera, zoomCamera, presetView, fitCameraScale } from './space3d/camera.js';
 import { axesPrimitives } from './space3d/scene3d.js';
 import { buildDrawList, drawScene3d, colorsFromTheme } from './space3d/render3d.js';
@@ -785,7 +786,7 @@ function eqDeriv2Fn(eq){
 function recompileEq(eq, geometryRegistry=null){
   eq.analysisCache=null;
   eq.intCache=null;
-  eq.algebraResult=null; eq.algebraInput=null; eq.errorMessage=null; eq.systemScene=null;
+  eq.algebraResult=null; eq.algebraInput=null; eq.errorMessage=null; eq.systemScene=null; eq.systemScene3d=null;
   eq.kind='function'; eq.ineqOp=null; eq.domain=null;
   eq.fn=null; eq.xFn=null; eq.yFn=null; eq.rFn=null; eq.points=null; eq.pointSource=null; eq.pointLabel=null; eq.histSource=null; eq.valueFn=null; eq.fitInfo=null; eq.fitSpec=null; eq.fitSource=null; eq.regInfo=null; eq.defName=null; eq.geometry=null;
   eq.deriv1=null; eq.deriv2=null; eq.antider=null;
@@ -1030,6 +1031,7 @@ function setComputedResult(eq,value,fn){
   if(eq.algebraResult.kind==='solveinfo' && fn?.inputValues?.length===2){
     const [A,b]=fn.inputValues;
     eq.systemScene=buildSystemScene(A,b,eq.algebraResult.metadata.classification==='unique'?eq.algebraResult.value:null);
+    eq.systemScene3d=buildSystemScene3D(A,b,eq.algebraResult.metadata.classification==='unique'?eq.algebraResult.value:null);
   }
   eq.regInfo={label:'resultado = '+formatCalcValue(isStructuredResult(value)?value.value:value),r2:null};
   eq.error=false;
@@ -1876,8 +1878,8 @@ function renderRows(){
     refreshControls=()=>{
       controls.innerHTML='';
       if(eq.kind==='result'){
-        if(eq.systemScene){
-          const show=document.createElement('button');show.type='button';show.className='calc';show.textContent='ver retas';
+        if(eq.systemScene||eq.systemScene3d){
+          const show=document.createElement('button');show.type='button';show.className='calc';show.textContent=eq.systemScene3d?'ver planos 3D':'ver retas';
           show.dataset.on=eq.showAlgebraSystem?'1':'0';
           show.onclick=()=>{eq.showAlgebraSystem=!eq.showAlgebraSystem;show.dataset.on=eq.showAlgebraSystem?'1':'0';draw();scheduleSave();};
           controls.appendChild(show);
@@ -5381,6 +5383,17 @@ if(axisRangeInput) axisRangeInput.addEventListener('change',()=>{
 });
 const fitBtn=document.getElementById('fit');
 if(fitBtn) fitBtn.onclick=fitToView;
+const fullscreenBtn=document.getElementById('fullscreen');
+if(fullscreenBtn){
+  fullscreenBtn.onclick=async()=>{
+    try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}
+    catch{fullscreenBtn.title='Use F11 para tela cheia';}
+  };
+  document.addEventListener('fullscreenchange',()=>{
+    fullscreenBtn.textContent=document.fullscreenElement?'⤢':'⛶';
+    fullscreenBtn.setAttribute('aria-label',document.fullscreenElement?'Sair da tela cheia':'Tela cheia');
+  });
+}
 const gridBtn=document.getElementById('grid-mode');
 if(gridBtn){
   gridBtn.onclick=toggleGridMode;
@@ -5428,6 +5441,11 @@ initPresets();
 initLessons();
 initHelp();
 initGeoBuilder();
+initAlgebraWorkbench({insert:(command)=>{
+  const target=focusedEquation&&equations.includes(focusedEquation)&&!focusedEquation.text.trim()?focusedEquation:null;
+  if(target)target.text=command;else equations.push(makeEq(command));
+  recompileAllEquations();renderRows();draw();scheduleSave();
+}});
 initSideResizer();
 init3DLibrarySelector();
 onActive3DLibraryChange(()=>{
@@ -5441,3 +5459,5 @@ renderRows();
 setCanvasCursor();
 resize();
 commitHistory();   // seed history with the initial state
+if('serviceWorker' in navigator&&location.protocol!=='file:')
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));

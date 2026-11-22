@@ -68,7 +68,8 @@ test('Three.js: eixos exibem marcas numéricas e ocultam eixo apontado para a c�
   const labels=out.filter(p=>p.kind==='label'&&p.role==='tick');
   const marks=out.filter(p=>p.kind==='segment'&&p.role==='tick');
   assert.ok(labels.length>=12,'Esperado ter marcas nos três eixos');
-  assert.equal(labels.length,marks.length);
+  assert.ok(labels.length<=marks.length,'Números podem ser omitidos para evitar sobreposição');
+  assert.equal(marks.length,30,'As marcas dos três eixos permanecem visíveis');
   assert.ok(new Set(labels.map(p=>p.axis)).size===3);
   assert.ok(labels.some(p=>p.text==='1'));
   const xy=createCamera({...presetView('xy'),scale:40});

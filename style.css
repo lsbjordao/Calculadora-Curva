@@ -590,7 +590,7 @@
   }
   .del:hover{background:var(--hover);color:var(--danger)}
   #add{
-    margin:6px 10px 0;
+    margin:6px 10px 12px;
     padding:9px;
     border:1px dashed var(--field-edge);
     background:none;
@@ -887,13 +887,12 @@
   .lesson-actions button:disabled:hover{border-color:var(--field-edge);color:var(--muted)}
   #spacer{flex:0 0 8px;min-height:8px}
   #pad{border-top:1px solid var(--panel-edge)}
-  #tabs{display:flex;gap:4px;padding:8px 10px 0}
+  #tabs{display:flex;gap:6px;padding:10px 10px 9px;align-items:stretch}
   .tab{
-    flex:1 1 auto;height:28px;
+    flex:1 1 0;min-width:0;min-height:32px;
     border:1px solid var(--field-edge);
     background:var(--field);
-    border-radius:7px 7px 0 0;
-    border-bottom:none;
+    border-radius:7px;
     cursor:pointer;color:var(--muted);
     font-family:var(--mono);font-size:12px;
   }
@@ -1733,3 +1732,19 @@
   font-size:13px;line-height:1.4;text-align:center;z-index:4;pointer-events:none;
 }
 #three-3d-status[hidden]{display:none}
+
+/* Exportar/importar projetos completos de forma independente da sessão local. */
+.project-actions{display:flex;gap:7px;margin:9px 0 0;flex-wrap:wrap}
+.project-actions button{flex:1;min-width:130px;cursor:pointer;font-size:12px;padding:9px 8px;border-radius:7px;
+  color:var(--ink);background:var(--field);border:1px solid var(--field-edge)}
+.project-actions button:hover{border-color:var(--accent)}
+.project-status{margin:6px 2px 0;font-size:12px;color:var(--muted);min-height:0}
+.project-status:empty{display:none}.project-status[data-error="1"]{color:var(--danger)}
+
+/* Three-dimensional matrix transformations; shares the existing result panel. */
+.transform3d-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:9px 2px}
+.transform3d-controls button,.transform3d-controls select{cursor:pointer;border:1px solid var(--field-edge);
+  border-radius:6px;color:var(--ink);background:var(--field);padding:6px 9px}
+.transform3d-controls label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink)}
+.transform3d-controls input[type="range"]{min-width:130px;flex:1}
+.transform3d-controls output,.transform3d-controls p{flex-basis:100%;font-size:12px;margin:2px 0;color:var(--muted)}

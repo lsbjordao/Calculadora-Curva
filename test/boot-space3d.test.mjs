@@ -355,3 +355,45 @@ test('ao entrar na vista 3D o modo anotação é desligado e o cursor vira mão'
   await settle();
   assert.equal(saved.view.cx,-0.5);
 });
+
+
+test('preset Análise de cônicas alterna 2D → 3D → 2D → 3D sem esconder o botão',async()=>{
+  await boot({version:1,theme:'light',view3d:{mode:'3d'},equations:[mk(0,'ponto: A=(1,2,3)')]});
+  const preset=byId('preset-list'),load=byId('preset-load'),toggle=byId('view-mode');
+  preset.value='conic-analysis';
+  load.onclick();
+  await wait(40);
+  assert.equal(toggle.hidden,false);
+  assert.equal(toggle.dataset.mode,'2d','um preset 2D substituto deve iniciar em 2D');
+  assert.deepEqual(fields().slice(-4).map(x=>x.value),[
+    'conica: x^2 + y^2 = 4',
+    'conica: x^2/9 + y^2/4 = 1',
+    'conica: x^2 - y^2 = 1',
+    'conica: y = x^2/2'
+  ],'preset de cônicas substitui as linhas anteriores');
+  toggle.onclick();
+  await wait(40);
+  assert.equal(toggle.dataset.mode,'3d');
+  toggle.onclick();
+  await wait(40);
+  assert.equal(toggle.dataset.mode,'2d');
+  assert.equal(toggle.hidden,false,'o controle não pode desaparecer após voltar para 2D');
+  toggle.onclick();
+  await wait(40);
+  assert.equal(toggle.dataset.mode,'3d');
+  await settle();
+  assert.equal(saved.view3d.mode,'3d');
+});
+
+test('controle 3D continua disponível mesmo sem objeto espacial',async()=>{
+  await boot({version:1,theme:'light',view3d:{mode:'2d'},equations:[mk(0,'sin(x)')]});
+  const button=byId('view-mode');
+  assert.equal(button.hidden,false);
+  button.onclick();
+  await wait(25);
+  assert.equal(button.dataset.mode,'3d');
+  button.onclick();
+  await wait(25);
+  assert.equal(button.dataset.mode,'2d');
+  assert.equal(button.hidden,false);
+});

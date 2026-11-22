@@ -152,3 +152,34 @@ Os novos testes estão em `test/gaal-integration.test.mjs` e executam com `npm t
 A lista **Motor 3D** oferece **Canvas 2D (renderizador próprio)**, **Plotly.js** e **Three.js (WebGL)**. A opção Three.js usa o pacote `three` v0.187.0 por importação dinâmica de CDN, apenas quando selecionada. Ela desenha planos transparentes, malhas, linhas, vetores, pontos e legendas com profundidade WebGL e reutiliza a câmera e os dados geométricos da Curva.
 
 Para sistemas `solveinfo(A,b)` de ordem 3×3, cada plano tem sua própria cor e o ponto de solução recebe destaque. O modo Three.js exige WebGL e conexão na primeira importação do módulo; se não estiver disponível, selecione Canvas 2D ou Plotly.js. O modo Canvas 2D não depende da CDN. Three.js utiliza licença MIT.
+
+
+## Projetos JSON e alternância 2D/3D
+
+O controle **2D | 3D** permanece visível mesmo em cenas exclusivamente 2D.
+Ao **carregar** um preset, a vista inicial volta a ser 2D para cenas sem
+objetos 3D e 3D para cenas com objetos espaciais; **adicionar** um preset não
+substitui o modo escolhido. O preset **Análise de cônicas** é 2D, mas pode
+ser explorado também em 3D no plano XY e depois retornar ao 2D.
+
+Nos controles de **presets**, use **↓ exportar projeto** para baixar
+`curva-projeto-AAAA-MM-DD.json` e **↑ importar projeto** para restaurar
+equações, configurações, anotações, parâmetros e câmera. Importação valida
+a estrutura e limita o tamanho a 2 MB; não interpreta código do JSON.
+Use **Desfazer** para voltar à sessão anterior. Um arquivo de projeto
+é diferente do link por comandos `?cmd=`, que não inclui a câmera.
+
+
+## Transformações de matrizes 3×3 (novidade)
+
+Para uma matriz 3×3, por exemplo
+`calc: [[2,0,0],[0,1,0],[0,0,0.5]]`,
+abra **transformação 3D** no resultado. A cena exibe o cubo unitário
+(original e transformado) e três vetores da base. Use o controle de tempo,
+**iniciar / pausar / reiniciar** e os modos **Identidade → A** ou
+**SVD: Vᵀ → Σ → U**. Alterar a matriz recalcula a geometria sem alterar
+a entrada. As cores dos três vetores são consistentes nos renderizadores.
+
+As transformações são modelos visuais de interpolação, não uma solução
+simbólica dos autovalores. A interpolação linear e os estágios da SVD podem
+atravessar matrizes singulares e inverter orientações.

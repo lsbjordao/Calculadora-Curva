@@ -26,8 +26,11 @@ test('library manager defaults to default and switches to plotly', async () => {
   assert.equal(getActive3DLibrary(), 'default');
   assert.equal(notified, 'default');
 
-  // threejs alias normalizes to default
+  // Three.js is now a distinct WebGL renderer, not a Canvas alias.
   await setActive3DLibrary('threejs');
+  assert.equal(getActive3DLibrary(), 'threejs');
+  assert.equal(notified, 'threejs');
+  await setActive3DLibrary('default');
   assert.equal(getActive3DLibrary(), 'default');
 });
 
@@ -105,6 +108,7 @@ test('DOM visibility toggles with stub elements', () => {
 
   stubElements.set('cv', makeStub('cv'));
   stubElements.set('plotly-3d-container', makeStub('plotly-3d-container'));
+  stubElements.set('three-3d-container', makeStub('three-3d-container'));
   stubElements.set('3d-library-selector', makeStub('3d-library-selector'));
   stubElements.set('3d-lib-select', makeStub('3d-lib-select'));
 
@@ -119,10 +123,24 @@ test('DOM visibility toggles with stub elements', () => {
   assert.equal(stubElements.get('3d-library-selector').hidden, true);
   assert.equal(stubElements.get('cv').style.display, '');
   assert.equal(stubElements.get('plotly-3d-container').style.display, 'none');
+  assert.equal(stubElements.get('three-3d-container').style.display, 'none');
 
   // Test 3D mode with default library: selector visible, cv visible
   show3DLibrarySelector();
   assert.equal(stubElements.get('3d-library-selector').hidden, false);
   assert.equal(stubElements.get('cv').style.display, '');
   assert.equal(stubElements.get('plotly-3d-container').style.display, 'none');
+  assert.equal(stubElements.get('three-3d-container').style.display, 'none');
+
+  // Changing to Three.js hides the Canvas and shows the WebGL container.
+  setActive3DLibrary('threejs',{redraw:false});
+  show3DLibrarySelector();
+  assert.equal(stubElements.get('cv').style.display,'none');
+  assert.equal(stubElements.get('three-3d-container').style.display,'block');
+
+  await setActive3DLibrary('default',{redraw:false});
+  show3DLibrarySelector();
+  assert.equal(stubElements.get('cv').style.display,'');
+  assert.equal(stubElements.get('three-3d-container').style.display,'none');
+  delete globalThis.document;
 });

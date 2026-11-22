@@ -36,6 +36,9 @@ async function createPage(viewport){
 }
 try{
   const {context,page}=await createPage({width:1440,height:900});
+  // Presets are collapsed by default. Exercise the actual UI instead of
+  // relying on selecting a hidden form field.
+  await page.locator('#preset-toggle').click();
   await page.selectOption('#preset-list','conic-analysis');
   await page.click('#preset-load');
   nodeAssert.equal(await page.locator('.field').count(),4);

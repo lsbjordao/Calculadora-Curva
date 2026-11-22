@@ -123,7 +123,7 @@ export function initAlgebraWorkbench({insert}){
     area.append(select('Operação',OPS[state.kind],state.op,v=>{state.op=v;render();}));
     const [a,b]=sources();
     area.append(grid(state.kind==='vectors'?'Vetor u':state.kind==='systems'?'Coeficientes A':'Matriz A',a));
-    if(!unary.has(state.op))area.append(grid(state.kind==='vectors'?'Vetor v':state.kind==='systems'?'Termos independentes b':'Matriz B',b));
+    if(state.kind==='systems'||!unary.has(state.op))area.append(grid(state.kind==='vectors'?'Vetor v':state.kind==='systems'?'Termos independentes b':'Matriz B',b));
     if(state.op==='matpow'||state.op==='scale'){
       const label=node('label','workbench-selector');label.append(node('span','',state.op==='matpow'?'Expoente inteiro':'Escalar'));
       const field=node('input');field.type='number';field.step=state.op==='matpow'?'1':'any';field.value=String(state.k);

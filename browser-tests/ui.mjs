@@ -116,6 +116,25 @@ try{
   nodeAssert.equal(geometryState.equations[0].params.d,1.1);
   nodeAssert.equal(geometryState.equations[0].params.p,.7);
   nodeAssert.equal(geometryState.equations[0].params.q,90);
+  const horizontalOffset=firstConic.locator('.param-control[data-param="b"] input[type="number"]');
+  const horizontalSlider=firstConic.locator('.param-control[data-param="b"] input[type="range"]');
+  nodeAssert.equal(await horizontalSlider.getAttribute('min'),'-4');
+  nodeAssert.equal(await horizontalSlider.getAttribute('max'),'4');
+  await horizontalOffset.fill('0');
+  await page.waitForTimeout(120);
+  nodeAssert.equal(await horizontalOffset.inputValue(),'0');
+  const crossing=await page.locator('#stage').screenshot();
+  await horizontalOffset.fill('-1');
+  await page.waitForTimeout(120);
+  const negative=await page.locator('#stage').screenshot();
+  nodeAssert.notDeepEqual(crossing,negative,'Mover b de 0 para -1 deve alterar o plano na cena');
+  await horizontalOffset.fill('0');
+  const zeroDownload=page.waitForEvent('download');
+  await page.click('#project-export');
+  const zeroFile=await zeroDownload;
+  const atZero=JSON.parse(await readFile(await zeroFile.path(),'utf8')).state;
+  nodeAssert.equal(atZero.equations[0].params.b,0,'O deslocamento b=0 deve ser preservado');
+  await page.screenshot({path:resolve(screenshots,'desktop-plano-vertical-em-x-zero.png')});
   await page.screenshot({path:resolve(screenshots,'desktop-hiperbole-parametros-ajustados.png')});
 
   await toggle.click();

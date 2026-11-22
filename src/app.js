@@ -2554,6 +2554,12 @@ function applyLessonScene(step){
   scene.equations.forEach(entry=>equations.push(makePresetEquation(entry)));
   if(!equations.length) equations.push(makeEq(''));
   recompileAllEquations();
+  // A lesson chooses its own dimensional context, just like a preset:
+  // the cone/plane section lessons must always open in 3D.
+  const has3d=has3dObjects(equations);
+  view3d.mode=has3d?'3d':'2d';
+  view3d.savedMode=true;
+  has3dSeen=has3d;
   renderRows();
   draw();
   scheduleSave();

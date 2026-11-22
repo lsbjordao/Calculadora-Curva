@@ -459,6 +459,27 @@ export const PRESETS=[
     ]
   },
   {
+    id:'cone-sections-3d',
+    label:'Seções do cone e circunferência',
+    view:{cx:0,cy:0,scale:58},
+    equations:[
+      {text:'secao: 2,k',params:{k:0},name:'Circunferência: plano horizontal'},
+      {text:'secao: 2,k',params:{k:0.5},name:'Elipse: plano oblíquo',visible:false},
+      {text:'secao: 2,k',params:{k:1},name:'Parábola: plano paralelo à geratriz',visible:false},
+      {text:'secao: 2,k',params:{k:1.6},name:'Hipérbole: plano inclinado',visible:false}
+    ]
+  },
+  {
+    id:'cone-hyperbola-planes-3d',
+    label:'Hipérbole e planos (3D)',
+    view:{cx:0,cy:0,scale:58},
+    equations:[
+      {text:'secao: 2,k',params:{k:1.6},name:'Cone duplo + plano secante + hipérbole'},
+      {text:'secao: 2,k',params:{k:0},name:'Comparar com seção circular',visible:false},
+      {text:'secao: 2,k',params:{k:0.5},name:'Comparar com seção elíptica',visible:false}
+    ]
+  },
+  {
     id:'linear-algebra',
     label:'Álgebra linear 2D',
     view:{cx:0.8,cy:0.8,scale:84},
@@ -668,6 +689,8 @@ const PRESET_DETAILS={
   'implicit-conics':['Implícitas','Círculo, hipérboles e a relação xy=1 traçadas por f(x,y)=0.'],
   'analytic-geometry':['Geometria','Pontos, distância, ponto médio, reta por dois pontos e interseção.'],
   'conic-analysis':['Geometria','Cônicas com centro, raio, focos, diretrizes e eixos quando detectáveis.'],
+  'cone-sections-3d':['Cônicas e quádricas','Cone duplo 3D recortado por um plano: circunferência, elipse, parábola e hipérbole. Ative uma linha por vez e ajuste k.'],
+  'cone-hyperbola-planes-3d':['Cônicas e quádricas','Hipérbole como seção 3D de um cone duplo por um plano oblíquo; compare inclinações com as demais linhas.'],
   'linear-algebra':['Álgebra linear','Vetores, matrizes 2x2, determinante e transformação do quadrado unitário.'],
   'linear-algebra-advanced':['Álgebra linear','Determinante NxN, cross 3D, linsolve, somatório e sequências.'],
   'data-histograms':['Dados','Compara histogramas e pontos para mostrar a sintaxe hist:.'],

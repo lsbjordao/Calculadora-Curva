@@ -87,6 +87,19 @@ try{
   await page.waitForFunction(()=>document.querySelector('.transform3d-controls output')?.textContent.includes('det A'));
   await page.locator('#view-mode').click();
   await page.screenshot({path:resolve(screenshots,'desktop-transformacao-3d.png')});
+
+  // The 3D cone + oblique plane + hyperbola preset must open in 3D and
+  // remain interactive after returning to 2D and then back to 3D.
+  await page.selectOption('#preset-list','cone-hyperbola-planes-3d');
+  await page.click('#preset-load');
+  await page.waitForFunction(()=>document.querySelector('#view-mode')?.dataset.mode==='3d');
+  nodeAssert.equal(await page.locator('.field').count(),3);
+  nodeAssert.equal(await toggle.getAttribute('data-mode'),'3d');
+  await page.screenshot({path:resolve(screenshots,'desktop-hiperbole-plano-cone-3d.png')});
+  await toggle.click();
+  nodeAssert.equal(await toggle.getAttribute('data-mode'),'2d');
+  await toggle.click();
+  nodeAssert.equal(await toggle.getAttribute('data-mode'),'3d');
   await context.close();
 
   const {context:mobile,page:phone}=await createPage({width:390,height:844});

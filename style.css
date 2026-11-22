@@ -1617,3 +1617,80 @@
   }
 }
 
+/* Plotly 3D Modebar positioning & glassmorphism styling */
+#plotly-3d-container .modebar-container {
+  position: absolute !important;
+  top: 12px !important;
+  right: 255px !important;
+  left: auto !important;
+  z-index: 25 !important;
+}
+
+#plotly-3d-container .modebar {
+  background: transparent !important;
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  height: 34px !important;
+}
+
+#plotly-3d-container .modebar-group {
+  background: var(--glass) !important;
+  backdrop-filter: blur(4px) !important;
+  border: 1px solid var(--panel-edge) !important;
+  border-radius: 8px !important;
+  padding: 0 4px !important;
+  margin-left: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  height: 34px !important;
+  box-shadow: 0 1px 2px rgba(20, 25, 35, 0.06) !important;
+}
+
+#plotly-3d-container .modebar-btn {
+  height: 28px !important;
+  width: 28px !important;
+  padding: 4px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+}
+
+#plotly-3d-container .modebar-btn:hover {
+  background: var(--hover) !important;
+}
+
+#plotly-3d-container .modebar-btn svg {
+  position: static !important;
+  max-height: 16px !important;
+  max-width: 16px !important;
+  fill: var(--ink) !important;
+}
+
+#plotly-3d-container .modebar-btn:hover svg,
+#plotly-3d-container .modebar-btn.active svg {
+  fill: var(--accent) !important;
+}
+
+@media (max-width: 900px) {
+  #plotly-3d-container .modebar-container {
+    top: 52px !important;
+    right: 54px !important;
+    left: auto !important;
+  }
+}
+
+@media (max-width: 720px) {
+  #plotly-3d-container .modebar-container {
+    top: auto !important;
+    bottom: 52px !important;
+    right: 12px !important;
+    left: auto !important;
+  }
+}
+
+

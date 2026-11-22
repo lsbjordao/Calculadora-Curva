@@ -66,12 +66,15 @@ test('primitivesToPlotlyData converts points, segments, arrows and planes', () =
   assert.deepEqual(arrowCone.x, [2]);
 
   // 4. Point trace
-  const pointTrace = traces.find(t => t.type === 'scatter3d' && t.mode?.includes('markers'));
+  const pointTrace = traces.find(t => t.type === 'scatter3d' && t.mode?.includes('markers') && t.name === 'A');
   assert.ok(pointTrace, 'Point marker trace should exist');
   assert.deepEqual(pointTrace.x, [1]);
   assert.deepEqual(pointTrace.y, [2]);
   assert.deepEqual(pointTrace.z, [3]);
   assert.equal(pointTrace.text?.[0], 'A');
+  assert.ok(pointTrace.hovertemplate.includes('%{x}'), 'Hovertemplate must include %{x}');
+  assert.ok(pointTrace.hovertemplate.includes('%{y}'), 'Hovertemplate must include %{y}');
+  assert.ok(pointTrace.hovertemplate.includes('%{z}'), 'Hovertemplate must include %{z}');
 
   // 5. Normal segment trace
   const segTrace = traces.find(t => t.type === 'scatter3d' && t.name === 'Reta' || t.name === 'Reta/Segmento');

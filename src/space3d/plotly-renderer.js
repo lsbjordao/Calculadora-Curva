@@ -66,8 +66,8 @@ export function primitivesToPlotlyData(primitives, options = {}) {
   const box = options.box || { min: [-range, -range, -range], max: [range, range, range] };
   const themeColors = options.colors || {};
   const isDark = options.theme === 'dark';
-  const defaultObjColor = isDark ? '#4ea8de' : '#2d70b3';
-  const axisLineColor = themeColors.axis || (isDark ? '#808793' : '#4b5563');
+  const defaultObjColor = isDark ? '#f97316' : '#ea580c';
+  const axisLineColor = themeColors.axis || (isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)');
 
   if (!Array.isArray(primitives)) return data;
 
@@ -133,7 +133,7 @@ export function primitivesToPlotlyData(primitives, options = {}) {
             surfaces.push({
               kind: 'polygon',
               points: pts,
-              color: prim.color || defaultObjColor,
+              color: prim.color || (isDark ? '#38bdf8' : '#0284c7'),
               alpha: prim.alpha ?? 0.22,
               label: prim.label
             });
@@ -167,7 +167,7 @@ export function primitivesToPlotlyData(primitives, options = {}) {
     if (s.kind === 'polygon' && s.points && s.points.length >= 3) {
       const pts = s.points;
       const k = pts.length;
-      const color = toColor(s.color, defaultObjColor);
+      const color = toColor(s.color, isDark ? '#38bdf8' : '#0284c7');
       const alpha = Number.isFinite(s.alpha) ? s.alpha : 0.22;
 
       // Triangulation fan from vertex 0
@@ -206,7 +206,7 @@ export function primitivesToPlotlyData(primitives, options = {}) {
         showlegend: false
       });
     } else if (s.kind === 'mesh' && s.vertices && s.faces) {
-      const color = toColor(s.color, defaultObjColor);
+      const color = toColor(s.color, isDark ? '#38bdf8' : '#0284c7');
       const alpha = Number.isFinite(s.alpha) ? s.alpha : 0.22;
       const I = [], J = [], K = [];
       for (const face of s.faces) {
@@ -234,7 +234,7 @@ export function primitivesToPlotlyData(primitives, options = {}) {
     }
   }
 
-  // 2. Guide lines (dashed)
+  // 2. Guide lines (dotted / dashed lines to coordinate planes)
   if (guideSegments.length > 0) {
     const gx = [], gy = [], gz = [];
     for (const g of guideSegments) {
@@ -249,7 +249,7 @@ export function primitivesToPlotlyData(primitives, options = {}) {
       y: gy,
       z: gz,
       line: {
-        color: themeColors.muted || (isDark ? '#6b7280' : '#9ca3af'),
+        color: isDark ? 'rgba(255, 255, 255, 0.45)' : 'rgba(0, 0, 0, 0.4)',
         width: 1.5,
         dash: 'dash'
       },
@@ -260,7 +260,8 @@ export function primitivesToPlotlyData(primitives, options = {}) {
 
   // 3. Lines and Segments
   for (const seg of linesAndSegments) {
-    const color = toColor(seg.color, seg.role === 'axis' ? axisLineColor : defaultObjColor);
+    const isAxis = seg.role === 'axis';
+    const color = toColor(seg.color, isAxis ? axisLineColor : defaultObjColor);
     data.push({
       type: 'scatter3d',
       mode: 'lines',
@@ -269,11 +270,11 @@ export function primitivesToPlotlyData(primitives, options = {}) {
       z: [seg.a[2], seg.b[2]],
       line: {
         color: color,
-        width: seg.weight ? seg.weight * 1.5 : (seg.role === 'axis' ? 2 : 3),
+        width: seg.weight ? seg.weight * 1.5 : (isAxis ? 2 : 3),
         dash: seg.dash ? 'dash' : 'solid'
       },
-      name: seg.label || (seg.role === 'axis' ? 'Eixo' : 'Reta'),
-      hoverinfo: seg.label ? 'name' : (seg.role === 'axis' ? 'skip' : 'x+y+z'),
+      name: seg.label || (isAxis ? 'Eixo' : 'Reta'),
+      hoverinfo: isAxis ? 'skip' : 'name+x+y+z',
       showlegend: false
     });
   }
@@ -288,15 +289,12 @@ export function primitivesToPlotlyData(primitives, options = {}) {
     // Shaft
     data.push({
       type: 'scatter3d',
-      mode: arr.label ? 'lines+text' : 'lines',
+      mode: 'lines',
       x: [from[0], to[0]],
       y: [from[1], to[1]],
       z: [from[2], to[2]],
-      text: arr.label ? ['', arr.label] : undefined,
-      textposition: 'top center',
-      line: { color: color, width: 3.5 },
-      name: arr.label || 'Vetor',
-      hoverinfo: arr.label ? 'name' : 'x+y+z',
+      line: { color: color, width: 4 },
+      hoverinfo: 'skip',
       showlegend: false
     });
 
@@ -311,16 +309,43 @@ export function primitivesToPlotlyData(primitives, options = {}) {
         v: [d[1]],
         w: [d[2]],
         sizemode: 'scaled',
-        sizeref: 0.18,
+        sizeref: 0.2,
         anchor: 'tip',
         showscale: false,
         colorscale: [[0, color], [1, color]],
         hoverinfo: 'skip'
       });
     }
+
+    // Interactive hover marker & label at vector tip
+    data.push({
+      type: 'scatter3d',
+      mode: arr.label ? 'markers+text' : 'markers',
+      x: [to[0]],
+      y: [to[1]],
+      z: [to[2]],
+      text: arr.label ? [arr.label] : undefined,
+      textposition: 'top center',
+      textfont: {
+        color: color,
+        size: 13,
+        family: 'var(--sans, system-ui, sans-serif)'
+      },
+      marker: {
+        size: 4,
+        color: color,
+        opacity: 0.05
+      },
+      name: arr.label || 'Vetor',
+      hovertemplate: (
+        (arr.label ? `<b>${arr.label}</b> (vetor)<br>` : '<b>Vetor</b><br>') +
+        `x: %{x}<br>y: %{y}<br>z: %{z}<extra></extra>`
+      ),
+      showlegend: false
+    });
   }
 
-  // 5. Points
+  // 5. Points (with on-hover spikes and coordinate tooltip)
   for (const pt of points) {
     const color = toColor(pt.color, defaultObjColor);
     data.push({
@@ -331,13 +356,25 @@ export function primitivesToPlotlyData(primitives, options = {}) {
       z: [pt.p[2]],
       text: pt.label ? [pt.label] : undefined,
       textposition: 'top center',
-      marker: {
-        size: pt.role === 'aux' ? 4 : 6,
+      textfont: {
         color: color,
-        opacity: 0.95
+        size: 13,
+        family: 'var(--sans, system-ui, sans-serif)'
       },
-      name: pt.label ? `${pt.label} = (${pt.p.map(c => Number(c.toFixed(2))).join(', ')})` : 'Ponto',
-      hoverinfo: 'name+x+y+z',
+      marker: {
+        size: pt.role === 'aux' ? 5 : 7,
+        color: color,
+        opacity: 0.95,
+        line: {
+          color: isDark ? '#ffffff' : '#000000',
+          width: 1
+        }
+      },
+      name: pt.label || 'Ponto',
+      hovertemplate: (
+        (pt.label ? `<b>${pt.label}</b><br>` : '<b>Ponto</b><br>') +
+        `x: %{x}<br>y: %{y}<br>z: %{z}<extra></extra>`
+      ),
       showlegend: false
     });
   }
@@ -376,11 +413,13 @@ export async function renderPlotly3D(primitives, options = {}) {
   const range = Number.isFinite(options.range) && options.range > 0 ? options.range : 5;
   const showGrid = options.grid !== false;
 
-  const bgColor = isDark ? '#101318' : '#ffffff';
-  const paneBgColor = isDark ? '#161a22' : '#f5f7fa';
-  const textColor = isDark ? '#e5e8ec' : '#1f242d';
-  const gridColor = isDark ? '#262d3a' : '#e2e6eb';
-  const zeroLineColor = isDark ? '#4b5563' : '#9ca3af';
+  // Refined palette matching elegant mathematical visualization
+  const bgColor = isDark ? '#111216' : '#ffffff';
+  const paneBgColor = isDark ? 'rgba(22, 26, 34, 0.75)' : 'rgba(245, 247, 250, 0.75)';
+  const textColor = isDark ? '#e2e8f0' : '#1e293b';
+  const tickColor = isDark ? '#94a3b8' : '#64748b';
+  const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.07)';
+  const zeroLineColor = isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.35)';
 
   const data = primitivesToPlotlyData(primitives, options);
 
@@ -391,6 +430,21 @@ export async function renderPlotly3D(primitives, options = {}) {
     autosize: true,
     paper_bgcolor: bgColor,
     plot_bgcolor: bgColor,
+    hovermode: 'closest',
+    hoverlabel: {
+      bgcolor: isDark ? '#1a202c' : '#ffffff',
+      bordercolor: isDark ? '#4a5568' : '#cbd5e1',
+      font: {
+        family: 'var(--sans, system-ui, sans-serif)',
+        size: 12,
+        color: isDark ? '#f7fafc' : '#0f172a'
+      }
+    },
+    modebar: {
+      orientation: 'h',
+      color: isDark ? 'rgba(255, 255, 255, 0.65)' : 'rgba(30, 41, 59, 0.65)',
+      activecolor: isDark ? '#38bdf8' : '#0284c7'
+    },
     font: {
       color: textColor,
       family: 'var(--sans, system-ui, -apple-system, sans-serif)',
@@ -405,33 +459,51 @@ export async function renderPlotly3D(primitives, options = {}) {
         range: [-range, range],
         backgroundcolor: paneBgColor,
         gridcolor: gridColor,
+        gridwidth: 1,
         showbackground: true,
         zerolinecolor: zeroLineColor,
         zerolinewidth: 2,
         showzerolines: true,
-        showgrid: showGrid
+        showgrid: showGrid,
+        showspikes: true,
+        spikesides: true,
+        spikethickness: 2,
+        spikecolor: isDark ? '#38bdf8' : '#0284c7',
+        tickfont: { size: 10, color: tickColor }
       },
       yaxis: {
         title: { text: 'y', font: { size: 12, color: textColor } },
         range: [-range, range],
         backgroundcolor: paneBgColor,
         gridcolor: gridColor,
+        gridwidth: 1,
         showbackground: true,
         zerolinecolor: zeroLineColor,
         zerolinewidth: 2,
         showzerolines: true,
-        showgrid: showGrid
+        showgrid: showGrid,
+        showspikes: true,
+        spikesides: true,
+        spikethickness: 2,
+        spikecolor: isDark ? '#4ade80' : '#16a34a',
+        tickfont: { size: 10, color: tickColor }
       },
       zaxis: {
         title: { text: 'z', font: { size: 12, color: textColor } },
         range: [-range, range],
         backgroundcolor: paneBgColor,
         gridcolor: gridColor,
+        gridwidth: 1,
         showbackground: true,
         zerolinecolor: zeroLineColor,
         zerolinewidth: 2,
         showzerolines: true,
-        showgrid: showGrid
+        showgrid: showGrid,
+        showspikes: true,
+        spikesides: true,
+        spikethickness: 2,
+        spikecolor: isDark ? '#c084fc' : '#9333ea',
+        tickfont: { size: 10, color: tickColor }
       },
       camera: {
         ...sceneCamera,
@@ -448,8 +520,8 @@ export async function renderPlotly3D(primitives, options = {}) {
     toImageButtonOptions: {
       format: 'png',
       filename: 'curva-3d',
-      height: 900,
-      width: 1200,
+      height: 1080,
+      width: 1920,
       scale: 2
     }
   };

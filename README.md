@@ -124,3 +124,24 @@ A SVD usa Jacobi unilateral, ortogonalizando as colunas sem formar explicitament
 ## Verificação
 
 `npm test` executa testes numéricos e de integração: operações conhecidas, identidades algébricas, reconstruções, ortogonalidade, condições de Moore–Penrose, erros de domínio e dimensão, reatividade, símbolos, apresentações acessíveis e inicialização com estados antigos.
+
+## Editor visual de GAAL e instalação
+
+Na aba **álgebra**, escolha **editor visual** para preencher vetores, matrizes ou sistemas Ax=b
+em células numéricas. O editor insere uma expressão `calc:` comum na Curva e preserva
+o motor numérico, as variáveis e o mecanismo de undo/redo existentes.
+
+Novas funções: `unit([3,4])` (versor), `matpow([[2,1],[0,2]],3)` (potências inteiras
+de −100 a 100) e `rrefinfo([[1,2],[2,4]])` (forma reduzida e painel de etapas
+de Gauss–Jordan com pivotamento parcial, escalado para estabilidade numérica).
+
+Para sistemas `solveinfo(A,b)` de ordem 3×3, acione **ver planos 3D** no resultado.
+Os planos são desenhados no renderizador nativo ou Plotly da Curva, com o ponto
+de solução somente quando a classificação for de solução única.
+
+A Curva agora possui um manifesto PWA com ícone próprio e botão de tela cheia.
+Em Chrome/Edge, use a opção **Instalar aplicativo** para abrir em janela própria.
+O modo offline inclui os arquivos locais; o renderizador Plotly carregado via CDN
+exige rede, portanto escolha **Curva 3D (Nativa)** para trabalhar desconectado.
+
+Os novos testes estão em `test/gaal-integration.test.mjs` e executam com `npm test`.

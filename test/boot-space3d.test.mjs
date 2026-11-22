@@ -365,7 +365,12 @@ test('preset Análise de cônicas alterna 2D → 3D → 2D → 3D sem esconder o
   await wait(40);
   assert.equal(toggle.hidden,false);
   assert.equal(toggle.dataset.mode,'2d','um preset 2D substituto deve iniciar em 2D');
-  assert.equal(fields().length,4,'preset de cônicas contém quatro equações');
+  assert.deepEqual(fields().slice(-4).map(x=>x.value),[
+    'conica: x^2 + y^2 = 4',
+    'conica: x^2/9 + y^2/4 = 1',
+    'conica: x^2 - y^2 = 1',
+    'conica: y = x^2/2'
+  ],'preset de cônicas substitui as linhas anteriores');
   toggle.onclick();
   await wait(40);
   assert.equal(toggle.dataset.mode,'3d');

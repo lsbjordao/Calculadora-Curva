@@ -1,6 +1,6 @@
 "use strict";
 
-import {validateMatrix,eye,matmul,svd,det} from './linear-algebra.js';
+import {validateMatrix,eye,matmul,svd,det} from '../linear-algebra.js';
 
 // Pure 3D transform geometry shared by Canvas, Plotly.js and Three.js.
 // The source matrix is never modified; the animation is A(t)=(1-t)I+tA,

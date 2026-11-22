@@ -1,4 +1,4 @@
-const CACHE='curva-pwa-threejs-v4';
+const CACHE='curva-pwa-next-v5';
 const CORE=["./favicon.svg","./index.html","./src/accessibility.js","./src/algebra-lessons.js","./src/algebra-symbols.js","./src/algebra-ui.js","./src/algebra-workbench.js","./src/analysis.js","./src/app.js","./src/coords.js","./src/data-table.js","./src/geometry-builder.js","./src/geometry.js","./src/history.js","./src/integrate.js","./src/lessons.js","./src/linear-algebra.js","./src/linear-transform-view.js","./src/numeric.js","./src/op-controls.js","./src/parser.js","./src/presets.js","./src/regress.js","./src/space3d/camera.js","./src/space3d/geometry3d.js","./src/space3d/library-manager.js","./src/space3d/plotly-renderer.js","./src/space3d/render3d.js","./src/space3d/scene3d.js","./src/space3d/three-renderer.js","./src/space3d/view3d.js","./src/stats.js","./src/steps.js","./src/storage.js","./src/style-editor.js","./src/symbolic.js","./src/table.js","./style.css","./manifest.webmanifest","./assets/curva-192.png","./assets/curva-512.png","./"];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)));

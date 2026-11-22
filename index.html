@@ -303,6 +303,12 @@
         <button id="preset-add" title="Adicionar o preset selecionado às funções atuais">adicionar</button>
       </div>
       <div id="preset-preview"></div>
+      <div class="project-actions" role="group" aria-label="Projetos Curva">
+        <button id="project-export" type="button" title="Salvar equações, anotações e câmera em arquivo JSON">↓ exportar projeto</button>
+        <button id="project-import" type="button" title="Abrir projeto JSON e substituir a sessão atual">↑ importar projeto</button>
+        <input id="project-file" type="file" accept=".json,application/json" hidden aria-label="Arquivo de projeto Curva">
+      </div>
+      <p id="project-status" class="project-status" role="status" aria-live="polite"></p>
     </section>
     <section id="lessons" aria-label="Aulas guiadas" data-collapsed="1">
       <div class="lesson-head">

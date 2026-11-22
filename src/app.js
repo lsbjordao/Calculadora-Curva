@@ -36,6 +36,7 @@ import { matrixInfo } from './linear-algebra.js';
 import { algebraDeclaration, createAlgebraSymbols } from './algebra-symbols.js';
 import { createTransformControls, buildSystemScene, buildSystemScene3D } from './linear-transform-view.js';
 import { initAlgebraWorkbench } from './algebra-workbench.js';
+import { initProjectControls } from './project-controls.js';
 import { createCamera, zoomCamera, presetView, fitCameraScale } from './space3d/camera.js';
 import { axesPrimitives } from './space3d/scene3d.js';
 import { buildDrawList, drawScene3d, colorsFromTheme } from './space3d/render3d.js';
@@ -2401,6 +2402,13 @@ function applyPreset(id,mode){
   }
   preset.equations.forEach(entry=>equations.push(makePresetEquation(entry)));
   recompileAllEquations();
+  if(mode==='replace'){
+    // Presets select a suitable initial dimension, independent of prior scene.
+    const has3d=has3dObjects(equations);
+    view3d.mode=has3d?'3d':'2d';
+    view3d.savedMode=true;
+    has3dSeen=has3d;
+  }
   if(mode==='replace'&&preset.view){
     view.cx=preset.view.cx;
     view.cy=preset.view.cy;
@@ -5010,7 +5018,9 @@ function updateView3dUi(has3d){
   document.body.dataset.view=on?'3d':'2d';
   const toggle=document.getElementById('view-mode');
   if(toggle){
-    toggle.hidden=!(has3d||on);
+    // The 3D view is useful even for 2D geometry promoted into the XY plane.
+    // Never strand users in 2D after loading a purely 2D preset.
+    toggle.hidden=false;
     toggle.dataset.mode=on?'3d':'2d';
     toggle.setAttribute('aria-pressed',on?'true':'false');
     toggle.title=on?'Voltar para a vista 2D':'Abrir a vista 3D';
@@ -5459,6 +5469,14 @@ if(initialCommands.length){
   initialCommands.forEach(command=>equations.push(makeEq(command)));
 }else if(!restoreState(initialState)) equations.push(makeEq('sin(x)'));
 initPresets();
+initProjectControls({
+  getState:plainState,
+  importState:(state)=>{
+    flushPending();
+    applyState(JSON.stringify(state));
+    commitHistory();
+  }
+});
 initLessons();
 initHelp();
 initGeoBuilder();

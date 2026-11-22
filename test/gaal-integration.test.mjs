@@ -54,3 +54,16 @@ test('sistema 3x3 gera três planos e uma interseção',()=>{
   assert.ok(none.every(x=>x.kind!=='point'));
   assert.equal(has3dObjects([{...eq,showAlgebraSystem:false}]),false);
 });
+
+test('parser da Curva executa comandos criados no editor',async()=>{
+  const {compile}=await import('../src/parser.js');
+  const examples=[
+    ['matrices','matpow',[[2,1],[0,2]],[[1]],3,[[8,12],[0,8]]],
+    ['vectors','unit',[[3,4]],[[0,0]],2,[.6,.8]],
+    ['matrices','matmul',[[2,1],[1,3]],[[1,2],[3,4]],2,[[5,8],[10,14]]]
+  ];
+  for(const [kind,operation,A,B,k,expected] of examples){
+    const command=buildWorkbenchCommand(kind,operation,A,B,k);
+    near(compile(command.slice(6))(0),expected);
+  }
+});

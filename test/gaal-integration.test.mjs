@@ -70,3 +70,12 @@ test('parser da Curva executa comandos criados no editor',async()=>{
     near(compile(command.slice(6))(0),expected);
   }
 });
+
+test('seletor 3D identifica Canvas 2D e Plotly.js sem atribuir biblioteca inexistente',async()=>{
+  const {readFileSync}=await import('node:fs');
+  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+  const select=html.match(/<select id="3d-lib-select"[\s\S]*?<\/select>/)?.[0] || '';
+  assert.match(select,/<option value="default">Canvas 2D \(renderizador próprio\)<\/option>/);
+  assert.match(select,/<option value="plotly">Plotly.js<\/option>/);
+  assert.doesNotMatch(select,/Three\.js/i);
+});

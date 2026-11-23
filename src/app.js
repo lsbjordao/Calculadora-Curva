@@ -5880,7 +5880,9 @@ if(sectionToggle)sectionToggle.onclick=()=>{
   draw();scheduleSave();
 };
 if(planeDragButton)planeDragButton.onclick=()=>{
-  planeDragMode=!planeDragMode;draw();
+  planeDragMode=!planeDragMode;
+  equations.forEach(eq=>{eq.showPlaneGizmo=planeDragMode&&eq.geometry?.type==='plane';});
+  draw();
 };
 initThreePlaneDragging({
   isEnabled:()=>view3d.mode==='3d'&&getActive3DLibrary()==='threejs'&&planeDragMode,

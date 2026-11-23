@@ -126,7 +126,15 @@ function quadricSliceCommand(body,ctx){
   const parts=core.splitTopAny(String(body),',').map(x=>x.trim());
   if(parts.length!==8)throw new Error('Corte: use corte: tipo,a,b,c,d,q,p,h (q e p em graus; h distância assinada do plano).');
   const type=parts[0].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  const [a,b,c,d,q,p,h]=parts.slice(1).map(v=>core.evalScalar(v,ctx));
+  const sliceScalar=value=>{
+    if(value==='h'){
+      const h=ctx.params?.h;
+      if(!Number.isFinite(h))throw new Error('Parâmetro h sem valor válido.');
+      return h;
+    }
+    return core.evalScalar(value,ctx);
+  };
+  const [a,b,c,d,q,p,h]=parts.slice(1).map(sliceScalar);
   const surface=quadricScene(type,{a,b,c,d});
   const cut=quadricPlaneSection(type,{a,b,c,d},{inclination:q,azimuth:p,offset:h});
   const r=result3('section','seção de '+surface.label.toLowerCase());

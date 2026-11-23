@@ -459,6 +459,10 @@
     overflow-wrap:anywhere;
     white-space:normal;
   }
+  /* One mathematical property per line, with the field label visually distinct. */
+  .row-info-line{display:block;line-height:1.5;overflow-wrap:anywhere}
+  .row-info-line+.row-info-line{margin-top:4px}
+  .row-info-key{font-weight:700;color:var(--ink)}
   .row-info:empty{display:none}
   .steps-zone:empty{display:none}
   .steps{

@@ -3196,6 +3196,16 @@ function syncSectionLayout(){
   if(sectionElement)sectionElement.hidden=!show;
   const was=stage?.classList?.contains?.('dual-conic')||false;
   stage?.classList?.toggle?.('dual-conic',show);
+  // Attach the 3D engine selector to the 3D toolbar only in the dual view.
+  // Its position then follows toolbar wrapping and cannot cover the 2D pane.
+  if(was!==show&&stage){
+    const selector=document.getElementById('3d-library-selector');
+    const toolbar=document.getElementById('view3d-bar');
+    if(selector&&toolbar){
+      if(show)toolbar.appendChild(selector);
+      else stage.insertBefore(selector,stage.firstChild);
+    }
+  }
   if(show)sectionPanel.draw(eq.geometry,theme==='dark');
   if(was!==show){resize();return true;}
   return false;

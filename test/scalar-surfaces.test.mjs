@@ -15,6 +15,17 @@ test('arbitrary z=f(x,y) computes consistent first and second derivatives',()=>{
   near(q.hessian[0][1],-Math.cos(.3)*Math.sin(.7));
   near(Math.hypot(...q.normal),1,1e-8);
 });
+test('directional derivative follows the unit direction and tangent vector',()=>{
+  const {at}=compileScalarSurface('z=x^2+2*y');
+  const x=multivariateAt(at,1,1,0);
+  const y=multivariateAt(at,1,1,90);
+  near(x.directionalDerivative,2);
+  near(y.directionalDerivative,2);
+  const theta=multivariateAt(at,1,1,45);
+  near(theta.directionalDerivative,2*Math.sqrt(2));
+  const scene=scalarSurfaceScene('z=x^2+2*y',{}, {x:1,y:1,direction:45}).scene;
+  assert.ok(scene.some(item=>item.kind==='arrow'&&item.label==='Dᵥf'));
+});
 test('Hessian classifies known minimum maximum and saddle at origin',()=>{
   for(const [expr,kind] of [['z = x^2+y^2','mínimo local'],
       ['z = -x^2-y^2','máximo local'],['z = x^2-y^2','ponto de sela']]){

@@ -37,7 +37,8 @@ import { algebraDeclaration, createAlgebraSymbols } from './algebra-symbols.js';
 import { createTransformControls, buildSystemScene, buildSystemScene3D } from './linear-transform-view.js';
 import { initAlgebraWorkbench } from './algebra-workbench.js';
 import { initProjectControls } from './project-controls.js';
-import { exportGraphPng } from './export-graphic.js';
+import { exportGraphPng, exportCombinedPng } from './export-graphic.js';
+import {encodeSharedScene,decodeSharedScene} from './share-scene.js';
 import { createCamera, zoomCamera, presetView, fitCameraScale, projectPoint } from './space3d/camera.js';
 import { axesPrimitives } from './space3d/scene3d.js';
 import { buildDrawList, drawScene3d, colorsFromTheme } from './space3d/render3d.js';
@@ -5781,6 +5782,29 @@ if(installBtn)installBtn.onclick=async()=>{
 };
 window.addEventListener('appinstalled',()=>{deferredInstall=null;if(installBtn)installBtn.hidden=true;});
 const exportGraphicBtn=document.getElementById('export-graphic');
+const combinedExportBtn=document.getElementById('section2d-combined');
+if(combinedExportBtn)combinedExportBtn.onclick=async()=>{
+  const status=document.getElementById('export-graphic-status');
+  try{await exportCombinedPng();if(status)status.textContent='Composição 3D + 2D exportada.';}
+  catch(error){if(status)status.textContent='Falha ao exportar composição: '+error.message;
+    combinedExportBtn.title='Falha: '+error.message;}
+};
+const shareSceneBtn=document.getElementById('share-scene');
+if(shareSceneBtn)shareSceneBtn.onclick=async()=>{
+  const status=document.getElementById('export-graphic-status');
+  try{
+    const url=new URL(window.location.href);
+    url.search='';url.searchParams.set('scene',encodeSharedScene(plainState()));
+    if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(url.href);
+    else if(typeof window.prompt==='function')window.prompt('Copie o link da cena:',url.href);
+    else throw new Error('Área de transferência indisponível.');
+    if(status)status.textContent='Link da cena copiado.';
+    shareSceneBtn.title='Link copiado · inclui vista 3D e parâmetros';
+  }catch(error){
+    if(status)status.textContent='Falha ao compartilhar: '+error.message;
+    shareSceneBtn.title='Falha: '+error.message;
+  }
+};
 if(exportGraphicBtn)exportGraphicBtn.onclick=async()=>{
   const status=document.getElementById('export-graphic-status');
   try{
@@ -5840,9 +5864,19 @@ theme=savedTheme==='dark'||savedTheme==='light' ? savedTheme
 
 // URL commands define the initial scene; reuse the normal compilation below
 // so geometry and algebra references resolve just like manually entered rows.
-const initialCommands=new URLSearchParams(window.location?.search || '')
-  .getAll('cmd').filter(command=>command.trim());
-if(initialCommands.length){
+const initialQuery=new URLSearchParams(window.location?.search || '');
+const initialCommands=initialQuery.getAll('cmd').filter(command=>command.trim());
+let initialShare=null;
+if(initialQuery.has('scene')){
+  try{initialShare=decodeSharedScene(initialQuery.get('scene'));}
+  catch(error){
+    const status=document.getElementById('export-graphic-status');
+    if(status)status.textContent='Link de cena inválido: '+error.message;
+  }
+}
+if(initialShare){
+  restoreState(initialShare);
+}else if(initialCommands.length){
   initialCommands.forEach(command=>equations.push(makeEq(command)));
 }else if(!restoreState(initialState)) equations.push(makeEq('sin(x)'));
 initPresets();

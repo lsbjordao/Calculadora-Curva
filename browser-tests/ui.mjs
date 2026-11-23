@@ -266,6 +266,19 @@ try{
   await tangentPage.screenshot({path:resolve(screenshots,'desktop-gradiente-plano-tangente.png')});
   await tangentContext.close();
 
+  // Rotated conics: interactive eigenbasis rotation eliminates the mixed term.
+  const {context:rotationContext,page:rotationPage}=await createPage({width:1440,height:900});
+  await rotationPage.locator('.field').first().fill('conica: x*y = 1');
+  const rotationSlider=rotationPage.locator('.conic-rotation-demo input[type="range"]');
+  await rotationSlider.waitFor({state:'visible'});
+  await rotationSlider.evaluate(el=>{
+    el.value='100';el.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+  nodeAssert.match(await rotationPage.locator('.conic-rotation-demo output').innerText(),
+    /termo misto B′ = 0\.0000/);
+  await rotationPage.screenshot({path:resolve(screenshots,'desktop-conica-rotacionada-diagonalizacao.png')});
+  await rotationContext.close();
+
   const {context:mobile,page:phone}=await createPage({width:390,height:844});
   const tabs=phone.locator('#tabs .tab');
   nodeAssert.equal(await tabs.count(),6);

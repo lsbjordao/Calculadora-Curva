@@ -1499,6 +1499,7 @@ function renderRows(){
       refreshMathInfo();
       if(before!==eq.paramNames.join(',')) refreshParamControls();
       refreshControls();
+      refreshConicDemo();
       refreshOps();
       renderContextActions(eq, contextActions);
       draw();

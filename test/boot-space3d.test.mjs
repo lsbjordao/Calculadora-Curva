@@ -167,9 +167,7 @@ test('URL executa os comandos na ordem, resolve referências e substitui a cena 
     equations:[mk(0,'ponto: A=(0,0), B=(30,40)')]},urlFor(commands));
   assert.deepEqual(fields().map(el=>el.value),commands);
   assert.deepEqual(scalars(),['1','-1','7']);
-  assert.ok(created.some(el=>el.className==='row-info'&&/d\(A, B\) = 10\b/.test(descendantText(el))),
-    'rendered info: '+JSON.stringify(created.filter(el=>el.className==='row-info'||el.className==='row-info-line')
-      .map(el=>({className:el.className,txt:descendantText(el)})).slice(-16)));
+  assert.ok(created.some(el=>el.className==='row-info-line'&&/d\(A, B\) = 10\b/.test(descendantText(el))));
   assert.ok(created.filter(el=>el.className==='row').every(el=>el.dataset.err==='0'));
   assert.ok(texts().includes('A'),'ponto da URL visível na cena padrão');
   assert.ok(!texts().includes('z'),'vista 3D salva não contamina a URL 2D');
@@ -211,9 +209,7 @@ test('linhas da URL continuam editáveis, recalculam dependentes e salvam normal
   const [points]=fields();
   points.value='ponto: A=(0,0), B=(6,8)';
   points.oninput();
-  assert.ok(created.some(el=>el.className==='row-info'&&/d\(A, B\) = 10\b/.test(descendantText(el))),
-    'rendered info: '+JSON.stringify(created.filter(el=>el.className==='row-info'||el.className==='row-info-line')
-      .map(el=>({className:el.className,txt:descendantText(el)})).slice(-16)));
+  assert.ok(created.some(el=>el.className==='row-info-line'&&/d\(A, B\) = 10\b/.test(descendantText(el))));
   await settle();
   assert.deepEqual(saved.equations.map(eq=>eq.text),['ponto: A=(0,0), B=(6,8)','dist: A,B']);
 });

@@ -112,9 +112,11 @@ function scenePoint(point){
   return prim;
 }
 
-function generalSurfaceCommand(body,ctx){
+function generalSurfaceCommand(body,ctx,forceScalar=false){
   let polynomial=null;
-  try{polynomial=generalQuadricFromEquation(body,ctx.params||{});}
+  try{if(forceScalar)throw new Error('expressão de função explicitamente selecionada, não quadrática');
+    polynomial=generalQuadricFromEquation(body,ctx.params||{});
+  }
   catch(error){
     if(!/^\\s*z\\s*=|=\\s*z\\s*$/i.test(String(body))||
       !/quadrática|quadrática em|quadrática em x/i.test(error.message))
@@ -317,6 +319,7 @@ function vectorCommand(body,ctx,definitionName){
 // Returns a 3D result, or null when the command has no ℝ³ version yet.
 export function parse3dCommand(command,body,ctx={},definitionName=''){
   if(command==='surface') return generalSurfaceCommand(body,ctx);
+  if(command==='scalar-surface')return generalSurfaceCommand(body,ctx,true);
   if(command==='section') return sectionCommand(body,ctx);
   if(command==='quadric-slice') return quadricSliceCommand(body,ctx);
   if(command==='tangent') return tangentCommand(body,ctx);
@@ -336,7 +339,7 @@ export function parse3dCommand(command,body,ctx={},definitionName=''){
 // intersecao, distancia and angulo go to ℝ³ when an object is 3D or when an
 // equation (a "=") mentions the variable z (lines without z keep the 2D
 // analyzers, §7a.3). A registered object named z keeps its old meaning.
-const ALWAYS_3D=new Set(['plane','position','section','quadric','quadric-slice','tangent','surface']);
+const ALWAYS_3D=new Set(['plane','position','section','quadric','quadric-slice','tangent','surface','scalar-surface']);
 const Z_EQUATION_COMMANDS=new Set(['line','intersect','distance','angle']);
 
 function equationWithZ(text,ctx){

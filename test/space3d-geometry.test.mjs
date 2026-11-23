@@ -148,6 +148,15 @@ test('2D geometry results match the snapshot taken before ℝ³ support', ()=>{
   };
   const actual=JSON.parse(JSON.stringify(runGeometry2dCases(),strip));
   assert.equal(actual.length,expected.length);
-  actual.forEach((item,i)=>assert.deepEqual(item,expected[i],item.text));
+  actual.forEach((item,i)=>{
+    if(item.text==='conica: x*y = 1'){
+      // The rotated conic was deliberately enriched with foci and principal
+      // axes; keep the pre-3D snapshot strict for all unchanged geometries.
+      assert.equal(item.result.type,'conic');
+      assert.ok(item.result.conics[0].analysis.info.includes('cônica rotacionada'));
+      assert.ok(item.result.conics[0].analysis.foci===undefined);
+      assert.ok(item.result.points.some(p=>p.label==='F1'));
+    }else assert.deepEqual(item,expected[i],item.text);
+  });
   assert.ok(tagged>0);
 });

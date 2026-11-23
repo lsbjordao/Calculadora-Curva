@@ -216,12 +216,13 @@ test('conic analysis reports orientation, eccentricity and genus',()=>{
 test('rotated conics are classified by discriminant and degeneracy',()=>{
   const info=text=>parseGeometryInput('conica: '+text).info;
   const hyperbola=info('2x^2 - y^2 - 4x*y - 5x + 4y + 10 = 0');
-  assert.equal(hyperbola[0],'conica rotacionada');
-  assert.equal(hyperbola[1],'hiperbole');
+  assert.equal(hyperbola[0],'cônica rotacionada');
+  assert.equal(hyperbola[1],'hipérbole');
   assert.ok(hyperbola.includes('b^2 - 4ac = 24 > 0 (genero hiperbolico)'));
   assert.equal(info('x*y = 0')[1],'par de retas concorrentes');
   assert.equal(info('x^2 + x*y + y^2 = 3')[1],'elipse');
-  assert.equal(info('x^2 + x*y + y^2 = -3')[1],'conica sem pontos reais');
-  assert.equal(info('2x^2 + 2y^2 - 4x*y - 4y + 10 = 0')[1],'parabola');
-  assert.ok(info('x*y = 1').includes('rotacao dos eixos = 45°'));
+  assert.equal(info('x^2 + x*y + y^2 = -3')[1],'cônica sem pontos reais');
+  assert.equal(info('2x^2 + 2y^2 - 4x*y - 4y + 10 = 0')[1],'parábola');
+  assert.ok(info('x*y = 1').includes('rotação dos eixos principais = 45°'));
+  assert.ok(parseGeometryInput('conica: 2x^2 - y^2 - 4x*y - 5x + 4y + 10 = 0').points.some(p=>p.label==='F1'));
 });

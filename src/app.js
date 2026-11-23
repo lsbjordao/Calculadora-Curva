@@ -1448,6 +1448,12 @@ function renderRows(){
       eye.textContent=eq.visible?'\u25c9':'\u25cb';
       chip.dataset.off=eq.visible?'0':'1';
       renderCurveSummary(summary,eq);
+      // Automatic surface/plane intersections depend on the *visible* planes:
+      // rebuilding is required when their eye toggle changes.
+      if(eq.geometry?.type==='plane'||equations.some(item=>item.geometry?.generalQuadric)){
+        recompileAllEquations();
+        resultRefreshers.forEach(refresh=>refresh());
+      }
       draw();
       scheduleSave();
     };

@@ -3535,6 +3535,8 @@ function activeSectionEquation(){
   return equations.find(eq=>eq?.visible!==false&&!eq.error&&eq.kind==='geometry'&&eq.geometry?.section&&eq.geometry?.scene3d?.length);
 }
 function syncSectionLayout(){
+  for(const item of equations)
+    item.showPlaneGizmo=planeDragMode&&item.visible!==false&&item.geometry?.type==='plane';
   const eq=view3d.mode==='3d'?activeSectionEquation():null;
   const available=!!eq;
   const show=available&&dualSection;

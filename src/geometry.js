@@ -28,6 +28,7 @@ const COMMAND_ALIASES={
   conic:'conic', conica:'conic',
   section:'section', secao:'section', seccao:'section', secaocone:'section',
   quadric:'quadric', quadrica:'quadric', quadricas:'quadric',
+  superficie:'surface', surface:'surface', superficie3d:'surface',
   corte:'quadric-slice', cortequadrica:'quadric-slice', quadricsection:'quadric-slice',
   tangente:'tangent', tangent:'tangent', gradient:'tangent', gradiente:'tangent',
   plane:'plane', plano:'plane',
@@ -1106,7 +1107,7 @@ const COMMAND_NAMES_PT={
   angle:'angulo', dot:'produto escalar', projection:'projecao', triangle:'triangulo',
   quadrilateral:'quadrilatero', polygon:'poligono', convexHull:'poligono convexo',
   distance:'distancia', midpoint:'ponto medio', line:'reta', intersect:'intersecao',
-  conic:'conica', section:'seção do cone', quadric:'quádrica 3D', 'quadric-slice':'seção de quádrica', tangent:'plano tangente 3D', matrix:'matriz', plane:'plano', position:'posicao'
+  conic:'conica', section:'seção do cone', quadric:'quádrica 3D', surface:'superfície 3D geral', 'quadric-slice':'seção de quádrica', tangent:'plano tangente 3D', matrix:'matriz', plane:'plano', position:'posicao'
 };
 
 function runCommand(command,body,ctx,definitionName=''){

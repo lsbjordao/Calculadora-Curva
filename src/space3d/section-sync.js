@@ -40,7 +40,7 @@ export function nearestSectionInPlane(segments,xy,x,y,thresholdPx=12){
 }
 
 export function linkedWorldFromSection(local,analysis){
-  return sectionToWorld(local,analysis);
+  return typeof analysis?.toWorld==='function'?analysis.toWorld(local):sectionToWorld(local,analysis);
 }
 export function linkedSectionFromWorld(world,analysis){
   return worldToSection(world,analysis);

@@ -201,6 +201,7 @@ function serializeEq(eq){
     showAlgebraTransform3d:!!eq.showAlgebraTransform3d,
     showAlgebraSystem:!!eq.showAlgebraSystem,
     clipSide:eq.clipSide||0,
+    surfacePoint:Array.isArray(eq.surfacePoint)?eq.surfacePoint:undefined,
     showResultTable:eq.showResultTable
   };
 }
@@ -837,7 +838,7 @@ function recompileEq(eq, geometryRegistry=null){
     if(!fm){
       const geometryNames=extractGeometryParams(raw);
       if(geometryNames.length) setupParams(eq, geometryNames);
-      const geometry=parseGeometryInput(raw,{params:eq.params,registry:geometryRegistry,symbols:algebraSymbols.resolve});
+      const geometry=parseGeometryInput(raw,{params:eq.params,registry:geometryRegistry,symbols:algebraSymbols.resolve,surfacePoint:eq.surfacePoint});
       if(geometry){
         setupParams(eq, geometryNames);
         eq.kind='geometry';
@@ -2619,6 +2620,9 @@ function applyEquationOptions(eq, options={}){
   eq.style=['solid','dashed','dotted'].includes(options.style) ? options.style : 'solid';
   eq.lw=Number.isFinite(options.lw) ? Math.min(Math.max(options.lw,1),5) : 2;
   eq.params=sanitizeParams(options.params);
+  eq.clipSide=[-1,0,1].includes(options.clipSide)?options.clipSide:0;
+  eq.surfacePoint=Array.isArray(options.surfacePoint)&&options.surfacePoint.length===2&&
+    options.surfacePoint.every(Number.isFinite)?options.surfacePoint.map(v=>Math.max(-12,Math.min(12,v))):[0,0];
 
   // Geometry toggles (keep defaults from makeEq when undefined).
   if(options.showGeoAngles!==undefined) eq.showGeoAngles=!!options.showGeoAngles;

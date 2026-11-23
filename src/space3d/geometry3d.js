@@ -12,6 +12,7 @@ import { compile, setImplicitY } from '../parser.js';
 import { makeConicSectionScene, makeAngledConicSectionScene } from './conic-sections.js';
 import { quadricScene } from './quadrics.js';
 import { quadricPlaneSection } from './quadric-sections.js';
+import { tangentScene } from './surface-calculus.js';
 
 const EPS=1e-9;
 // Object names: identifiers, plus π, π1… for planes (§7).
@@ -119,6 +120,28 @@ function quadricCommand(body,ctx){
   result.scene3d=geometry.scene;result.quadric=geometry;
   result.info=[geometry.equations,'a = '+a+' · b = '+b+' · c = '+c+' · d = '+d,
     'Superfície em janela finita; altere os parâmetros para deformá-la.'];
+  return result;
+}
+
+function tangentCommand(body,ctx){
+  const parts=core.splitTopAny(String(body),',').map(x=>x.trim());
+  if(parts.length<7||parts.length>8)
+    throw new Error('Tangente: use tangente: tipo,a,b,c,d,u,v[,r]; u,v de 0 a 1.');
+  const type=parts[0].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const [a,b,c,d,u,v,r=1]=parts.slice(1).map(value=>core.evalScalar(value,ctx));
+  const {surface,tangent,scene}=tangentScene(type,{a,b,c,d},u,v,r);
+  const result=result3('tangent','plano tangente a '+surface.label.toLowerCase());
+  result.scene3d=scene;result.quadric=surface;result.tangent=tangent;
+  const fmt=values=>'('+values.map(core.fmt).join(', ')+')';
+  result.info=[
+    surface.equations,'P = '+fmt(tangent.point),
+    '∇F(P) = '+fmt(tangent.gradient),
+    'Vetor normal unitário = '+fmt(tangent.normal),
+    'Plano tangente: '+tangent.normal.map((n,i)=>core.fmt(n)+['x','y','z'][i]).join(' + ')+
+      ' = '+core.fmt(tangent.distance)
+  ];
+  if(tangent.derivatives)
+    result.info.push('∂z/∂x = '+core.fmt(tangent.derivatives.dx)+' · ∂z/∂y = '+core.fmt(tangent.derivatives.dy));
   return result;
 }
 
@@ -241,6 +264,7 @@ function vectorCommand(body,ctx,definitionName){
 export function parse3dCommand(command,body,ctx={},definitionName=''){
   if(command==='section') return sectionCommand(body,ctx);
   if(command==='quadric-slice') return quadricSliceCommand(body,ctx);
+  if(command==='tangent') return tangentCommand(body,ctx);
   if(command==='quadric') return quadricCommand(body,ctx);
   if(command==='point') return pointCommand(body,ctx,definitionName);
   if(command==='vector') return vectorCommand(body,ctx,definitionName);
@@ -257,7 +281,7 @@ export function parse3dCommand(command,body,ctx={},definitionName=''){
 // intersecao, distancia and angulo go to ℝ³ when an object is 3D or when an
 // equation (a "=") mentions the variable z (lines without z keep the 2D
 // analyzers, §7a.3). A registered object named z keeps its old meaning.
-const ALWAYS_3D=new Set(['plane','position','section','quadric','quadric-slice']);
+const ALWAYS_3D=new Set(['plane','position','section','quadric','quadric-slice','tangent']);
 const Z_EQUATION_COMMANDS=new Set(['line','intersect','distance','angle']);
 
 function equationWithZ(text,ctx){

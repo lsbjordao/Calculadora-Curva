@@ -505,6 +505,40 @@ export const PRESETS=[
     ]
   },
   {
+    id:'general-equation-surfaces-3d',
+    label:'Quádricas gerais por equação (3D + 2D)',
+    view:{cx:0,cy:0,scale:52},
+    equations:[
+      {text:'superficie: x² + 2*x*y + 3*y² + z² = 9',name:'Elipsoide rotacionado: classificar e diagonalizar'},
+      {text:'plano: x + y + z = 2',name:'Plano secante interativo com alças XYZ'},
+      {text:'plano: z = 1',name:'Segundo plano de corte (opcional)',visible:false},
+      {text:'superficie: x² + y² - z² = 0',name:'Comparar com cone quadrático',visible:false}
+    ]
+  },
+  {
+    id:'multivariable-calculus-3d',
+    label:'Cálculo multivariável e curvas de nível',
+    view:{cx:0,cy:0,scale:52},
+    equations:[
+      {text:'funcao3d: z = sin(x)*cos(y)',name:'Ondas: gradiente, Hessiana e curvas de nível',surfacePoint:[.6,.5]},
+      {text:'funcao3d: z = x² - y²',name:'Sela e pontos críticos',visible:false},
+      {text:'funcao3d: z = 4 - x² - y²',name:'Máximo local e círculos de nível',visible:false},
+      {text:'funcao3d: z = cos(x)*sin(y)',name:'Campo periódico e derivadas direcionais',visible:false}
+    ]
+  },
+  {
+    id:'spatial-constructions-3d',
+    label:'Construções de retas, planos e interseções',
+    view:{cx:0,cy:0,scale:54},
+    equations:[
+      {text:'ponto: (1,0,0),(0,1,0),(0,0,1)',name:'Três pontos que determinam um plano'},
+      {text:'plano: (1,0,0),(0,1,0),(0,0,1)',name:'Plano pelos três pontos'},
+      {text:'reta: (0,0,0),(1,1,1)',name:'Reta concorrente com o plano'},
+      {text:'intersecao: plano(x+y+z=1); reta((0,0,0),(1,1,1))',name:'Interseção exata reta–plano'},
+      {text:'distancia: (0,0,0); plano(x+y+z=1)',name:'Distância de um ponto a um plano',visible:false}
+    ]
+  },
+  {
     id:'quadric-gallery-3d',
     label:'Superfícies quádricas (3D)',
     view:{cx:0,cy:0,scale:52},
@@ -732,6 +766,9 @@ const PRESET_DETAILS={
   'cone-hyperbola-planes-3d':['Cônicas e quádricas','Hipérbole como seção 3D de um cone duplo por um plano oblíquo; compare inclinações com as demais linhas.'],
   'quadric-plane-cuts-3d':['Cônicas e quádricas','Cortes analíticos de sete quádricas por planos com inclinação e azimute livres; visão 2D e 3D sincronizada.'],
   'quadric-tangents-3d':['Cônicas e quádricas','Explore gradiente, normal e plano tangente a quádricas; altere u e v para mover o ponto sobre a superfície.'],
+  'general-equation-surfaces-3d':['Cônicas e quádricas','Equação quadrática geral em x,y,z, inclusive termos mistos; autovalores, eixos principais, cortes por planos e recorte da malha.'],
+  'multivariable-calculus-3d':['Cálculo visual','Funções arbitrárias z=f(x,y): derivadas, gradiente, Hessiana, plano tangente, pontos críticos e mapas 2D de curvas de nível.'],
+  'spatial-constructions-3d':['Geometria','Construa um plano por três pontos, interseccione-o com uma reta e calcule distâncias espaciais.'],
   'quadric-gallery-3d':['Cônicas e quádricas','Sete superfícies quádricas ajustáveis. Ative uma por vez para comparar elipsoide, paraboloides, hiperboloides e cilindro.'],
   'linear-algebra':['Álgebra linear','Vetores, matrizes 2x2, determinante e transformação do quadrado unitário.'],
   'linear-algebra-advanced':['Álgebra linear','Determinante NxN, cross 3D, linsolve, somatório e sequências.'],

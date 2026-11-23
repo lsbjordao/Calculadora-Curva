@@ -47,6 +47,7 @@ import { initThree3DControls, initThreePlaneDragging } from './space3d/three-ren
 import { createTransform3DControls } from './space3d/transform3d.js';
 import { createSectionPanel } from './space3d/section-panel.js';
 import { dragPlaneParameters } from './space3d/plane-interaction.js';
+import { finiteSceneBounds } from './space3d/camera-fit.js';
 
 const PALETTES={
   light:["#c0492f","#2d70b3","#2f7d5b","#6042a6","#d98324","#1d1d1f","#0a8aa6","#a8336e"],
@@ -3551,8 +3552,11 @@ function restoreAnnotations(saved){
 
 function fitToView(){
   if(view3d.mode==='3d'){
-    const fit=fitCameraScale({width:W,height:H},axisBox());
-    view3d.camera=createCamera({...view3d.camera,target:[0,0,0],scale:fit});
+    const actual=finiteSceneBounds(equations);
+    const target=actual?.target||[0,0,0];
+    const box=actual||axisBox();
+    const fit=fitCameraScale({width:W,height:H},box,.9);
+    view3d.camera=createCamera({...view3d.camera,target,scale:fit});
     view3dFit=fit;
     view3dFitAxisRange=activeAxisRange();
     draw(); scheduleSave(); return;

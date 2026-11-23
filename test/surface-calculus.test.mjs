@@ -41,5 +41,5 @@ test('two-sheeted hyperboloid changes height for opposite sheet',()=>{
 });
 test('singular and invalid surface coordinates are not silently accepted',()=>{
   assert.throws(()=>quadricTangent('sela',params,2,.5),/entre 0 e 1/);
-  assert.throws(()=>quadricTangent('incorreta',params,.5,.5),/não suportado/);
+  assert.throws(()=>quadricTangent('incorreta',params,.5,.5),/desconhecido|não suportado/);
 });

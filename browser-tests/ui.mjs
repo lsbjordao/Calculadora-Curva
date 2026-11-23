@@ -191,6 +191,19 @@ try{
   nodeAssert.ok(changedSplit.width>initialSplit.width+4,'teclado deve ampliar a largura do visor 3D');
   await page.keyboard.press('ArrowLeft');
   nodeAssert.ok(Math.abs((await page.locator('#cv').boundingBox()).width-initialSplit.width)<4);
+  const max3d=page.locator('#view3d-focus');
+  await max3d.click();
+  nodeAssert.equal(await page.locator('#stage').getAttribute('class'),'dual-conic focus-3d');
+  const maximizedWidth=await page.locator('#cv').boundingBox();
+  nodeAssert.ok(maximizedWidth.width>initialSplit.width*1.5,'visor 3D maximizado deve ocupar a área total');
+  await max3d.click();
+  nodeAssert.ok(Math.abs((await page.locator('#cv').boundingBox()).width-initialSplit.width)<4);
+  await page.locator('#section2d-max').click();
+  const full2d=await page.locator('#section2d-panel').boundingBox();
+  const stageFull=await page.locator('#stage').boundingBox();
+  nodeAssert.ok(full2d.width>stageFull.width*.98,'seção 2D maximizada deve ocupar a área total');
+  await page.locator('#section2d-max').click();
+  nodeAssert.ok(Math.abs((await page.locator('#cv').boundingBox()).width-initialSplit.width)<4);
   await page.screenshot({path:resolve(screenshots,'desktop-divisoria-redimensionavel.png')});
   await context.close();
 

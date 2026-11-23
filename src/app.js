@@ -1678,7 +1678,14 @@ function renderRows(){
           d:{min:-4,max:4,step:0.1,label:'d · altura do vértice'},
           p:{min:-3.14,max:3.14,step:0.05,label:'p · rotação do plano (rad)'}
         };
-        const limits=isSection&&sectionControls[name]||PARAM_LIMITS[name]||{min:-5,max:5,step:0.1};
+        const isQuadric=/^\s*(?:quadrica|quadricas|quadric)\s*:/i.test(eq.text);
+        const quadricControls={
+          a:{min:.25,max:5,step:.05,label:'a · escala X'},
+          b:{min:.25,max:5,step:.05,label:'b · escala Y'},
+          c:{min:.25,max:5,step:.05,label:'c · escala Z'},
+          d:{min:-5,max:5,step:.1,label:'d · altura da superfície'}
+        };
+        const limits=(isSection&&sectionControls[name])||(isQuadric&&quadricControls[name])||PARAM_LIMITS[name]||{min:-5,max:5,step:0.1};
         const param=document.createElement('label');
         param.className='param-control';
         param.dataset.param=name;

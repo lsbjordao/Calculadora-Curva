@@ -480,6 +480,20 @@ export const PRESETS=[
     ]
   },
   {
+    id:'quadric-gallery-3d',
+    label:'Superfícies quádricas (3D)',
+    view:{cx:0,cy:0,scale:52},
+    equations:[
+      {text:'quadrica: elipsoide,a,b,c,d',params:{a:2,b:1.3,c:1.6,d:0},name:'Elipsoide'},
+      {text:'quadrica: esfera,a,b,c,d',params:{a:1.6,b:1.6,c:1.6,d:0},name:'Esfera',visible:false},
+      {text:'quadrica: paraboloide,a,b,c,d',params:{a:1.3,b:1,c:1,d:0},name:'Paraboloide elíptico',visible:false},
+      {text:'quadrica: hiperboloide1,a,b,c,d',params:{a:1.2,b:1,c:1,d:0},name:'Hiperboloide de uma folha',visible:false},
+      {text:'quadrica: hiperboloide2,a,b,c,d',params:{a:1.2,b:1,c:1,d:0},name:'Hiperboloide de duas folhas',visible:false},
+      {text:'quadrica: sela,a,b,c,d',params:{a:1,b:1,c:0.6,d:0},name:'Paraboloide hiperbólico',visible:false},
+      {text:'quadrica: cilindro,a,b,c,d',params:{a:1.4,b:.9,c:1,d:0},name:'Cilindro elíptico',visible:false}
+    ]
+  },
+  {
     id:'linear-algebra',
     label:'Álgebra linear 2D',
     view:{cx:0.8,cy:0.8,scale:84},
@@ -691,6 +705,7 @@ const PRESET_DETAILS={
   'conic-analysis':['Geometria','Cônicas com centro, raio, focos, diretrizes e eixos quando detectáveis.'],
   'cone-sections-3d':['Cônicas e quádricas','Cone duplo 3D recortado por um plano: circunferência, elipse, parábola e hipérbole. Ative uma linha por vez e ajuste k.'],
   'cone-hyperbola-planes-3d':['Cônicas e quádricas','Hipérbole como seção 3D de um cone duplo por um plano oblíquo; compare inclinações com as demais linhas.'],
+  'quadric-gallery-3d':['Cônicas e quádricas','Sete superfícies quádricas ajustáveis. Ative uma por vez para comparar elipsoide, paraboloides, hiperboloides e cilindro.'],
   'linear-algebra':['Álgebra linear','Vetores, matrizes 2x2, determinante e transformação do quadrado unitário.'],
   'linear-algebra-advanced':['Álgebra linear','Determinante NxN, cross 3D, linsolve, somatório e sequências.'],
   'data-histograms':['Dados','Compara histogramas e pontos para mostrar a sintaxe hist:.'],

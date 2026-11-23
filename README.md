@@ -227,3 +227,8 @@ A calculadora exibe essas duas retas corretamente. Com outras inclinações,
 o plano pode passar pelo vértice para alguns valores negativos de `b`;
 esses casos também são tratados como cônicas degeneradas. A sintaxe
 existente `secao: h,angulo(q),a,d,p,b` e os presets são preservados.
+
+
+## Laboratório de quádricas
+
+O preset **Superfícies quádricas (3D)** reúne elipsoide, esfera, paraboloide elíptico, paraboloide hiperbólico (sela), hiperboloides de uma e duas folhas, e cilindro elíptico. Ative uma linha de cada vez. O comando é `quadrica: tipo,a,b,c,d`, por exemplo `quadrica: hiperboloide1,1.2,1,1,0`. Os parâmetros a,b,c são escalas geométricas positivas e d desloca a superfície verticalmente. As superfícies são malhas limitadas para visualização, compatíveis com Canvas 2D, Plotly.js e Three.js.

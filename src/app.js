@@ -3215,6 +3215,41 @@ const sectionPanel=createSectionPanel({
   onClose:()=>{dualSection=false;draw();scheduleSave();},
   onHoverPoint:world=>setSectionLinkedWorld(world)
 });
+// In the tangent laboratory, selecting the surface updates the same u/v
+// parameters as the sliders. Vertex picking works in Canvas and Three.js
+// without requiring the WebGL renderer to expose its private raycaster.
+function pickTangentSurface(e){
+  if(view3d.mode!=='3d'||getActive3DLibrary()==='plotly')return;
+  const rect=stage.getBoundingClientRect();
+  const x=e.clientX-rect.left,y=e.clientY-rect.top;
+  if(x<0||x>W||y<0||y>H)return;
+  let nearest=null;
+  for(const eq of equations){
+    if(eq.visible===false||eq.error||!eq.geometry?.tangent||!eq.geometry?.scene3d)continue;
+    const meshes=eq.geometry.scene3d.filter(p=>p.kind==='mesh');
+    for(const [sheetIndex,mesh] of meshes.entries()){
+      const cols=mesh.vertices.length===33*33?33:45;
+      const rows=mesh.vertices.length/cols;
+      if(!Number.isInteger(rows))continue;
+      for(let k=0;k<mesh.vertices.length;k++){
+        const point=projectPoint(view3d.camera,mesh.vertices[k],{width:W,height:H});
+        if(point.behind)continue;
+        const dist=Math.hypot(point.x-x,point.y-y);
+        if(dist>16)continue;
+        if(!nearest||dist<nearest.dist-1||Math.abs(dist-nearest.dist)<1&&point.depth<nearest.depth){
+          nearest={eq,dist,depth:point.depth,u:Math.floor(k/cols)/(rows-1),
+            v:(k%cols)/(cols-1),face:sheetIndex===0?-1:1,sheetCount:meshes.length};
+        }
+      }
+    }
+  }
+  if(!nearest)return;
+  const {eq,u,v,face,sheetCount}=nearest;
+  eq.params.u=Number(u.toFixed(3));eq.params.v=Number(v.toFixed(3));
+  if(sheetCount>1)eq.params.r=face;
+  recompileAllEquations();resultRefreshers.forEach(refresh=>refresh());
+  draw();scheduleSave();
+}
 for(const id of ['cv','three-3d-container']){
   const target=document.getElementById(id);
   target?.addEventListener?.('pointermove',e=>{
@@ -3232,6 +3267,7 @@ for(const id of ['cv','three-3d-container']){
     setSectionLinkedWorld(null);
     sectionPanel.highlightWorld?.(null);
   });
+  target?.addEventListener?.('click',pickTangentSurface);
 }
 // Keep the divider position between sessions; using the same ratios for
 // rendering and CSS prevents mismatch after responsive layout changes.

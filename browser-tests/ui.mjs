@@ -107,7 +107,7 @@ try{
   nodeAssert.ok(dualSizing.canvas/dualSizing.stage>.58&&dualSizing.canvas/dualSizing.stage<.62);
   nodeAssert.ok(dualSizing.side/dualSizing.stage>.38&&dualSizing.side/dualSizing.stage<.42);
   const rendererPosition=await page.evaluate(()=>{
-    const selector=document.querySelector('#3d-library-selector');
+    const selector=document.getElementById('3d-library-selector');
     return {
       parent:selector.parentElement.id,
       selector:selector.getBoundingClientRect().toJSON(),
@@ -171,7 +171,7 @@ try{
   await sectionToggle.click();
   await page.waitForFunction(()=>!document.querySelector('#stage').classList.contains('dual-conic'));
   nodeAssert.equal(await dualPane.isVisible(),false);
-  nodeAssert.equal(await page.locator('#3d-library-selector').evaluate(el=>el.parentElement.id),'stage',
+  nodeAssert.equal(await page.locator('[id="3d-library-selector"]').evaluate(el=>el.parentElement.id),'stage',
     'motor 3D deve voltar à sua posição original na vista única');
   await sectionToggle.click();
   await page.waitForFunction(()=>document.querySelector('#stage').classList.contains('dual-conic'));
@@ -219,7 +219,7 @@ try{
   });
   nodeAssert.ok(portrait.side/portrait.height>.38&&portrait.side/portrait.height<.49);
   const mobileSelector=await phone.evaluate(()=>{
-    const selector=document.querySelector('#3d-library-selector');
+    const selector=document.getElementById('3d-library-selector');
     return {
       parent:selector.parentElement.id,
       rect:selector.getBoundingClientRect().toJSON(),

@@ -54,11 +54,11 @@ const PALETTES={
   light:["#c0492f","#2d70b3","#2f7d5b","#6042a6","#d98324","#1d1d1f","#0a8aa6","#a8336e"],
   dark: ["#ef6a52","#5aa0e0","#46b888","#9a7ce0","#f0a64e","#d8dde3","#39c0dc","#e06aa0"]
 };
-const PARAM_DEFAULTS={a:1,b:0,c:0,d:1,h:2,i:1,j:1,k:1,m:1,n:10,p:1,q:1,r:1};
+const PARAM_DEFAULTS={a:1,b:0,c:0,d:1,h:2,i:1,j:1,k:1,m:1,n:10,p:1,q:1,r:1,u:.5,v:.2};
 const PARAM_LIMITS={
   a:{min:-5,max:5,step:0.1}, b:{min:-10,max:10,step:0.1}, c:{min:-10,max:10,step:0.1}, d:{min:-10,max:10,step:0.1},
   h:{min:0.25,max:4.5,step:0.05}, k:{min:-8,max:8,step:0.1}, m:{min:-8,max:8,step:0.1}, n:{min:-100,max:100,step:1},
-  p:{min:-8,max:8,step:0.1}, q:{min:-8,max:8,step:0.1}, r:{min:-8,max:8,step:0.1}, i:{min:-100,max:100,step:1}, j:{min:-100,max:100,step:1}
+  p:{min:-8,max:8,step:0.1}, q:{min:-8,max:8,step:0.1}, r:{min:-8,max:8,step:0.1}, u:{min:0,max:1,step:.01}, v:{min:0,max:1,step:.01}, i:{min:-100,max:100,step:1}, j:{min:-100,max:100,step:1}
 };
 const DEFAULT_SIDE_WIDTH=340;
 const SIDE_WIDTH_MIN=280;
@@ -1675,12 +1675,16 @@ function renderRows(){
       if(!eq.paramNames?.length) return;
       const isSliceRow=/^\s*(?:corte|cortequadrica|quadricsection)\s*:/i.test(eq.text);
       const isSectionRow=/^\s*(?:secao|seccao|secaocone|section)\s*:/i.test(eq.text)||isSliceRow;
-      const isQuadricRow=/^\s*(?:quadrica|quadricas|quadric)\s*:/i.test(eq.text);
+      const isTangentRow=/^\s*(?:tangente|tangent|gradiente|gradient)\s*:/i.test(eq.text);
+      const isQuadricRow=/^\s*(?:quadrica|quadricas|quadric)\s*:/i.test(eq.text)||isTangentRow;
       const lab=isSectionRow||isQuadricRow;
       paramControls.dataset.kind=isSectionRow?'section':isQuadricRow?'quadric':'';
       const groupNodes=new Map();
       if(lab){
-        const groups=isSliceRow?[
+        const groups=isTangentRow?[
+          ['ponto','Ponto na superfície',['u','v','r']],
+          ['superficie','Escalas da superfície',['a','b','c','d']]
+        ]:isSliceRow?[
           ['plano','Plano secante',['q','p','h']],
           ['superficie','Superfície quádrica',['a','b','c','d']]
         ]:isSectionRow?[
@@ -1712,7 +1716,7 @@ function renderRows(){
           d:{min:-4,max:4,step:0.1,label:'d · altura do vértice'},
           p:{min:-3.14,max:3.14,step:0.05,label:'p · rotação do plano (rad)'}
         };
-        const isQuadric=/^\s*(?:quadrica|quadricas|quadric)\s*:/i.test(eq.text);
+        const isQuadric=/^\s*(?:quadrica|quadricas|quadric|tangente|tangent|gradiente|gradient)\s*:/i.test(eq.text);
         const sliceControls={
           q:{min:-90,max:90,step:1,label:'q · inclinação do plano (graus)'},
           p:{min:-180,max:180,step:2,label:'p · azimute do plano (graus)'},
@@ -1726,7 +1730,10 @@ function renderRows(){
           a:{min:.25,max:5,step:.05,label:'a · escala X'},
           b:{min:.25,max:5,step:.05,label:'b · escala Y'},
           c:{min:.25,max:5,step:.05,label:'c · escala Z'},
-          d:{min:-5,max:5,step:.1,label:'d · altura da superfície'}
+          d:{min:-5,max:5,step:.1,label:'d · altura da superfície'},
+          u:{min:0,max:1,step:.01,label:'u · posição paramétrica na superfície'},
+          v:{min:0,max:1,step:.01,label:'v · posição paramétrica na superfície'},
+          r:{min:-1,max:1,step:2,label:'r · folha (−1 ou +1, hiperboloide duplo)'}
         };
         const limits=(isSliceRow&&sliceControls[name])||(isSection&&sectionControls[name])||(isQuadric&&quadricControls[name])||PARAM_LIMITS[name]||{min:-5,max:5,step:0.1};
         const param=document.createElement('label');

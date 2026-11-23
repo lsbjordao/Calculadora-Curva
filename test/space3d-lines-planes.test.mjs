@@ -506,3 +506,20 @@ test('line style (color, width, dash, labels) applies to plane and line primitiv
   const hidden=scenePrimitives([{...eq('plano: z = 0'),showGeoLabels:false}],{colorOf:()=>'#c00'});
   assert.equal(buildDrawList(hidden,createCamera(),{width:400,height:300}).some(i=>i.kind==='label'),false);
 });
+
+test('plane gizmos exist only while edit mode is on, preserve plane geometry',()=>{
+  const geometry=parseGeometryInput('plano: x+y+z=2');
+  assert.equal(geometry.error,undefined);
+  const eq={id:7,kind:'geometry',visible:true,geometry,text:'plano: x+y+z=2',showGeoLabels:true,showPlaneGizmo:false};
+  const original=JSON.stringify(geometry.scene3d);
+  const plain=scenePrimitives([eq],{colorOf:()=> '#000'});
+  assert.equal(plain.some(p=>p.planeHandle),false);
+  eq.showPlaneGizmo=true;
+  const edited=scenePrimitives([eq],{colorOf:()=> '#000'});
+  const arrows=edited.filter(p=>p.planeHandle);
+  assert.equal(arrows.length,3);
+  assert.deepEqual(arrows.map(p=>p.planeHandleAxis),[0,1,2]);
+  assert.ok(arrows.every(p=>p.sectionEqId===7));
+  assert.equal(edited.find(p=>p.kind==='plane').sectionPlane,true);
+  assert.equal(JSON.stringify(geometry.scene3d),original);
+});

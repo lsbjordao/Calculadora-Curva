@@ -978,6 +978,13 @@ function planeCommand(body,ctx,definitionName){
   const r=result3('plane','plano');
   r.info=[label+': '+fmtPlane(spec.plane),'normal n = '+fmtVec(spec.plane.n),...promotionWarning(state.promoted)];
   r.scene3d=[...spec.extras,...planeScene(spec.plane,label,'main')];
+  // 3D manipulation handles: real axis-aligned translation affordances.
+  const n=spec.plane.n,norm2=dot3(n,n),origin=mul(n,spec.plane.d/norm2);
+  for(let axis=0;axis<3;axis++){
+    const to=[...origin];to[axis]+=Math.max(.65,Math.min(1.5,2/Math.sqrt(norm2)));
+    r.scene3d.push({kind:'arrow',from:origin,to,planeHandle:true,planeHandleAxis:axis,
+      color:['#ed685f','#40b985','#5d91db'][axis],label:['X','Y','Z'][axis],role:'aux'});
+  }
   core.define(r,label,'plane',{n:spec.plane.n, d:spec.plane.d, label, dim:3});
   return r;
 }

@@ -1958,8 +1958,13 @@
 }
 #side[data-keyboard-collapsed="1"] #rows{
   flex:1 1 auto;
-  min-height:min(390px,52dvh);
-  max-height:min(72dvh,690px);
+  min-height:min(475px,60dvh);
+  max-height:min(75dvh,690px);
+}
+/* Preserve the wider result panels that were already supported. */
+#side:not([data-keyboard-collapsed="1"]) #rows:has(.algebra-result),
+#side:not([data-keyboard-collapsed="1"]) #rows:has(.transform-controls){
+  max-height:min(55dvh,560px);
 }
 @media(max-width:720px){
   #side[data-keyboard-collapsed="1"] #rows{

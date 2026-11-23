@@ -2762,6 +2762,38 @@ function setPanelToggle(toggle, collapsed, label){
   toggle.setAttribute('aria-expanded',collapsed?'false':'true');
 }
 
+// Layout preference, kept separate from mathematical project/history state.
+// Closing the keyboard must not clear its active tab or any equation.
+function initKeyboardPanel(){
+  const panel=document.getElementById('pad');
+  const content=document.getElementById('pad-content');
+  const toggle=document.getElementById('pad-toggle');
+  const summary=document.getElementById('pad-summary');
+  const side=document.getElementById('side');
+  if(!panel||!content||!toggle||!side)return;
+  const key='curva-keyboard-collapsed';
+  let collapsed=false;
+  try{collapsed=window.localStorage.getItem(key)==='1';}catch(_){}
+  const render=()=>{
+    panel.dataset.collapsed=collapsed?'1':'0';
+    side.dataset.keyboardCollapsed=collapsed?'1':'0';
+    content.hidden=collapsed;
+    setPanelToggle(toggle,collapsed,'teclado');
+    const active=panel.querySelector('#tabs .tab.active');
+    if(summary)summary.textContent=active?.textContent?.trim()||'123';
+  };
+  toggle.addEventListener('click',()=>{
+    collapsed=!collapsed;
+    render();
+    try{window.localStorage.setItem(key,collapsed?'1':'0');}catch(_){}
+  });
+  panel.addEventListener('click',ev=>{
+    if(ev.target.closest?.('#tabs .tab')&&summary)
+      summary.textContent=panel.querySelector('#tabs .tab.active')?.textContent?.trim()||'123';
+  });
+  render();
+}
+
 function initPresets(){
   const section=document.getElementById('presets');
   const list=document.getElementById('preset-list');
@@ -6149,6 +6181,7 @@ if(initialShare){
   initialCommands.forEach(command=>equations.push(makeEq(command)));
 }else if(!restoreState(initialState)) equations.push(makeEq('sin(x)'));
 initPresets();
+initKeyboardPanel();
 initProjectControls({
   getState:plainState,
   importState:(state)=>{

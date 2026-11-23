@@ -204,8 +204,12 @@ export function contourSegments(f, area, n = 64) {
 function styled(prim, eq, color) {
   // Uma linha solveinfo contém três planos distintos. Preservar suas cores
   // especiais sem alterar a cor uniforme das demais figuras da Curva.
-  const out = {...prim, color:prim.systemPlane||prim.systemSolution||prim.transform3d||prim.conicSection ? prim.color||color : color};
+  const out = {...prim, color:prim.systemPlane||prim.systemSolution||prim.transform3d||prim.conicSection||prim.planeHandle ? prim.color||color : color};
   if(prim.conicSection&&Number.isInteger(eq.id))out.sectionEqId=eq.id;
+  if((prim.planeHandle||(prim.kind==='plane'&&eq.geometry?.type==='plane'))&&Number.isInteger(eq.id)){
+    out.sectionEqId=eq.id;
+    if(prim.kind==='plane')out.sectionPlane=true;
+  }
   if (eq.showGeoLabels === false) {
     if (prim.kind === 'label') return null;
     delete out.label;

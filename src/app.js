@@ -5097,6 +5097,21 @@ function drawGeometry(eq){
   g.vectors?.forEach((vec,index)=>drawGeometryVector(vec,color,eq.showGeoVectorLengths,index,eq.showGeoXAxisAngles,eq));
   if(g.angles?.length) g.angles?.forEach(angle=>drawGeometryAngle(eq,angle,color));
   if(g.type!=='vector') g.points?.forEach(point=>drawGeometryPoint(point,color,g,eq));
+  const rotation=g.conics?.[0]?.analysis?.rotationDemo;
+  if(rotation&&Number.isFinite(eq.conicDemoProgress)){
+    const theta=rotation.angle*Math.PI/180*Math.max(0,Math.min(1,eq.conicDemoProgress));
+    const center=rotation.center,extent=Math.max(10,Math.hypot(W,H)/Math.max(view.scale,.02));
+    ctx.save();
+    ctx.strokeStyle='#12bfa5';ctx.lineWidth=2.2;ctx.setLineDash([7,5]);
+    for(let i=0;i<2;i++){
+      const angle=theta+i*Math.PI/2,ux=Math.cos(angle),uy=Math.sin(angle);
+      ctx.beginPath();
+      ctx.moveTo(w2px(center[0]-ux*extent),w2py(center[1]-uy*extent));
+      ctx.lineTo(w2px(center[0]+ux*extent),w2py(center[1]+uy*extent));
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
 }
 
 function drawRegression(eq){

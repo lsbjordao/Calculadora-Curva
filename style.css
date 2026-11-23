@@ -1868,3 +1868,29 @@
   border:2px solid var(--bg);border-radius:50%;background:#1ac8a6;
   box-shadow:0 0 0 2px #1ac8a6,0 0 9px 2px rgba(26,200,166,.4);
 }
+
+/* Temporary maximization retains the adjustable split percentages on restore. */
+#stage.dual-conic.focus-3d #cv,
+#stage.dual-conic.focus-3d #plotly-3d-container,
+#stage.dual-conic.focus-3d #three-3d-container{
+  width:100%!important;height:100%!important;
+}
+#stage.dual-conic.focus-3d .section2d-panel,
+#stage.dual-conic.focus-3d #dual-splitter{display:none!important}
+#stage.dual-conic.focus-3d #view3d-bar{max-width:calc(100% - 70px)}
+#stage.dual-conic.focus-3d #tools{top:12px;right:12px}
+#stage.dual-conic.focus-2d .section2d-panel{
+  width:100%!important;height:100%!important;top:0!important;bottom:0!important;
+  left:0!important;border-left:0!important;border-top:0!important;
+}
+#stage.dual-conic.focus-2d #cv,
+#stage.dual-conic.focus-2d #plotly-3d-container,
+#stage.dual-conic.focus-2d #three-3d-container,
+#stage.dual-conic.focus-2d #view3d-bar,
+#stage.dual-conic.focus-2d #tools,
+#stage.dual-conic.focus-2d #dual-splitter,
+#stage.dual-conic.focus-2d #section-linked-marker{visibility:hidden!important}
+#stage.dual-conic.focus-2d .section2d-heading > div{min-width:0;flex:1}
+#section2d-max[aria-pressed="true"],#view3d-focus[aria-pressed="true"]{
+  border-color:var(--accent)!important;color:var(--accent)!important;
+}

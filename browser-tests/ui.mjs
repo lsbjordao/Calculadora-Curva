@@ -120,10 +120,14 @@ try{
   const negative=await page.locator('#stage').screenshot();
   nodeAssert.notDeepEqual(crossing,negative,'Mover b de 0 para -1 deve alterar o plano na cena');
   await horizontalOffset.fill('0');
-  const geometryDownload=page.waitForEvent('download');
-  await page.click('#project-export');
-  const geometryFile=await geometryDownload;
-  const geometryState=JSON.parse(await readFile(await geometryFile.path(),'utf8')).state;
+  // UI edits are persisted with a debounce; inspect the state directly
+  // instead of requesting a second browser download (Chromium can block it).
+  await page.waitForFunction(()=>{
+    const state=JSON.parse(localStorage.getItem('curva-state-v1')||'{}');
+    const eq=state.equations?.[0];
+    return eq?.params?.b===0&&eq.params.q===90&&eq.params.h===3;
+  },{timeout:5000});
+  const geometryState=await page.evaluate(()=>JSON.parse(localStorage.getItem('curva-state-v1')));
   nodeAssert.equal(geometryState.equations[0].params.h,3);
   nodeAssert.equal(geometryState.equations[0].params.a,1.5);
   nodeAssert.equal(geometryState.equations[0].params.d,1.1);

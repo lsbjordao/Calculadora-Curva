@@ -66,7 +66,16 @@ function paint(ctx,section,view,c,hover){
   const o=view.xy([0,0]);ctx.strokeStyle=c.axes;ctx.lineWidth=1.3;
   ctx.beginPath();ctx.moveTo(o[0],0);ctx.lineTo(o[0],h);ctx.moveTo(0,o[1]);ctx.lineTo(w,o[1]);ctx.stroke();
   ctx.strokeStyle=c.curve;ctx.lineWidth=2.8;ctx.lineCap='round';ctx.lineJoin='round';
-  ctx.stroke(new Path2D(paths(section,view)));
+  if(section.type==='level-curves'){
+    const palette=['#376bb4','#408bc6','#349ba8','#2da78c','#6bab65','#b6a853','#d38a4d','#cc6a70','#b85899'];
+    for(let i=0;i<(section.levels?.length||0);i++){
+      const parts=section.segments.filter(seg=>seg.index===i);
+      if(!parts.length)continue;
+      ctx.strokeStyle=palette[i%palette.length];
+      ctx.lineWidth=2;
+      ctx.stroke(new Path2D(paths({segments:parts},view)));
+    }
+  }else ctx.stroke(new Path2D(paths(section,view)));
   for(const {p,t} of markers(section)){
     const [x,y]=view.xy(p);if(!Number.isFinite(x+y))continue;
     ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fillStyle=t[0]==='F'?c.focus:c.point;ctx.fill();
@@ -87,7 +96,15 @@ export function sectionSvg(section,width=760,height=540,{dark=false}={}){
     const [x,y]=v.xy(p);
     return '<circle cx="'+fmt(x)+'" cy="'+fmt(y)+'" r="4" fill="'+c.point+'"/><text x="'+fmt(x+8)+'" y="'+fmt(y-8)+'" fill="'+c.ink+'" font-size="12">'+escapeXML(t)+'</text>';
   }).join('');
-  return '<svg xmlns="http://www.w3.org/2000/svg" width="'+width+'" height="'+height+'" viewBox="0 0 '+width+' '+height+'" role="img" aria-label="Seção cônica 2D"><rect width="'+width+'" height="'+height+'" fill="'+c.bg+'"/>'+grid+'<path d="M'+fmt(o[0])+',0V'+height+' M0,'+fmt(o[1])+'H'+width+'" fill="none" stroke="'+c.axes+'" stroke-width="1.5"/><path d="'+paths(section,v)+'" fill="none" stroke="'+c.curve+'" stroke-width="3" stroke-linecap="round"/>'+marks+'<text x="14" y="'+(height-10)+'" font-family="system-ui" font-size="13" fill="'+c.ink+'">'+escapeXML(section.canonical||section.equation)+'</text></svg>';
+  const palette=['#376bb4','#408bc6','#349ba8','#2da78c','#6bab65','#b6a853','#d38a4d','#cc6a70','#b85899'];
+  const curves=section.type==='level-curves'?
+    (section.levels||[]).map((level,i)=>{
+      const parts=section.segments.filter(seg=>seg.index===i);
+      return '<path d="'+paths({segments:parts},v)+'" fill="none" stroke="'+palette[i%palette.length]+'" stroke-width="2"/>';
+    }).join(''):
+    '<path d="'+paths(section,v)+'" fill="none" stroke="'+c.curve+'" stroke-width="3" stroke-linecap="round"/>';
+  const graphLabel=section.type==='level-curves'?'Curvas de nível 2D':'Seção cônica 2D';
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="'+width+'" height="'+height+'" viewBox="0 0 '+width+' '+height+'" role="img" aria-label="'+graphLabel+'"><rect width="'+width+'" height="'+height+'" fill="'+c.bg+'"/>'+grid+'<path d="M'+fmt(o[0])+',0V'+height+' M0,'+fmt(o[1])+'H'+width+'" fill="none" stroke="'+c.axes+'" stroke-width="1.5"/>'+curves+marks+'<text x="14" y="'+(height-10)+'" font-family="system-ui" font-size="13" fill="'+c.ink+'">'+escapeXML(section.canonical||section.equation)+'</text></svg>';
 }
 export function createSectionPanel({
   panel=document.getElementById('section2d-panel'),
@@ -129,7 +146,8 @@ export function createSectionPanel({
     const hit=nearestSectionInPlane(last.segments,lastView.xy,px,py);
     hover=hit?.local||lastView.inv(px,py);
     const world=hit?linkedWorldFromSection(hit.local,last):null;
-    if(hoverLabel)hoverLabel.textContent='s: '+fmt(hover[0])+' · t: '+fmt(hover[1])+
+    if(hoverLabel)hoverLabel.textContent=(last.type==='level-curves'?'x: ':'s: ')+fmt(hover[0])+
+      (last.type==='level-curves'?' · y: ':' · t: ')+fmt(hover[1])+
       (world?' · xyz: ('+world.map(fmt).join(', ')+')':'');
     onHoverPoint(world,hit?.local||null);
     redraw();
@@ -143,7 +161,9 @@ export function createSectionPanel({
       if(!last||!lastView)return;
       hover=world?linkedSectionFromWorld(world,last):null;
       if(hoverLabel)hoverLabel.textContent=world&&hover?
-        's: '+fmt(hover[0])+' · t: '+fmt(hover[1])+' · xyz: ('+world.map(fmt).join(', ')+')':'';
+        (last.type==='level-curves'?'x: ':'s: ')+fmt(hover[0])+
+        (last.type==='level-curves'?' · y: ':' · t: ')+fmt(hover[1])+
+        ' · xyz: ('+world.map(fmt).join(', ')+')':'';
       redraw();
     },
     draw(geometry,dark=false){

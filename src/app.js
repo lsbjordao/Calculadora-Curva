@@ -46,7 +46,7 @@ import { init3DLibrarySelector, getActive3DLibrary, render3DScene, show3DLibrary
 import { initThree3DControls, initThreePlaneDragging } from './space3d/three-renderer.js';
 import { createTransform3DControls } from './space3d/transform3d.js';
 import { createSectionPanel } from './space3d/section-panel.js';
-import { dragPlaneParameters } from './space3d/plane-interaction.js';
+import { dragPlaneParameters, dragConeParameters } from './space3d/plane-interaction.js';
 import { finiteSceneBounds } from './space3d/camera-fit.js';
 
 const PALETTES={
@@ -5528,17 +5528,18 @@ if(planeDragButton)planeDragButton.onclick=()=>{
 };
 initThreePlaneDragging({
   isEnabled:()=>view3d.mode==='3d'&&getActive3DLibrary()==='threejs'&&planeDragMode,
-  onDrag:({phase,eqId,dx,dy})=>{
+  onDrag:({phase,eqId,kind,dx,dy})=>{
     const eq=equations.find(item=>item.id===eqId);
     if(!eq||!eq.geometry?.section||!eq.text.includes('angulo('))return;
     if(phase==='start'){
-      planeDragStart={eqId,q:eq.params.q,b:eq.params.b};
+      planeDragStart={eqId,q:eq.params.q,b:eq.params.b,a:eq.params.a,d:eq.params.d};
       return;
     }
     if(!planeDragStart||planeDragStart.eqId!==eqId)return;
     if(phase==='move'){
-      const next=dragPlaneParameters(planeDragStart,{dx,dy});
-      eq.params.q=next.q;eq.params.b=next.b;
+      const next=kind==='plane'?dragPlaneParameters(planeDragStart,{dx,dy})
+        :dragConeParameters(planeDragStart,{dx,dy},{kind});
+      Object.assign(eq.params,next);
       recompileAllEquations();
       resultRefreshers.forEach(refresh=>refresh());
       draw();

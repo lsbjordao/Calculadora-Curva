@@ -205,7 +205,7 @@ function styled(prim, eq, color) {
   // Uma linha solveinfo contém três planos distintos. Preservar suas cores
   // especiais sem alterar a cor uniforme das demais figuras da Curva.
   const out = {...prim, color:prim.systemPlane||prim.systemSolution||prim.transform3d||prim.conicSection ? prim.color||color : color};
-  if(prim.sectionPlane&&Number.isInteger(eq.id))out.sectionEqId=eq.id;
+  if(prim.conicSection&&Number.isInteger(eq.id))out.sectionEqId=eq.id;
   if (eq.showGeoLabels === false) {
     if (prim.kind === 'label') return null;
     delete out.label;

@@ -198,7 +198,9 @@ function addPrimitive(T,group,p,opts){
       group.add(obj);break;
     }
     case 'mesh': {
-      group.add(meshObject(T,p.vertices,p.faces,color,p.alpha??.55));
+      const obj=meshObject(T,p.vertices,p.faces,color,p.alpha??.55);
+      if(p.conicSection)obj.userData.coneEqId=p.sectionEqId;
+      group.add(obj);
       break;
     }
     case 'segment':group.add(segmentObject(T,p.a,p.b,color,p));break;
@@ -220,7 +222,9 @@ function addPrimitive(T,group,p,opts){
     case 'point':{
       const radius=p.systemSolution?.17:.075;
       const sphere=new T.Mesh(new T.SphereGeometry(radius,16,12),new T.MeshBasicMaterial({color,depthTest:true}));
-      sphere.position.copy(asVector(T,p.p));sphere.renderOrder=5;group.add(sphere);
+      sphere.position.copy(asVector(T,p.p));sphere.renderOrder=5;
+      if(p.conicSection&&p.label==='vértice')sphere.userData.vertexEqId=p.sectionEqId;
+      group.add(sphere);
       if(p.label)group.add(labelSprite(T,p.label,[p.p[0],p.p[1],p.p[2]+radius*1.8],color,{dark:opts.dark}));
       break;
     }
@@ -357,7 +361,9 @@ export function initThreePlaneDragging({isEnabled=()=>false,onDrag=()=>{}}={}){
     for(const hit of hits){
       let obj=hit.object;
       while(obj&&obj!==engine.group){
-        if(Number.isInteger(obj.userData.sectionEqId))return obj.userData.sectionEqId;
+        if(Number.isInteger(obj.userData.sectionEqId))return {eqId:obj.userData.sectionEqId,kind:'plane'};
+        if(Number.isInteger(obj.userData.vertexEqId))return {eqId:obj.userData.vertexEqId,kind:'vertex'};
+        if(Number.isInteger(obj.userData.coneEqId))return {eqId:obj.userData.coneEqId,kind:'cone'};
         obj=obj.parent;
       }
     }
@@ -365,7 +371,7 @@ export function initThreePlaneDragging({isEnabled=()=>false,onDrag=()=>{}}={}){
   };
   const stop=event=>{
     if(!active||active.pointerId!==event.pointerId)return;
-    onDrag({phase:'end',eqId:active.eqId,
+    onDrag({phase:'end',eqId:active.eqId,kind:active.kind,
       dx:event.clientX-active.x,dy:event.clientY-active.y});
     active=null;
     try{container.releasePointerCapture?.(event.pointerId);}catch{}
@@ -374,17 +380,17 @@ export function initThreePlaneDragging({isEnabled=()=>false,onDrag=()=>{}}={}){
   };
   container.addEventListener('pointerdown',event=>{
     if(event.button!==0||!(isEnabled()||event.altKey))return;
-    const eqId=findHit(event);
-    if(eqId===null)return;
-    active={pointerId:event.pointerId,x:event.clientX,y:event.clientY,eqId};
+    const hit=findHit(event);
+    if(!hit)return;
+    active={pointerId:event.pointerId,x:event.clientX,y:event.clientY,...hit};
     try{container.setPointerCapture?.(event.pointerId);}catch{}
     container.style.cursor='grabbing';
-    onDrag({phase:'start',eqId,dx:0,dy:0});
+    onDrag({phase:'start',eqId:active.eqId,kind:active.kind,dx:0,dy:0});
     event.preventDefault();event.stopImmediatePropagation();
   },true);
   container.addEventListener('pointermove',event=>{
     if(!active||active.pointerId!==event.pointerId)return;
-    onDrag({phase:'move',eqId:active.eqId,
+    onDrag({phase:'move',eqId:active.eqId,kind:active.kind,
       dx:event.clientX-active.x,dy:event.clientY-active.y});
     event.preventDefault();event.stopImmediatePropagation();
   },true);

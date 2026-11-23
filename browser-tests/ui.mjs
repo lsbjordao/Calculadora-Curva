@@ -176,6 +176,16 @@ try{
   await sectionToggle.click();
   await page.waitForFunction(()=>document.querySelector('#stage').classList.contains('dual-conic'));
   nodeAssert.equal(await dualPane.isVisible(),true);
+  const divider=page.locator('#dual-splitter');
+  nodeAssert.equal(await divider.isVisible(),true,'divisória deve aparecer na vista conjunta');
+  const initialSplit=await page.locator('#cv').boundingBox();
+  await divider.focus();
+  await page.keyboard.press('ArrowRight');
+  const changedSplit=await page.locator('#cv').boundingBox();
+  nodeAssert.ok(changedSplit.width>initialSplit.width+4,'teclado deve ampliar a largura do visor 3D');
+  await page.keyboard.press('ArrowLeft');
+  nodeAssert.ok(Math.abs((await page.locator('#cv').boundingBox()).width-initialSplit.width)<4);
+  await page.screenshot({path:resolve(screenshots,'desktop-divisoria-redimensionavel.png')});
   await context.close();
 
   // Use a separate browser context for a single PNG download. Chromium may
@@ -196,6 +206,46 @@ try{
   const savedBytes=await readFile(await savedGraph.path());
   nodeAssert.ok(savedBytes.length>1000,'Imagem exportada em branco ou vazia');
   await graphicContext.close();
+
+  // New generalized quadric cuts: both views must use the same conic.
+  const {context:cutContext,page:cutPage}=await createPage({width:1440,height:900});
+  await cutPage.locator('#preset-toggle').click();
+  await cutPage.selectOption('#preset-list','quadric-plane-cuts-3d');
+  await cutPage.click('#preset-load');
+  await cutPage.waitForFunction(()=>document.querySelector('#stage')?.classList.contains('dual-conic'));
+  nodeAssert.equal(await cutPage.locator('.row').first().locator('.param-control').count(),7);
+  nodeAssert.match(await cutPage.locator('#section2d-properties').innerText(),/Elipse|Circunferência/);
+  const angleInput=cutPage.locator('.row').first().locator('.param-control[data-param="q"] input[type="number"]');
+  await angleInput.fill('90');
+  await cutPage.waitForFunction(()=>{
+    const state=JSON.parse(localStorage.getItem('curva-state-v1')||'{}');
+    return state?.equations?.[0]?.params?.q===90;
+  });
+  const cutEquation=await cutPage.locator('#section2d-caption').innerText();
+  nodeAssert.ok(cutEquation.length>8,'seção matemática deve atualizar com o plano');
+  await cutPage.screenshot({path:resolve(screenshots,'desktop-corte-quadrica-3d-2d.png')});
+  const combinedDownload=cutPage.waitForEvent('download');
+  await cutPage.click('#section2d-combined');
+  const combined=await combinedDownload;
+  nodeAssert.equal(combined.suggestedFilename(),'curva-3d-2d-composicao.png');
+  nodeAssert.ok((await readFile(await combined.path())).length>2000);
+  await cutContext.close();
+
+  // Tangent plane, normal and gradients change with the surface point.
+  const {context:tangentContext,page:tangentPage}=await createPage({width:1440,height:900});
+  await tangentPage.locator('#preset-toggle').click();
+  await tangentPage.selectOption('#preset-list','quadric-tangents-3d');
+  await tangentPage.click('#preset-load');
+  await tangentPage.waitForFunction(()=>document.querySelector('#view-mode')?.dataset.mode==='3d');
+  nodeAssert.match(await tangentPage.locator('.row').first().innerText(),/normal|gradiente|tangente/i);
+  const uInput=tangentPage.locator('.row').first().locator('.param-control[data-param="u"] input[type="number"]');
+  await uInput.fill('0.82');
+  await tangentPage.waitForFunction(()=>{
+    const state=JSON.parse(localStorage.getItem('curva-state-v1')||'{}');
+    return state?.equations?.[0]?.params?.u===.82;
+  });
+  await tangentPage.screenshot({path:resolve(screenshots,'desktop-gradiente-plano-tangente.png')});
+  await tangentContext.close();
 
   const {context:mobile,page:phone}=await createPage({width:390,height:844});
   const tabs=phone.locator('#tabs .tab');

@@ -205,7 +205,12 @@ function addPrimitive(T,group,p,opts){
     }
     case 'segment':group.add(segmentObject(T,p.a,p.b,color,p));break;
     case 'arrow':{
-      group.add(segmentObject(T,p.from,p.to,color,{weight:2,role:p.role}));
+      const segment=segmentObject(T,p.from,p.to,color,{weight:2,role:p.role});
+      if(p.planeHandle&&Number.isInteger(p.sectionEqId)){
+        segment.userData.planeHandleEqId=p.sectionEqId;
+        segment.userData.planeHandleAxis=p.planeHandleAxis;
+      }
+      group.add(segment);
       const from=asVector(T,p.from),to=asVector(T,p.to),delta=to.clone().sub(from),length=delta.length();
       if(length>1e-6){
         const size=Math.min(.29,length*.25),head=new T.Mesh(
@@ -214,7 +219,12 @@ function addPrimitive(T,group,p,opts){
         );
         head.position.copy(to.clone().addScaledVector(delta.clone().normalize(),-size/2));
         head.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),delta.normalize());
-        head.renderOrder=4;group.add(head);
+        head.renderOrder=4;
+        if(p.planeHandle&&Number.isInteger(p.sectionEqId)){
+          head.userData.planeHandleEqId=p.sectionEqId;
+          head.userData.planeHandleAxis=p.planeHandleAxis;
+        }
+        group.add(head);
       }
       if(p.label)group.add(labelSprite(T,p.label,p.to,color,{dark:opts.dark}));
       break;
@@ -361,6 +371,8 @@ export function initThreePlaneDragging({isEnabled=()=>false,onDrag=()=>{}}={}){
     for(const hit of hits){
       let obj=hit.object;
       while(obj&&obj!==engine.group){
+        if(Number.isInteger(obj.userData.planeHandleEqId))
+          return {eqId:obj.userData.planeHandleEqId,kind:'handle',axis:obj.userData.planeHandleAxis};
         if(Number.isInteger(obj.userData.sectionEqId))return {eqId:obj.userData.sectionEqId,kind:'plane'};
         if(Number.isInteger(obj.userData.vertexEqId))return {eqId:obj.userData.vertexEqId,kind:'vertex'};
         if(Number.isInteger(obj.userData.coneEqId))return {eqId:obj.userData.coneEqId,kind:'cone'};
@@ -371,7 +383,8 @@ export function initThreePlaneDragging({isEnabled=()=>false,onDrag=()=>{}}={}){
   };
   const stop=event=>{
     if(!active||active.pointerId!==event.pointerId)return;
-    onDrag({phase:'end',eqId:active.eqId,kind:active.kind,
+    onDrag({phase:'end',eqId:active.eqId,kind:active.kind,axis:active.axis,
+      shiftKey:active.shiftKey,ctrlKey:active.ctrlKey,
       dx:event.clientX-active.x,dy:event.clientY-active.y});
     active=null;
     try{container.releasePointerCapture?.(event.pointerId);}catch{}
@@ -382,15 +395,18 @@ export function initThreePlaneDragging({isEnabled=()=>false,onDrag=()=>{}}={}){
     if(event.button!==0||!(isEnabled()||event.altKey))return;
     const hit=findHit(event);
     if(!hit)return;
-    active={pointerId:event.pointerId,x:event.clientX,y:event.clientY,...hit};
+    active={pointerId:event.pointerId,x:event.clientX,y:event.clientY,...hit,
+      shiftKey:event.shiftKey,ctrlKey:event.ctrlKey};
     try{container.setPointerCapture?.(event.pointerId);}catch{}
     container.style.cursor='grabbing';
-    onDrag({phase:'start',eqId:active.eqId,kind:active.kind,dx:0,dy:0});
+    onDrag({phase:'start',eqId:active.eqId,kind:active.kind,axis:active.axis,
+      shiftKey:active.shiftKey,ctrlKey:active.ctrlKey,dx:0,dy:0});
     event.preventDefault();event.stopImmediatePropagation();
   },true);
   container.addEventListener('pointermove',event=>{
     if(!active||active.pointerId!==event.pointerId)return;
-    onDrag({phase:'move',eqId:active.eqId,kind:active.kind,
+    onDrag({phase:'move',eqId:active.eqId,kind:active.kind,axis:active.axis,
+      shiftKey:active.shiftKey,ctrlKey:active.ctrlKey,
       dx:event.clientX-active.x,dy:event.clientY-active.y});
     event.preventDefault();event.stopImmediatePropagation();
   },true);

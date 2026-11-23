@@ -50,6 +50,11 @@ function makeEl(id){
         case 'querySelector': return ()=>makeEl();
         case 'querySelectorAll': return ()=>[];
         case 'closest': return ()=>null;
+        // Real DOM textContent aggregates descendant text nodes. The multiline
+        // info renderer appends strong/span children instead of using a flat
+        // textContent assignment, so the boot stub must model that behavior.
+        case 'textContent': return t.children.map(child=>
+          typeof child==='string'?child:String(child?.textContent??'')).join('');
         case 'appendChild': case 'append': return (...c)=>{ t.children.push(...c); return c[0]; };
         case 'replaceChildren': return (...c)=>{ t.children=[...c]; };
         case 'cloneNode': return ()=>makeEl();

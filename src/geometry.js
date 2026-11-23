@@ -1140,7 +1140,7 @@ export function extractGeometryParams(raw){
   const def=definitionInput(text);
   if(def) text=def.body;
   else {
-    const match=text.match(/^([a-zA-Z\u00c0-\u017f]+)\s*:\s*(.+)$/);
+    const match=text.match(/^([a-zA-Z\u00c0-\u017f][a-zA-Z0-9\u00c0-\u017f]*)\s*:\s*(.+)$/);
     if(match) text=match[2];
   }
   const names=new Set();
@@ -1164,7 +1164,7 @@ export function parseGeometryInput(raw,ctx={}){
       return errorResult(def.command, err?.message || 'entrada invalida');
     }
   }
-  const match=text.match(/^([a-zA-Z\u00c0-\u017f]+)\s*:\s*(.+)$/);
+  const match=text.match(/^([a-zA-Z\u00c0-\u017f][a-zA-Z0-9\u00c0-\u017f]*)\s*:\s*(.+)$/);
   if(!match) return null;
   const command=COMMAND_ALIASES[asciiCommand(match[1])];
   if(!command) return null;

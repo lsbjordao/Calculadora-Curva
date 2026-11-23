@@ -282,6 +282,43 @@ try{
   await rotationPage.screenshot({path:resolve(screenshots,'desktop-conica-rotacionada-diagonalizacao.png')});
   await rotationContext.close();
 
+  // Free-form quadratic: a separate plane must automatically produce an exact
+  // 2D conic; clipping physically removes one half of the 3D triangle mesh.
+  const {context:freeContext,page:freePage}=await createPage({width:1440,height:900});
+  await freePage.locator('#preset-toggle').click();
+  await freePage.selectOption('#preset-list','general-equation-surfaces-3d');
+  await freePage.click('#preset-load');
+  await freePage.waitForFunction(()=>document.querySelector('#stage')?.classList.contains('dual-conic'));
+  nodeAssert.match(await freePage.locator('#section2d-properties').innerText(),/Elipse/);
+  nodeAssert.match(await freePage.locator('.row').first().innerText(),/Elipsoide|elipsoide/);
+  const clip=freePage.locator('.row').first().locator('.row-tools button', {hasText:'recorte'});
+  await clip.click();
+  nodeAssert.equal(await clip.innerText(),'corte +');
+  await freePage.waitForFunction(()=>{
+    const state=JSON.parse(localStorage.getItem('curva-state-v1')||'{}');
+    return state?.equations?.[0]?.clipSide===1;
+  });
+  await freePage.screenshot({path:resolve(screenshots,'desktop-quadrica-geral-corte-real.png')});
+  await freeContext.close();
+
+  // Arbitrary z=f(x,y) has both a 3D graph and colored 2D level contours,
+  // plus x/y controls that persist the inspection point and Hessian result.
+  const {context:multiContext,page:multiPage}=await createPage({width:1440,height:900});
+  await multiPage.locator('#preset-toggle').click();
+  await multiPage.selectOption('#preset-list','multivariable-calculus-3d');
+  await multiPage.click('#preset-load');
+  await multiPage.waitForFunction(()=>document.querySelector('#stage')?.classList.contains('dual-conic'));
+  nodeAssert.match(await multiPage.locator('#section2d-properties').innerText(),/Curvas de nível/);
+  nodeAssert.match(await multiPage.locator('.row').first().innerText(),/Hessiana/);
+  const coordinate=multiPage.locator('.row').first().locator('.surface-point-controls input[type="number"]').first();
+  await coordinate.fill('1.25');
+  await multiPage.waitForFunction(()=>{
+    const state=JSON.parse(localStorage.getItem('curva-state-v1')||'{}');
+    return Math.abs((state?.equations?.[0]?.surfacePoint?.[0]||0)-1.25)<1e-8;
+  });
+  await multiPage.screenshot({path:resolve(screenshots,'desktop-calculo-multivariavel-curvas-nivel.png')});
+  await multiContext.close();
+
   const {context:mobile,page:phone}=await createPage({width:390,height:844});
   const tabs=phone.locator('#tabs .tab');
   nodeAssert.equal(await tabs.count(),6);

@@ -149,7 +149,7 @@ Os novos testes estão em `test/gaal-integration.test.mjs` e executam com `npm t
 
 ### Three.js (WebGL): terceiro motor 3D
 
-A lista **Motor 3D** oferece **Canvas 2D (renderizador próprio)**, **Plotly.js** e **Three.js (WebGL)**. A opção Three.js usa o pacote `three` v0.187.0 por importação dinâmica de CDN, apenas quando selecionada. Ela desenha planos transparentes, malhas, linhas, vetores, pontos e legendas com profundidade WebGL e reutiliza a câmera e os dados geométricos da Curva.
+A lista **Motor 3D** oferece **Canvas 2D (renderizador próprio)**, **Plotly.js** e **Three.js (WebGL)**. A opção Three.js usa o pacote `three` r187 por importação dinâmica de módulos ES locais, apenas quando selecionada. Ela desenha planos transparentes, malhas, linhas, vetores, pontos e legendas com profundidade WebGL e reutiliza a câmera e os dados geométricos da Curva.
 
 Para sistemas `solveinfo(A,b)` de ordem 3×3, cada plano tem sua própria cor e o ponto de solução recebe destaque. O modo Three.js exige WebGL e conexão na primeira importação do módulo; se não estiver disponível, selecione Canvas 2D ou Plotly.js. O modo Canvas 2D não depende da CDN. Three.js utiliza licença MIT.
 
@@ -298,9 +298,89 @@ no desktop e no celular, os grupos de controles, a persistência de
 b=0, os presets de quádricas e a exportação PNG. As capturas
 são disponibilizadas como artefatos do GitHub Actions.
 
-**Limitações:** o modo 3D + 2D atual é específico para interseções
-do cone duplo com planos secantes; quádricas genéricas ainda não
-calculam automaticamente suas próprias seções. A manipulação
-direta da geometria usa WebGL/Three.js, cuja importação inicial
-depende da rede. O PNG de um motor gráfico não inclui a área do
-painel de propriedades; use as exportações individuais.
+**Limitações históricas resolvidas:** as seções planas agora estão disponíveis
+para sete famílias de quádricas, e o Three.js pode ser carregado localmente
+depois que o aplicativo é instalado em cache. A exportação do gráfico isolado
+permanece disponível; a nova ação **PNG conjunto** inclui ambas as vistas.
+
+## Laboratório geral de seções, cálculo vetorial e compartilhamento (2026)
+
+### Plano secante em qualquer família de quádrica
+
+Abra **Presets → Cônicas e quádricas → Cortes de quádricas (3D + 2D)**.
+O comando matemático é:
+
+```text
+corte: elipsoide,a,b,c,d,q,p,h
+```
+
+O primeiro argumento aceita `esfera`, `elipsoide`, `paraboloide`,
+`hiperboloide1`, `hiperboloide2`, `sela` ou `cilindro`.
+Os parâmetros `a,b,c` dão as escalas da superfície e `d` sua translação
+vertical. O plano usa inclinação `q` em graus entre −90 e +90,
+azimute `p` em graus e distância assinada `h` à origem.
+É possível inclinar o plano verticalmente e deslocá-lo até encontrar uma
+tangência ou uma seção degenerada.
+
+A Curva restringe a equação quadrática tridimensional a um referencial
+ortonormal próprio do plano, produzindo
+`A s² + B st + C t² + D s + E t + F = 0`.
+A classificação matemática é analítica: centro, semieixos,
+excentricidade, focos e eixos principais quando aplicáveis.
+Circunferências, elipses, parábolas, hipérboles, retas, pares de retas,
+pontos de tangência e ausência de pontos reais são tratados explicitamente.
+O desenho 3D e a curva 2D usam uma malha/contorno em janela finita:
+a classificação não é inferida pela imagem discretizada.
+
+A vista **3D + 2D** possui uma divisória arrastável. Use também
+**Tab** para focar a divisória e as setas para alterar a proporção;
+em telas estreitas a separação torna-se horizontal. A proporção é
+lembrada localmente. Ao aproximar o cursor da curva 2D, o ponto
+correspondente é marcado no 3D com as coordenadas locais `(s,t)` e
+globais `(x,y,z)`; a seleção inversa funciona nos motores Canvas e
+Three.js. A vinculação inversa no Plotly.js ainda não está disponível.
+
+### Cônicas rotacionadas em 2D
+
+O comando `conica:` agora completa a análise de expressões com
+termo misto `x*y`: diagonaliza a parte quadrática, identifica e desenha
+eixos principais, focos, diretrizes e assíntotas quando matematicamente
+definidos. Os casos degenerados continuam identificados separadamente.
+
+### Gradientes e planos tangentes em 3D
+
+Abra **Planos tangentes e gradientes (3D)** ou digite:
+
+```text
+tangente: paraboloide,a,b,c,d,u,v,r
+```
+
+`u` e `v` são coordenadas paramétricas entre 0 e 1 na
+superfície. `r` indica a folha (−1 ou +1) quando se trata de
+hiperboloide de duas folhas. A Curva calcula e desenha o ponto P,
+o gradiente analítico de `F(x,y,z)=0`, a normal unitária e
+o plano tangente. Para paraboloides e selas, também informa
+as derivadas parciais `∂z/∂x` e `∂z/∂y`.
+Mude `u` e `v` pelos controles ou selecione um ponto da
+malha com um clique no gráfico Canvas/Three.js. Pontos singulares
+sem plano tangente único são rejeitados.
+
+### Compartilhar e exportar
+
+A ação **link** na barra do gráfico copia uma URL com as equações,
+parâmetros, câmera 3D, vista 2D e estado do painel conjunto.
+O formato é versionado e validado, limitado a cenas pequenas;
+exporte um projeto JSON para cenas muito grandes.
+No painel da seção, **PNG conjunto** monta uma composição com
+os dois visores, a equação e as propriedades geométricas. Os formatos
+PNG e SVG individuais continuam disponíveis.
+
+### Three.js e offline
+
+Os módulos oficiais **Three.js r187**, mantidos sob a
+licença MIT, foram incluídos em `assets/vendor/` e carregados
+sob demanda por importação ES local. O service worker inclui
+esses módulos no cache do aplicativo. Isso elimina a necessidade
+de acessar uma CDN para o Three.js depois de instalar o cache;
+WebGL ainda depende da compatibilidade do dispositivo.
+

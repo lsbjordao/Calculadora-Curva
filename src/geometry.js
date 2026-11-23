@@ -29,6 +29,7 @@ const COMMAND_ALIASES={
   section:'section', secao:'section', seccao:'section', secaocone:'section',
   quadric:'quadric', quadrica:'quadric', quadricas:'quadric',
   superficie:'surface', surface:'surface', superficie3d:'surface',
+  funcao3d:'scalar-surface', grafico3d:'scalar-surface', scalar3d:'scalar-surface',
   corte:'quadric-slice', cortequadrica:'quadric-slice', quadricsection:'quadric-slice',
   tangente:'tangent', tangent:'tangent', gradient:'tangent', gradiente:'tangent',
   plane:'plane', plano:'plane',

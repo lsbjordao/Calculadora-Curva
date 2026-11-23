@@ -206,10 +206,13 @@ function addPrimitive(T,group,p,opts){
         if(guide.segmentCount){
           const geometry=new T.BufferGeometry();
           geometry.setAttribute('position',new T.BufferAttribute(guide.positions,3));
+          // Subtle orientation guides: keep them close to the surface hue
+          // instead of outlining every curve in high-contrast white/black.
           const lineColor=new T.Color(color).lerp(
-            new T.Color(opts.dark?'#f2fbff':'#162335'),opts.dark?.65:.62);
+            new T.Color(opts.dark?'#f2fbff':'#162335'),opts.dark?.32:.28);
           const material=new T.LineBasicMaterial({
-            color:lineColor,transparent:true,opacity:opts.dark?.8:.72,
+            color:lineColor,transparent:true,
+            opacity:opts.surfaceLines==='detailed'?(opts.dark?.36:.30):(opts.dark?.46:.38),
             depthTest:true,depthWrite:false
           });
           const lines=new T.LineSegments(geometry,material);

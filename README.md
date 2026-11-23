@@ -392,6 +392,34 @@ WebGL ainda depende da compatibilidade do dispositivo.
 
 
 
+## Linhas de referência nas superfícies Three.js
+
+Ao selecionar **Motor 3D → Three.js (WebGL)**, as superfícies agora
+exibem linhas finas de referência sobre o volume, que acompanham o
+objeto quando a câmera gira. Elas tornam mais perceptíveis a curvatura,
+o movimento e a orientação do objeto 3D.
+
+O botão **linhas: leves**, na barra da vista 3D, alterna entre três modos:
+
+- **linhas: leves** (padrão): meridianos/paralelos espaçados ou seções esparsas;
+- **linhas: densas**: mais linhas para examinar a geometria;
+- **linhas: sem**: mantém apenas as faces translúcidas.
+
+Nas quádricas parametrizadas (esfera, elipsoide, paraboloide, cilindro,
+hiperboloides e sela), as curvas seguem coordenadas da própria malha,
+sem desenhar as diagonais de triangulação. No cone duplo, cada folha
+possui anéis horizontais e geratrizes. Em superfícies implícitas gerais,
+funções `z=f(x,y)` e malhas recortadas, as linhas são construídas
+por interseção dos triângulos com planos de referência, para evitar o
+padrão triangular excessivamente carregado.
+
+As curvas pertencem à geometria do Three.js; portanto, acompanham
+automaticamente a rotação da câmera, a mudança de parâmetros e
+os cortes. O modo vale exclusivamente para Three.js: os gráficos
+Canvas 2D e Plotly.js continuam com seu próprio estilo.
+A escolha fica salva no navegador como
+`curva-three-surface-lines`, independentemente dos projetos.
+
 ## Interface: teclado recolhível e lista de camadas ampliada
 
 Na barra lateral, o bloco **teclado** agora tem um botão de expandir/

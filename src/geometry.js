@@ -926,7 +926,13 @@ function analyzeRotatedConic(q){
     lines.push(perpendicularAt(add(analysis.vertex,mul(dir,-focal)),dir,'diretriz'));
     info.push('distância focal = '+fmt(focal),'excentricidade e = 1');
   }
-  return {info,points,lines,segments};
+  return {info,points,lines,segments,
+    rotationDemo:{
+      angle:analysis.rotation,
+      center:analysis.center||analysis.vertex||[0,0],
+      coefficients:[q.A,q.B,q.C]
+    }
+  };
 }
 
 function analyzeConic(q){

@@ -47,6 +47,7 @@ import { init3DLibrarySelector, getActive3DLibrary, render3DScene, show3DLibrary
 import { initThree3DControls, initThreePlaneDragging } from './space3d/three-renderer.js';
 import { createTransform3DControls } from './space3d/transform3d.js';
 import { createSectionPanel } from './space3d/section-panel.js';
+import {intersectGeneralQuadricPlane,clipTriangleMesh} from './space3d/implicit-quadric.js';
 import {nearestProjectedSection} from './space3d/section-sync.js';
 import { dragPlaneParameters, dragConeParameters } from './space3d/plane-interaction.js';
 import { finiteSceneBounds } from './space3d/camera-fit.js';
@@ -199,6 +200,7 @@ function serializeEq(eq){
     showAlgebraTransform:!!eq.showAlgebraTransform,
     showAlgebraTransform3d:!!eq.showAlgebraTransform3d,
     showAlgebraSystem:!!eq.showAlgebraSystem,
+    clipSide:eq.clipSide||0,
     showResultTable:eq.showResultTable
   };
 }
@@ -1071,6 +1073,37 @@ function recompileAllEquations(){
     recompileEq(eq, geometryRegistry);
     if(eq.kind==='geometry'&&!eq.error) addGeometryDefinitions(geometryRegistry,eq.geometry);
   });
+  // A free-form surface automatically intersects any visible, separately
+  // declared planes. This pass is order-independent (plane before or after).
+  const planes=equations.filter(eq=>eq.visible!==false&&!eq.error&&eq.geometry?.type==='plane')
+    .flatMap(eq=>(eq.geometry.scene3d||[]).filter(p=>p.kind==='plane'&&p.role==='main'))
+    .slice(0,4);
+  for(const eq of equations){
+    const geometry=eq.geometry,poly=geometry?.generalQuadric?.polynomial;
+    if(!geometry||eq.error)continue;
+    if(poly&&planes.length){
+      const extent=geometry.generalQuadric.extent;
+      const cuts=planes.map((plane,index)=>{
+        const cut=intersectGeneralQuadricPlane(poly,plane,{extent:extent*1.6});
+        cut.planeIndex=index;
+        return {plane,cut};
+      });
+      const main=cuts[0].cut;
+      geometry.section={kind:'quadric-plane',analysis:main,quadricType:'general'};
+      geometry.scene3d.push(...cuts.flatMap(({plane,cut},index)=>[
+        {kind:'plane',n:plane.n,d:plane.d,alpha:.16,conicSection:true,color:'#daa94d'},
+        ...cut.worldSegments.map(({a,b})=>({kind:'segment',a,b,
+          color:['#ee5288','#7f9afb','#18bd99','#dea347'][index],weight:2.8,sectionCurve:index===0,conicSection:true}))
+      ]));
+      geometry.info.push(...cuts.map(({cut},i)=>'Plano '+(i+1)+': seção '+cut.type+' · '+(cut.canonical||cut.equation)));
+    }
+    const side=eq.clipSide===1?1:eq.clipSide===-1?-1:0;
+    if(side&&geometry.section){
+      const plane=geometry.scene3d.find(p=>p.kind==='plane'&&p.conicSection);
+      if(plane)geometry.scene3d=geometry.scene3d.map(p=>p.kind==='mesh'?
+        clipTriangleMesh(p,plane,side):p);
+    }
+  }
 }
 
 // --- Parameter animation -------------------------------------------------
@@ -2066,6 +2099,23 @@ function renderRows(){
         controls.append(guidesBtn);
       }
       controls.append(xAxisAngleBtn);
+      if(eq.geometry?.section&&eq.geometry?.scene3d?.some(p=>p.kind==='mesh')){
+        const clipBtn=document.createElement('button');
+        clipBtn.className='calc';
+        const syncClip=()=>{
+          clipBtn.dataset.on=eq.clipSide?'1':'0';
+          clipBtn.textContent=eq.clipSide===1?'corte +':eq.clipSide===-1?'corte −':'recorte';
+          clipBtn.title='Alternar superfície completa → metade positiva → metade negativa';
+        };
+        syncClip();
+        clipBtn.onclick=()=>{
+          eq.clipSide=eq.clipSide===1?-1:eq.clipSide===-1?0:1;
+          recompileAllEquations();
+          syncClip();resultRefreshers.forEach(refresh=>refresh());
+          draw();scheduleSave();
+        };
+        controls.append(clipBtn);
+      }
     };
     refreshControls=()=>{
       controls.innerHTML='';

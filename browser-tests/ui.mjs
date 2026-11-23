@@ -373,7 +373,7 @@ try{
   await wirePage.selectOption('#preset-list','quadric-gallery-3d');
   await wirePage.click('#preset-load');
   await wirePage.waitForFunction(()=>document.querySelector('#view-mode')?.dataset.mode==='3d');
-  await wirePage.locator('#3d-lib-select').selectOption('threejs');
+  await wirePage.locator('[id="3d-lib-select"]').selectOption('threejs');
   const wireToggle=wirePage.locator('#three-surface-lines');
   await wireToggle.waitFor({state:'visible'});
   await wirePage.waitForFunction(async()=>{
@@ -408,7 +408,7 @@ try{
   nodeAssert.equal(await wirePage.evaluate(()=>localStorage.getItem('curva-three-surface-lines')),'normal');
   await wirePage.reload({waitUntil:'domcontentloaded'});
   await wirePage.waitForFunction(()=>document.querySelector('#three-surface-lines')?.dataset.mode==='normal'&&
-    document.querySelector('#3d-lib-select')?.value==='threejs');
+    document.querySelector('[id="3d-lib-select"]')?.value==='threejs');
   nodeAssert.equal(await wireToggle.isVisible(),true);
   await wireContext.close();
 

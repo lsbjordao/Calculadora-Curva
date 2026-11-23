@@ -58,14 +58,14 @@ export function buildDrawList(primitives, camera, viewport, opts = {}) {
     return out;
   };
   // Pixels per unit along each axis (at the target depth). Tick marks and numbers
-  // of an axis that points at the viewer (< MIN_TICK_PX per unit) are hidden;
+  // of an axis that points at the viewer (< MIN_TICK_PX between marks) are hidden;
   // numbers are thinned to every 2nd, 5th, 10th… unit when closer than TICK_LABEL_PX.
   const ppu = [0,1,2].map(i => camera.scale*Math.hypot(basis.right[i], basis.up[i]));
   const tickVisible = prim => {
     if (prim.role !== 'tick' || !Number.isInteger(prim.axis)) return true;
     const step = prim.step > 0 ? prim.step : 1, px = ppu[prim.axis]*step;
     if (prim.showEveryTick) return true;
-    if (ppu[prim.axis] < MIN_TICK_PX) return false;
+    if (px < MIN_TICK_PX) return false; // axis seen end-on (marks every `step` units pile up)
     if (prim.kind !== 'label') return true;
     const every = THIN.find(m => px*m >= TICK_LABEL_PX) ?? Infinity;
     return Math.round(prim.value/step)%every === 0;

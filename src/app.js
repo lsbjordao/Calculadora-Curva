@@ -42,7 +42,7 @@ import {encodeSharedScene,decodeSharedScene} from './share-scene.js';
 import { createCamera, zoomCamera, presetView, fitCameraScale, projectPoint } from './space3d/camera.js';
 import { axesPrimitives } from './space3d/scene3d.js';
 import { buildDrawList, drawScene3d, colorsFromTheme } from './space3d/render3d.js';
-import { attachCameraControls, autoAxisLimit, CAMERA_HINT, decideViewMode, hasGuidesChip, has3dObjects, normalizeView3d, scenePrimitives, serializeView3d, viewNotice } from './space3d/view3d.js';
+import { attachCameraControls, autoAxisLimit, CAMERA_HINT, decideViewMode, chips3d, hasGuidesChip, has3dObjects, normalizeView3d, scenePrimitives, serializeView3d, viewNotice } from './space3d/view3d.js';
 import { init3DLibrarySelector, getActive3DLibrary, render3DScene, show3DLibrarySelector, hide3DLibrarySelector, handle3DResize, onActive3DLibraryChange, updatePlotlyCamera } from './space3d/library-manager.js';
 import { initThree3DControls, initThreePlaneDragging } from './space3d/three-renderer.js';
 import { createTransform3DControls } from './space3d/transform3d.js';
@@ -1198,9 +1198,10 @@ function curveSummaryBadges(eq){
   if(eq.showA) badges.push('análise');
   if(eq.kind==='geometry'&&eq.showGeoTriangleClass&&eq.geometry?.triangleClass) badges.push('tipo');
   if(eq.kind==='geometry'&&eq.showGeoAngles!==false&&eq.geometry?.angles?.length) badges.push('âng');
-  if(eq.kind==='geometry'&&eq.showGeoSideLengths) badges.push('lados');
+  const geo2d=eq.kind==='geometry'&&eq.geometry?.dim!==3;
+  if(geo2d&&eq.showGeoSideLengths) badges.push('lados');
   if(eq.kind==='geometry'&&eq.showGeoVectorLengths) badges.push('vetores');
-  if(eq.kind==='geometry'&&eq.showGeoXAxisAngles) badges.push('ang x');
+  if(geo2d&&eq.showGeoXAxisAngles) badges.push('ang x');
   if(eq.kind==='geometry'&&eq.showGeoLabels!==false&&(eq.geometry?.points?.length||eq.geometry?.segments?.length||eq.geometry?.vectors?.length||eq.geometry?.angles?.length||eq.geometry?.polygons?.length||eq.geometry?.lines?.length)) badges.push('rótulo');
   return badges;
 }
@@ -2151,7 +2152,12 @@ function renderRows(){
         scheduleSave();
       };
 
-      controls.append(typeBtn,angleBtn,angleExtBtn,angleCompBtn,sidesBtn,vectorsBtn,labelsBtn);
+      // 3D rows keep only the chips that act on them (vetor, rótulo, guias).
+      const only3d=chips3d(eq);
+      if(only3d){
+        if(only3d.vectors) controls.append(vectorsBtn);
+        if(only3d.labels) controls.append(labelsBtn);
+      } else controls.append(typeBtn,angleBtn,angleExtBtn,angleCompBtn,sidesBtn,vectorsBtn,labelsBtn);
       // 3D point rows: dashed guides to the xy plane and the x, y axes (on by default).
       if(hasGuidesChip(eq)){
         const guidesBtn=document.createElement('button');
@@ -2167,7 +2173,7 @@ function renderRows(){
         };
         controls.append(guidesBtn);
       }
-      controls.append(xAxisAngleBtn);
+      if(!only3d) controls.append(xAxisAngleBtn);
       if(eq.geometry?.section&&eq.geometry?.scene3d?.some(p=>p.kind==='mesh')){
         const clipBtn=document.createElement('button');
         clipBtn.className='calc';
@@ -2575,7 +2581,7 @@ function pointName(point,fallback=''){
 }
 
 function geometryDistance(a,b){
-  return Math.hypot((b?.x??0)-(a?.x??0),(b?.y??0)-(a?.y??0));
+  return Math.hypot((b?.x??0)-(a?.x??0),(b?.y??0)-(a?.y??0),(b?.z??0)-(a?.z??0));
 }
 
 function segmentMeasureName(seg,index=0){
@@ -2600,6 +2606,11 @@ function geometryInfo(eq){
   const g=eq.geometry;
   if(!g) return '';
   const parts=[...(g.info || [])];
+  if(g.dim===3){
+    // Only |v| applies in ℝ³ (the 2D chips are hidden on 3D rows).
+    if(eq.showGeoVectorLengths&&g.vectors?.length) parts.push('vetores: '+g.vectors.map(vectorMeasureText).join(' · '));
+    return parts.join(' · ');
+  }
   if(eq.showGeoSideLengths&&g.segments?.length){
     parts.push('lados: '+g.segments.map(segmentMeasureText).join(' · '));
   }

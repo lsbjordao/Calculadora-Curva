@@ -34,6 +34,12 @@ const COMMAND_ALIASES={
   tangente:'tangent', tangent:'tangent', gradient:'tangent', gradiente:'tangent',
   plane:'plane', plano:'plane',
   position:'position', posicao:'position',
+  sum:'sum', soma:'sum',
+  scale:'scale', escala:'scale',
+  cross:'cross', vetorial:'cross', produtovetorial:'cross',
+  triple:'triple', misto:'triple', produtomisto:'triple',
+  parallelepiped:'parallelepiped', paralelepipedo:'parallelepiped',
+  span:'span', ger:'span',
   matrix:'matrix', matriz:'matrix',
   transform:'matrix', transformacao:'matrix'
 };
@@ -1108,7 +1114,9 @@ const COMMAND_NAMES_PT={
   angle:'angulo', dot:'produto escalar', projection:'projecao', triangle:'triangulo',
   quadrilateral:'quadrilatero', polygon:'poligono', convexHull:'poligono convexo',
   distance:'distancia', midpoint:'ponto medio', line:'reta', intersect:'intersecao',
-  conic:'conica', section:'seção do cone', quadric:'quádrica 3D', surface:'superfície 3D geral', 'quadric-slice':'seção de quádrica', tangent:'plano tangente 3D', matrix:'matriz', plane:'plano', position:'posicao'
+  conic:'conica', section:'seção do cone', quadric:'quádrica 3D', surface:'superfície 3D geral', 'quadric-slice':'seção de quádrica', tangent:'plano tangente 3D', matrix:'matriz', plane:'plano', position:'posicao',
+  sum:'soma', scale:'escala', cross:'vetorial', triple:'misto',
+  parallelepiped:'paralelepipedo', span:'ger'
 };
 
 function runCommand(command,body,ctx,definitionName=''){

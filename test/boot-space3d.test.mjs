@@ -397,3 +397,24 @@ test('controle 3D continua disponível mesmo sem objeto espacial',async()=>{
   assert.equal(button.dataset.mode,'2d');
   assert.equal(button.hidden,false);
 });
+
+test('linhas 3D mostram só os chips que agem nelas (vetor, rótulo, guias); 2D intactas',async()=>{
+  await boot({version:1,theme:'light',view:{cx:0,cy:0,scale:60},view3d:{mode:'3d'},
+    equations:[mk(0,'vetor: u=(1,2,3)'),mk(1,'ponto: A=(1,2,3)'),mk(2,'plano: z = 0'),mk(3,'vetor: v=(1,2)'),mk(4,'vetorial: (1,0,0),(0,1,0)')]});
+  // Each row's controls element holds its chips (in row order); the list is
+  // rebuilt on every render, so the last five are the current rows.
+  const CHIPS=['tipo','âng','âng ext','âng reflex','lado','vetor','rótulo','guias','ang x'];
+  const all=created.filter(el=>el.className==='row-tools');
+  assert.equal(all.length%5,0);
+  const controls=all.slice(-5);
+  const rows=controls.map(el=>[...new Set(el.children.map(c=>c.textContent).filter(t=>CHIPS.includes(t)))]);
+  assert.deepEqual(rows[0],['vetor','rótulo']);
+  assert.deepEqual(rows[1],['rótulo','guias']);
+  assert.deepEqual(rows[2],['rótulo']);
+  assert.deepEqual(rows[3],['tipo','âng','âng ext','âng reflex','lado','vetor','rótulo','ang x']);
+  assert.deepEqual(rows[4],['vetor','rótulo']);
+  // The vetor chip on a 3D row lists |u| with the z component.
+  const vetor=controls[0].children.find(c=>c.textContent==='vetor');
+  vetor.onclick();
+  assert.ok(created.some(el=>/vetores: \|u\| = 3\.74166/.test(String(el.textContent||''))));
+});

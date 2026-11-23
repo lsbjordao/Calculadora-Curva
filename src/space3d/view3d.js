@@ -26,6 +26,19 @@ export function showsGuides(eq) {
   return hasGuidesChip(eq) && eq.showGeoGuides !== false;
 }
 
+// Row chips that act on a 3D row (null for any other row, which keeps the 2D
+// chips): rótulo when the scene has labels, vetor (|u| in the row info) when
+// the row has vectors, guias on point rows. tipo, âng, lado and ang x are 2D only.
+export function chips3d(eq) {
+  if (!is3dEquation(eq)) return null;
+  const scene = Array.isArray(eq.geometry.scene3d) ? eq.geometry.scene3d : [];
+  return {
+    labels: scene.some(p => p && (p.label || (p.kind === 'label' && p.text))),
+    vectors: !!eq.geometry.vectors?.length,
+    guides: hasGuidesChip(eq),
+  };
+}
+
 export const CAMERA_HINT = 'arraste para girar · Shift+arraste para mover · roda para zoom · duplo clique volta';
 
 export function has3dObjects(equations = []) {

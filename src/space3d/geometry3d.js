@@ -15,6 +15,7 @@ import { quadricPlaneSection } from './quadric-sections.js';
 import { tangentScene } from './surface-calculus.js';
 import { generalQuadricFromEquation,analyseGeneralQuadric,meshImplicitQuadric } from './implicit-quadric.js';
 import {scalarSurfaceScene} from './scalar-surfaces.js';
+import { rank as matrixRank } from '../linear-algebra.js';
 
 const EPS=1e-9;
 // Object names: identifiers, plus π, π1… for planes (§7).
@@ -289,6 +290,12 @@ function pointCommand(body,ctx,definitionName){
 
 function vectorCommand(body,ctx,definitionName){
   const parts=core.splitTopAny(String(body||''),',').map(p=>p.trim()).filter(Boolean);
+  // vetor: 2*u / vetor: w = k*u → the same drawing as escala: k, u.
+  if(parts.length===1){
+    const {label,text}=partLabel(parts[0]);
+    const scaled=scaledVector(text);
+    if(scaled) return scaleCommand(scaled,ctx,definitionName||label,'vetor',!!(definitionName||label));
+  }
   const named=parts.length===1 ? parts[0].match(/^([A-Za-z][A-Za-z0-9_]*)\s*=/) : null;
   const {points,promoted}=pointList3(body,ctx,['','']);
   let from={x:0,y:0,z:0,label:'O',dim:3}, to, label='v';
@@ -334,6 +341,13 @@ export function parse3dCommand(command,body,ctx={},definitionName=''){
   if(command==='distance') return distanceCommand(body,ctx,definitionName);
   if(command==='angle') return angleCommand(body,ctx,definitionName);
   if(command==='position') return positionCommand(body,ctx,definitionName);
+  if(command==='sum') return sumCommand(body,ctx,definitionName);
+  if(command==='scale') return scaleArgsCommand(body,ctx,definitionName);
+  if(command==='dot') return dotCommand(body,ctx,definitionName);
+  if(command==='projection') return projectionCommand(body,ctx,definitionName);
+  if(command==='cross') return crossCommand(body,ctx,definitionName);
+  if(command==='triple'||command==='parallelepiped') return tripleCommand(body,ctx,definitionName,command);
+  if(command==='span') return spanCommand(body,ctx,definitionName);
   return null;
 }
 
@@ -341,7 +355,8 @@ export function parse3dCommand(command,body,ctx={},definitionName=''){
 // intersecao, distancia and angulo go to ℝ³ when an object is 3D or when an
 // equation (a "=") mentions the variable z (lines without z keep the 2D
 // analyzers, §7a.3). A registered object named z keeps its old meaning.
-const ALWAYS_3D=new Set(['plane','position','section','quadric','quadric-slice','tangent','surface','scalar-surface']);
+const ALWAYS_3D=new Set(['plane','position','section','quadric','quadric-slice','tangent','surface','scalar-surface',
+  'sum','scale','cross','triple','parallelepiped','span']);
 const Z_EQUATION_COMMANDS=new Set(['line','intersect','distance','angle']);
 
 function equationWithZ(text,ctx){
@@ -356,6 +371,11 @@ function equationWithZ(text,ctx){
 export function wants3d(command,body,ctx={}){
   if(ALWAYS_3D.has(command)) return true;
   if(involves3d(body,ctx)) return true;
+  // vetor: k*u is ℝ³ when u is (2D u keeps the old 2D analyzer).
+  if(command==='vector'){
+    const scaled=scaledVector(partLabel(String(body??'')).text);
+    if(scaled&&involves3d(scaled.vec,ctx)) return true;
+  }
   return Z_EQUATION_COMMANDS.has(command) && equationWithZ(body,ctx);
 }
 
@@ -1194,5 +1214,313 @@ function positionCommand(body,ctx){
     }
   }
   r.info=[names+': '+text,...notes,...promotionWarning(state.promoted)];
+  return r;
+}
+
+// ── Vector operations (soma, escala, escalar, projeção, vetorial, misto) and ger
+
+const ORIGIN=[0,0,0];
+const VECTOR_FALLBACKS=['u','v','w','v4','v5','v6','v7','v8'];
+
+// "k*u", "k*(1,2,3)", "2u", "-u": the scalar text and the vector text, or null.
+// The scalar is always read as a number (sliders, π…), never as an object name.
+function scaledVector(text){
+  const t=String(text||'').trim();
+  let depth=0, star=-1;
+  for(let i=0;i<t.length;i++){
+    const c=t[i];
+    if(c==='('||c==='['||c==='{') depth++;
+    else if(c===')'||c===']'||c==='}') depth--;
+    else if(c==='*'&&depth===0) star=i;
+  }
+  const isVec=v=>IDENT.test(v)||isTuple(v);
+  if(star>0){
+    const k=t.slice(0,star).trim(), vec=t.slice(star+1).trim();
+    return k&&isVec(vec) ? {k, vec} : null;
+  }
+  const implicit=t.match(/^(\d+(?:\.\d+)?)\s*((?:[A-Za-z]|π)[A-Za-z0-9_]*|\([\s\S]*\))$/);
+  if(implicit&&isVec(implicit[2])) return {k:implicit[1], vec:implicit[2]};
+  const neg=t.match(/^-\s*([\s\S]+)$/);
+  if(neg&&isVec(neg[1].trim())) return {k:'-1', vec:neg[1].trim(), neg:true};
+  return null;
+}
+
+function scalarOf(text,what,ctx){
+  let value;
+  try{ value=core.evalScalar(text,ctx); }
+  catch(_){ throw new Error(what+': '+text+' não é um número'); }
+  return noNegZero(value);
+}
+
+function scaledLabel(scaled,base){
+  const k=scaled.k.trim();
+  if(scaled.neg) return '-'+base;
+  return (/^-?\d+(?:\.\d+)?$/.test(k)||IDENT.test(k) ? k : '('+k+')')+base;
+}
+
+// One vector argument: u=(…), (…), a vector or point name, or a scaled one (2*u).
+function vecArg(part,ctx,state,fallback){
+  const {label,text}=partLabel(part);
+  const scaled=scaledVector(text);
+  if(scaled){
+    const k=scalarOf(scaled.k,'escala',ctx);
+    const base=vectorOf(scaled.vec,ctx,state);
+    return {v:mul(base.v,k).map(noNegZero), label:label||scaledLabel(scaled,base.label||fallback)};
+  }
+  const res=vectorOf(part,ctx,state);
+  return {v:res.v, label:res.label||fallback};
+}
+
+function vecArgs(body,ctx,state,count,usage){
+  const parts=splitList(body);
+  if(count&&(parts.length<count[0]||parts.length>count[1])) throw new Error(usage);
+  const used=new Set();
+  const out=parts.map((part,i)=>{
+    const fallback=VECTOR_FALLBACKS.slice(i).find(n=>!used.has(n))||'v'+(i+1);
+    const arg=vecArg(part,ctx,state,fallback);
+    used.add(arg.label);
+    return arg;
+  });
+  return out;
+}
+
+const isNull=v=>nullVector(v)||!v.every(Number.isFinite);
+
+function arrowPrim(from,to,label,role='main'){
+  if(!from.every(Number.isFinite)||!to.every(Number.isFinite)) return [];
+  if(len(sub(to,from))<=NULL_TOL*sizeOf(from,to)) return [];
+  const prim={kind:'arrow', from:[...from], to:[...to], role};
+  if(label) prim.label=label;
+  return [prim];
+}
+
+function vectorValue(comp,label,from=ORIGIN){
+  return {from:point3(from,'O'), to:point3(add(from,comp),label), label, dim:3};
+}
+
+function lengthLine(label,v){
+  return '|'+label+'| = '+core.fmt(len(v));
+}
+
+// Corners a·u + b·v + c·w (a, b, c ∈ {0,1}) from O: 6 faces and 12 edges.
+function parallelepipedScene(O,u,v,w,alpha,edgeRole){
+  const P=(a,b,c)=>add(add(add(O,mul(u,a)),mul(v,b)),mul(w,c)).map(noNegZero);
+  const at=(i,s,j,k)=>{ const c=[0,0,0]; c[i]=s; c[(i+1)%3]=j; c[(i+2)%3]=k; return P(...c); };
+  const out=[];
+  for(let i=0;i<3;i++) for(const side of [0,1]){
+    out.push({kind:'polygon', points:[at(i,side,0,0),at(i,side,1,0),at(i,side,1,1),at(i,side,0,1)], alpha, role:'main'});
+  }
+  if(edgeRole) for(let i=0;i<3;i++) for(const j of [0,1]) for(const k of [0,1]){
+    out.push({kind:'segment', a:at(i,0,j,k), b:at(i,1,j,k), role:edgeRole});
+  }
+  return out;
+}
+
+function sumCommand(body,ctx,definitionName){
+  const state={promoted:[]};
+  const args=vecArgs(body,ctx,state,[2,8],'soma: use dois ou mais vetores (soma: u, v)');
+  const total=args.reduce((acc,a)=>add(acc,a.v),[0,0,0]).map(noNegZero);
+  const label=definitionName||args.map(a=>a.label).join('+');
+  const r=result3('sum','soma');
+  r.scene3d=args.flatMap(a=>arrowPrim(ORIGIN,a.v,a.label));
+  if(args.length===2){
+    const [u,v]=args;
+    if(!parallelVectors(u.v,v.v)||isNull(u.v)||isNull(v.v)){
+      if(!isNull(u.v)&&!isNull(v.v)) r.scene3d.push({kind:'polygon', points:[[...ORIGIN],u.v,total,v.v], alpha:0.12, role:'aux'});
+    }
+    r.scene3d.push(
+      ...(isNull(v.v)?[]:[{kind:'segment', a:u.v, b:total, role:'aux'}]),
+      ...(isNull(u.v)?[]:[{kind:'segment', a:v.v, b:total, role:'aux'}]));
+  } else {
+    // Head-to-tail chain.
+    let at=args[0].v;
+    for(const a of args.slice(1)){ const next=add(at,a.v); r.scene3d.push(...arrowPrim(at,next,'','aux')); at=next; }
+  }
+  const sumArrow=arrowPrim(ORIGIN,total,label);
+  r.scene3d.push(...sumArrow);
+  const expr=args.map(a=>a.label).join(' + ');
+  r.vectors=[...args.map(a=>vectorValue(a.v,a.label)),vectorValue(total,label)];
+  r.info=[expr+' = '+fmtVec(total),'|'+expr+'| = '+core.fmt(len(total))];
+  if(!sumArrow.length) r.info.push('aviso: a soma é o vetor nulo (não desenhado)');
+  r.info.push(...promotionWarning(state.promoted));
+  if(definitionName) core.define(r,definitionName,'vector',r.vectors.at(-1));
+  return r;
+}
+
+function scaleArgsCommand(body,ctx,definitionName){
+  const parts=splitList(body);
+  if(parts.length!==2) throw new Error('escala: use um número e um vetor (escala: k, u)');
+  return scaleCommand({k:parts[0], vec:parts[1]},ctx,definitionName,'escala',!!definitionName);
+}
+
+function scaleCommand(scaled,ctx,name,title,register){
+  const state={promoted:[]};
+  const k=scalarOf(scaled.k,'escala: o primeiro argumento deve ser um número; em',ctx);
+  const base=vecArg(scaled.vec,ctx,state,'u');
+  const ku=mul(base.v,k).map(noNegZero);
+  const label=name||scaledLabel(scaled,base.label);
+  const r=result3('scale',title);
+  r.scene3d=[...arrowPrim(ORIGIN,base.v,base.label,'aux')];
+  const main=arrowPrim(ORIGIN,ku,label);
+  r.scene3d.push(...main);
+  r.vectors=[vectorValue(base.v,base.label),vectorValue(ku,label)];
+  r.info=[];
+  if(!/^-?\d+(?:\.\d+)?$/.test(scaled.k.trim())&&!scaled.neg) r.info.push(scaled.k.trim()+' = '+core.fmt(k));
+  r.info.push(label+' = '+core.fmt(k)+'·'+fmtVec(base.v)+' = '+fmtVec(ku));
+  r.info.push('|'+label+'| = |'+core.fmt(k)+'|·|'+base.label+'| = '+core.fmt(len(ku)));
+  if(!main.length) r.info.push('aviso: vetor nulo (não desenhado)');
+  else r.info.push(k>0 ? 'mesmo sentido de '+base.label : 'sentido oposto ao de '+base.label);
+  r.info.push(...promotionWarning(state.promoted));
+  if(register) core.define(r,name,'vector',r.vectors[1]);
+  return r;
+}
+
+function dotCommand(body,ctx,definitionName){
+  const state={promoted:[]};
+  const [u,v]=vecArgs(body,ctx,state,[2,2],'produto escalar: use dois vetores (escalar: u, v)');
+  const d=noNegZero(dot3(u.v,v.v));
+  const r=result3('dot','produto escalar');
+  r.scene3d=[...arrowPrim(ORIGIN,u.v,u.label),...arrowPrim(ORIGIN,v.v,v.label)];
+  r.vectors=[vectorValue(u.v,u.label),vectorValue(v.v,v.label)];
+  r.info=[u.label+' · '+v.label+' = '+core.fmt(d),lengthLine(u.label,u.v),lengthLine(v.label,v.v)];
+  if(isNull(u.v)||isNull(v.v)){
+    r.info.push('aviso: vetor nulo: ângulo'+(isNull(v.v)?' e projeção indefinidos':' indefinido'));
+  } else {
+    const deg=toDeg(Math.acos(Math.max(-1,Math.min(1,d/(len(u.v)*len(v.v))))));
+    r.info.push('ângulo('+u.label+', '+v.label+') = '+core.fmt(deg)+'°');
+    if(Math.abs(d)<=TOL*len(u.v)*len(v.v)) r.info.push(u.label+' e '+v.label+' são ortogonais');
+  }
+  if(!isNull(v.v)){
+    const p=mul(v.v,d/dot3(v.v,v.v)).map(noNegZero);
+    r.info.push('proj_'+v.label+'('+u.label+') = '+fmtVec(p));
+    r.scene3d.push(...arrowPrim(ORIGIN,p,'proj','aux'));
+    if(len(sub(u.v,p))>NULL_TOL*sizeOf(u.v)&&!isNull(p)) r.scene3d.push({kind:'segment', a:u.v, b:p, role:'aux'});
+  }
+  r.info.push(...promotionWarning(state.promoted));
+  if(definitionName) core.define(r,definitionName,'scalar',d);
+  return r;
+}
+
+function projectionCommand(body,ctx,definitionName){
+  const state={promoted:[]};
+  const [u,v]=vecArgs(body,ctx,state,[2,2],'projeção: use dois vetores (projecao: u, v)');
+  if(isNull(v.v)) throw new Error('projeção: não é possível projetar sobre o vetor nulo');
+  const d=dot3(u.v,v.v), coef=noNegZero(d/dot3(v.v,v.v)), p=mul(v.v,coef).map(noNegZero);
+  const label=definitionName||'proj';
+  const r=result3('projection','projecao');
+  r.scene3d=[...arrowPrim(ORIGIN,u.v,u.label),...arrowPrim(ORIGIN,v.v,v.label),...arrowPrim(ORIGIN,p,label)];
+  if(len(sub(u.v,p))>NULL_TOL*sizeOf(u.v)&&!isNull(p)) r.scene3d.push({kind:'segment', a:u.v, b:p, role:'aux'});
+  r.vectors=[vectorValue(u.v,u.label),vectorValue(v.v,v.label),vectorValue(p,label)];
+  r.info=['proj_v(u) = '+fmtVec(p),'coeficiente = '+core.fmt(coef),'u · v = '+core.fmt(noNegZero(d)),...promotionWarning(state.promoted)];
+  if(u.label!=='u'||v.label!=='v') r.info[0]='proj_'+v.label+'('+u.label+') = '+fmtVec(p);
+  if(definitionName) core.define(r,definitionName,'vector',r.vectors[2]);
+  return r;
+}
+
+function crossCommand(body,ctx,definitionName){
+  const state={promoted:[]};
+  const [u,v]=vecArgs(body,ctx,state,[2,2],'vetorial: use dois vetores (vetorial: u, v)');
+  const c=cross3(u.v,v.v).map(noNegZero);
+  const area=len(c);
+  const name=u.label+'×'+v.label, label=definitionName||name;
+  const r=result3('cross','produto vetorial');
+  r.scene3d=[...arrowPrim(ORIGIN,u.v,u.label),...arrowPrim(ORIGIN,v.v,v.label)];
+  r.info=[u.label+' × '+v.label+' = '+fmtVec(c)];
+  const parallel=isNull(u.v)||isNull(v.v)||area<=TOL*len(u.v)*len(v.v);
+  if(parallel){
+    r.info.push('área = 0','aviso: '+u.label+' e '+v.label+' são paralelos (ou um deles é nulo): '+u.label+' × '+v.label+' = 0, nada a desenhar');
+  } else {
+    const s=add(u.v,v.v);
+    r.scene3d.push(
+      {kind:'polygon', points:[[...ORIGIN],u.v,s,v.v], alpha:0.2, role:'main'},
+      {kind:'segment', a:u.v, b:s, role:'aux'},
+      {kind:'segment', a:v.v, b:s, role:'aux'},
+      ...arrowPrim(ORIGIN,c,label));
+    r.info.push('|'+u.label+' × '+v.label+'| = '+core.fmt(area),
+      'área = '+core.fmt(area)+' (paralelogramo de '+u.label+' e '+v.label+')',
+      u.label+' × '+v.label+' é ortogonal a '+u.label+' e a '+v.label);
+  }
+  r.vectors=[vectorValue(u.v,u.label),vectorValue(v.v,v.label),vectorValue(c,label)];
+  r.info.push(...promotionWarning(state.promoted));
+  if(definitionName) core.define(r,definitionName,'vector',r.vectors[2]);
+  return r;
+}
+
+function tripleCommand(body,ctx,definitionName,command){
+  const state={promoted:[]};
+  const title=command==='parallelepiped' ? 'paralelepipedo' : 'misto';
+  const [u,v,w]=vecArgs(body,ctx,state,[3,3],title+': use três vetores ('+title+': u, v, w)');
+  const t=noNegZero(dot3(u.v,cross3(v.v,w.v)));
+  const names='['+[u,v,w].map(a=>a.label).join(',')+']';
+  const r=result3('triple',title==='misto' ? 'produto misto' : 'paralelepipedo');
+  r.scene3d=[u,v,w].flatMap(a=>arrowPrim(ORIGIN,a.v,a.label));
+  r.vectors=[u,v,w].map(a=>vectorValue(a.v,a.label));
+  const coplanar=[u,v,w].some(a=>isNull(a.v))||Math.abs(t)<=TOL*len(u.v)*len(v.v)*len(w.v);
+  if(coplanar){
+    r.info=[names+' = 0','vetores coplanares: volume 0'];
+  } else {
+    r.info=[names+' = '+core.fmt(t),'volume = '+core.fmt(Math.abs(t)),
+      t>0 ? 'base positiva (orientação dextrógira)' : 'base negativa (orientação levógira)'];
+    r.scene3d.unshift(...parallelepipedScene(ORIGIN,u.v,v.v,w.v,0.2,'main'));
+  }
+  r.info.push(...promotionWarning(state.promoted));
+  if(definitionName) core.define(r,definitionName,'scalar',coplanar ? 0 : t);
+  return r;
+}
+
+// Integer normals are divided by their gcd; the first non-zero entry is positive.
+function niceNormal(n){
+  const scale=Math.max(...n.map(Math.abs));
+  let out=n.map(c=>Math.abs(c)<=NULL_TOL*scale ? 0 : c/scale);
+  const ints=n.map(c=>Math.round(c));
+  if(n.every((c,i)=>Math.abs(c-ints[i])<=1e-9*Math.max(1,Math.abs(c)))){
+    const gcd=(a,b)=>b ? gcd(b,a%b) : a;
+    const g=ints.reduce((a,c)=>gcd(a,Math.abs(c)),0);
+    if(g>0) out=ints.map(c=>c/g);
+  }
+  if(out.find(c=>c!==0)<0) out=out.map(c=>-c);
+  return out.map(noNegZero);
+}
+
+function spanCommand(body,ctx,definitionName){
+  const state={promoted:[]};
+  const args=vecArgs(body,ctx,state,[1,8],'ger: use de um a três vetores (ger: u, v, w)');
+  const names=args.map(a=>a.label).join(', ');
+  const r=result3('span','ger');
+  r.scene3d=args.flatMap(a=>arrowPrim(ORIGIN,a.v,a.label));
+  r.vectors=args.filter(a=>!isNull(a.v)).map(a=>vectorValue(a.v,a.label));
+  const live=args.filter(a=>!isNull(a.v));
+  const rank=live.length ? matrixRank(live.map(a=>a.v)) : 0;
+  const head='ger{'+names+'}';
+  const tag=definitionName||'ger{'+args.map(a=>a.label).join(',')+'}';
+  const ld=args.length>rank ? ['aviso: vetores linearmente dependentes (LD): posto '+rank+' < '+args.length+' vetores'] : [];
+  if(rank===0){
+    r.info=['ger{0} = {0}: só o vetor nulo','posto 0'];
+    r.scene3d.push({kind:'point', p:[0,0,0], label:'O', role:'main'});
+    r.points=[pointValue([0,0,0],'O')];
+    if(definitionName) core.define(r,definitionName,'point',pointValue([0,0,0],definitionName));
+  } else if(rank===1){
+    const d=live.reduce((best,a)=>len(a.v)>len(best.v) ? a : best).v;
+    r.info=[head+' = reta pela origem: X = t·'+fmtVec(d),'posto 1'];
+    r.scene3d.unshift(...lineScene({p:[0,0,0],v:d},tag,'main'));
+    if(definitionName) core.define(r,definitionName,'line3',{p:[0,0,0], v:d, label:definitionName, dim:3});
+  } else if(rank===2){
+    let n=[0,0,0];
+    for(let i=0;i<live.length;i++) for(let j=i+1;j<live.length;j++){
+      const c=cross3(live[i].v,live[j].v);
+      if(len(c)>len(n)) n=c;
+    }
+    n=niceNormal(n);
+    const pl={n, d:0};
+    r.info=[head+' = plano pela origem: '+fmtPlane(pl),'posto 2','normal n = '+fmtVec(n)];
+    r.scene3d.unshift(...planeScene(pl,tag,'main'));
+    if(definitionName) core.define(r,definitionName,'plane',{n, d:0, label:definitionName, dim:3});
+  } else {
+    r.info=[head+' = ℝ³ (todo o espaço)','posto 3'];
+    // Light shaded box (aux: lighter fill, dashed outline): a symbol for "all of
+    // space", the ±5 default box.
+    r.scene3d.unshift(...parallelepipedScene([-5,-5,-5],[10,0,0],[0,10,0],[0,0,10],0.08,'').map(f=>({...f, role:'aux'})));
+  }
+  r.info.push(...ld,...promotionWarning(state.promoted));
   return r;
 }

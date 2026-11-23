@@ -410,6 +410,20 @@
     <div id="three-3d-container" role="img" tabindex="0" aria-label="Gráfico tridimensional Three.js. Arraste para girar, Shift para mover e use a roda para zoom." aria-describedby="canvas-description">
       <div id="three-3d-status" role="status" aria-live="polite" hidden></div>
     </div>
+    <section id="section2d-panel" class="section2d-panel" hidden aria-label="Seção cônica no plano em duas dimensões">
+      <header class="section2d-heading">
+        <div><strong>Seção no plano (s, t)</strong><small>Referencial do plano secante</small></div>
+        <button id="section2d-close" type="button" title="Fechar seção 2D">×</button>
+      </header>
+      <canvas id="section2d-canvas" role="img" aria-label="Curva de interseção representada em coordenadas do plano secante"></canvas>
+      <div id="section2d-cursor" class="section2d-cursor" aria-live="off"></div>
+      <p id="section2d-caption" class="section2d-equation"></p>
+      <dl id="section2d-properties" class="section2d-properties" aria-label="Propriedades geométricas"></dl>
+      <div class="section2d-actions">
+        <button id="section2d-svg" type="button" title="Exportar curva e eixos 2D em SVG vetorial">Exportar SVG</button>
+        <button id="section2d-png" type="button" title="Exportar seção 2D em PNG">Exportar PNG</button>
+      </div>
+    </section>
     <p id="canvas-description" class="sr-only">Gráfico ainda não carregado.</p>
     <div id="readout"></div>
     <div id="lesson-graph-toast" role="status" aria-live="polite" hidden></div>
@@ -427,6 +441,7 @@
     </section>
     <div id="view3d-bar" role="toolbar" aria-label="Vista 2D | 3D" title="Vista 3D: arraste para girar · Shift+arraste para mover · roda para zoom · duplo clique volta">
       <button id="view-mode" class="small" hidden aria-pressed="false" title="Abrir a vista 3D" aria-label="Alternar vista 2D | 3D"><span data-m="2d">2D</span><span data-m="3d">3D</span></button>
+      <button id="section-toggle" class="small" hidden type="button" aria-pressed="true" title="Mostrar ou ocultar a seção cônica em 2D">3D + 2D</button>
       <span id="view3d-controls" hidden>
         <button id="view-xy" class="small" title="Vista de cima (plano xy)">xy</button>
         <button id="view-xz" class="small" title="Vista de frente (plano xz)">xz</button>

@@ -92,7 +92,11 @@ export function createSectionPanel({
   onClose=()=>{}
 }={}){
   if(!panel)return {draw:()=>{},resize:()=>{}};
-  const canvas=panel.querySelector('canvas'),ctx=canvas?.getContext('2d');
+  const canvas=panel.querySelector?.('canvas');
+  // Node's lightweight DOM fixtures return detached stubs; don't render
+  // the section on the primary canvas context in that environment.
+  if(!canvas||panel.contains?.(canvas)===false)return {draw:()=>{},resize:()=>{}};
+  const ctx=canvas?.getContext('2d');
   const properties=panel.querySelector('#section2d-properties');
   const caption=panel.querySelector('#section2d-caption'),hoverLabel=panel.querySelector('#section2d-cursor');
   let last=null,lastDark=false,lastView=null,hover=null,signature='';

@@ -24,7 +24,10 @@ export const classifyPlaneConic=(A,C,eps=1e-9)=>{
 };
 export function analyseConicSection(section){
   if(!section||!finite(section.h)||!finite(section.aperture)||section.aperture<=0) return null;
-  const {h,aperture:a,vertexZ:d=0,azimuth:p=0,offset:b=.75}=section;
+  const {h,aperture:a,vertexZ:d=0,azimuth:p=0}=section;
+  // The legacy slope equation has no horizontal offset. New angular
+  // sections expose b explicitly; keep older project files mathematically exact.
+  const b=finite(section.angle)?(section.offset??.75):0;
   const angle=finite(section.angle)?section.angle:Math.atan(section.k||0)/RAD;
   if(![h,a,d,p,b,angle].every(finite))return null;
   const q=angle*RAD,cos=Math.abs(angle)===90?0:Math.cos(q),sin=Math.sin(q);

@@ -44,6 +44,7 @@ import { attachCameraControls, autoAxisLimit, CAMERA_HINT, decideViewMode, hasGu
 import { init3DLibrarySelector, getActive3DLibrary, render3DScene, show3DLibrarySelector, hide3DLibrarySelector, handle3DResize, onActive3DLibraryChange, updatePlotlyCamera } from './space3d/library-manager.js';
 import { initThree3DControls } from './space3d/three-renderer.js';
 import { createTransform3DControls } from './space3d/transform3d.js';
+import { createSectionPanel } from './space3d/section-panel.js';
 
 const PALETTES={
   light:["#c0492f","#2d70b3","#2f7d5b","#6042a6","#d98324","#1d1d1f","#0a8aa6","#a8336e"],
@@ -90,6 +91,7 @@ let view3d=normalizeView3d(null);
 let view3dFit=0;
 let view3dFitAxisRange=null;
 let has3dSeen=null;
+let dualSection=true;
 let W=0,H=0,dpr=1;
 let mouse={inside:false, px:0, py:0};
 let saveTimer=null;
@@ -214,6 +216,7 @@ function plainState(){
     annotations: annotations.map(a => ({id:a.id, x:a.x, y:a.y, text:a.text, color:a.color, noBorder:a.noBorder})),
     view:{cx:view.cx, cy:view.cy, scale:view.scale},
     view3d:serializeView3d(view3d, view3dFit),
+    dualSection,
     equations:equations.map(serializeEq),
     lessonProgress:normalizeLessonProgress(lessonProgress)
   };
@@ -266,6 +269,7 @@ function applyState(snap){
     if(Number.isFinite(state.view.scale)) view.scale=Math.min(Math.max(state.view.scale,0.02),50000);
   }
   restoreView3d(state.view3d);
+  dualSection=state.dualSection!==false;
   equations.splice(0,equations.length);
   nextId=1;               // rebuild ids deterministically for this state
   (Array.isArray(state.equations)?state.equations:[]).forEach(saved=>{
@@ -359,6 +363,7 @@ function restoreState(state){
     if(Number.isFinite(state.view.scale)) view.scale=Math.min(Math.max(state.view.scale,0.02),50000);
   }
   restoreView3d(state.view3d);
+  dualSection=state.dualSection!==false;
   const savedEquations=Array.isArray(state.equations) ? state.equations : [];
   savedEquations.forEach(saved=>{
     const eq=hydrateEq(saved);
@@ -3111,6 +3116,32 @@ function initGeoBuilder(){
 
 const cv=document.getElementById('cv');
 const ctx=cv.getContext('2d');
+const stage=document.getElementById('stage');
+const sectionElement=document.getElementById('section2d-panel');
+const sectionToggle=document.getElementById('section-toggle');
+const sectionPanel=createSectionPanel({
+  panel:sectionElement,
+  onClose:()=>{dualSection=false;draw();scheduleSave();}
+});
+function activeSectionEquation(){
+  return equations.find(eq=>eq?.visible!==false&&!eq.error&&eq.kind==='geometry'&&eq.geometry?.section&&eq.geometry?.scene3d?.length);
+}
+function syncSectionLayout(){
+  const eq=view3d.mode==='3d'?activeSectionEquation():null;
+  const available=!!eq;
+  const show=available&&dualSection;
+  if(sectionToggle){
+    sectionToggle.hidden=!available;
+    sectionToggle.dataset.on=show?'1':'0';
+    sectionToggle.setAttribute?.('aria-pressed',show?'true':'false');
+  }
+  if(sectionElement)sectionElement.hidden=!show;
+  const was=stage?.classList?.contains?.('dual-conic')||false;
+  stage?.classList?.toggle?.('dual-conic',show);
+  if(show)sectionPanel.draw(eq.geometry,theme==='dark');
+  if(was!==show){resize();return true;}
+  return false;
+}
 const readout=document.getElementById('readout');
 const canvasDescription=document.getElementById('canvas-description');
 const lessonGraphToast=document.getElementById('lesson-graph-toast');
@@ -3149,15 +3180,17 @@ const dataTable=createDataTable();
 
 function resize(){
   dpr=window.devicePixelRatio||1;
-  // Canvas is hidden in Plotly/Three.js, so measure the visible stage.
-  const canvasRect=cv.getBoundingClientRect();
-  const r=canvasRect.width>0&&canvasRect.height>0
-    ?canvasRect:document.getElementById('stage').getBoundingClientRect();
-  W=r.width; H=r.height;
+  // Use the stage, never the canvas: inactive Plotly/Three.js modes hide it.
+  // In side-by-side mode the graph uses the left 60%, or the upper 56% on mobile.
+  const r=stage.getBoundingClientRect();
+  const dual=stage.classList?.contains?.('dual-conic')||false;
+  W=r.width*(dual&&r.width>850?.60:1);
+  H=r.height*(dual&&r.width<=850?.56:1);
   cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
   ctx.setTransform(dpr,0,0,dpr,0,0);
   fitCameraToViewport();
   handle3DResize();
+  sectionPanel.resize();
   draw();
 }
 function initSideResizer(){
@@ -5170,6 +5203,7 @@ function render3d(){
 function render(){
   syncUserFunctions();
   syncViewMode();
+  if(syncSectionLayout())return;
   ctx.clearRect(0,0,W,H);
   if(view3d.mode==='3d'){ render3d(); return; }
   
@@ -5424,6 +5458,10 @@ initThree3DControls(()=>view3d.camera,camera=>{view3d.camera=camera;},draw,{
 });
 const viewModeBtn=document.getElementById('view-mode');
 if(viewModeBtn) viewModeBtn.onclick=()=>setViewMode(view3d.mode==='3d'?'2d':'3d');
+if(sectionToggle)sectionToggle.onclick=()=>{
+  dualSection=!dualSection;
+  draw();scheduleSave();
+};
 ['xy','xz','yz','iso'].forEach(name=>{
   const button=document.getElementById('view-'+name);
   if(button) button.onclick=()=>{

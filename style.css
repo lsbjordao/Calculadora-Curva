@@ -1932,3 +1932,44 @@
 .surface-point-axis input[type="number"]{min-width:0;width:100%;padding:4px 5px;border-radius:6px;
   background:var(--field);color:var(--ink);border:1px solid var(--field-edge);font-size:12px}
 .surface-point-axis input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Teclado recolhível: mais espaço útil para as camadas sem alterar o gráfico. */
+#pad{flex:0 0 auto;min-width:0}
+.pad-head{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  min-height:42px;padding:7px 10px 7px 15px;
+}
+.pad-titlebar{display:flex;align-items:center;gap:10px;min-width:0}
+.pad-titlebar strong{color:var(--ink);font-size:11.5px;font-weight:650}
+#pad-summary{
+  color:var(--muted);font:10.5px var(--mono);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+#pad[data-collapsed="0"] #pad-summary{display:none}
+#pad[data-collapsed="1"] .pad-head{min-height:40px}
+#pad-content[hidden]{display:none!important}
+#pad-toggle .toggle-icon{pointer-events:none}
+#pad-toggle:hover{color:var(--accent)}
+/* A lista deixa de ficar limitada a 260px. Fechar o teclado amplia ainda
+   mais o visor, sem misturar a rolagem das camadas com a barra lateral. */
+#rows{
+  max-height:clamp(300px,42dvh,500px);
+  min-height:160px;
+}
+#side[data-keyboard-collapsed="1"] #rows{
+  flex:1 1 auto;
+  min-height:min(390px,52dvh);
+  max-height:min(72dvh,690px);
+}
+@media(max-width:720px){
+  #side[data-keyboard-collapsed="1"] #rows{
+    flex:1 1 auto;
+    min-height:min(285px,38dvh);
+    max-height:min(65dvh,520px);
+  }
+}
+@media(max-height:640px){
+  #side[data-keyboard-collapsed="1"] #rows{
+    min-height:min(225px,42dvh);
+  }
+}

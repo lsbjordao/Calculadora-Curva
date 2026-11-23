@@ -75,6 +75,35 @@ try{
     nodeAssert.ok(tab.bottom<=layout.stripBottom-6,'aba cortada em '+tab.label);
   }
   nodeAssert.ok(layout.stripBottom<=layout.gridTop+1,'abas não devem invadir o teclado');
+
+  // The mathematical layers receive substantially more vertical room when the
+  // calculator keypad is collapsed. Toggle is accessible, persistent, and
+  // does not reset the selected keyboard tab.
+  const keyboardToggle=page.locator('#pad-toggle');
+  nodeAssert.equal(await keyboardToggle.getAttribute('aria-expanded'),'true');
+  const expandedRowsHeight=await page.locator('#rows').evaluate(el=>el.getBoundingClientRect().height);
+  await page.locator('#tabs .tab[data-tab="fn"]').click();
+  nodeAssert.equal(await page.locator('#grid-fn').isVisible(),true);
+  await keyboardToggle.click();
+  nodeAssert.equal(await keyboardToggle.getAttribute('aria-expanded'),'false');
+  nodeAssert.equal(await page.locator('#pad-content').isVisible(),false);
+  const collapsedRowsHeight=await page.locator('#rows').evaluate(el=>el.getBoundingClientRect().height);
+  nodeAssert.ok(collapsedRowsHeight>expandedRowsHeight+35,
+    'recolher o teclado deve liberar espaço real para as camadas');
+  nodeAssert.equal(await page.locator('#side').getAttribute('data-keyboard-collapsed'),'1');
+  nodeAssert.equal(await page.locator('#pad-summary').innerText(),'ƒ(x)');
+  nodeAssert.equal(await page.evaluate(()=>localStorage.getItem('curva-keyboard-collapsed')),'1');
+  await page.screenshot({path:resolve(screenshots,'desktop-camadas-com-teclado-recolhido.png')});
+  await keyboardToggle.click();
+  nodeAssert.equal(await page.locator('#pad-content').isVisible(),true);
+  nodeAssert.equal(await page.locator('#tabs .tab[data-tab="fn"]').getAttribute('class'),'tab active');
+  await keyboardToggle.click();
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>document.querySelector('#pad-toggle')?.getAttribute('aria-expanded')==='false');
+  nodeAssert.equal(await page.locator('#pad-content').isVisible(),false,
+    'preferência deve sobreviver à atualização da página');
+  await page.locator('#pad-toggle').click();
+  nodeAssert.equal(await page.locator('#pad-content').isVisible(),true);
   await page.screenshot({path:resolve(screenshots,'desktop-conicas-2d.png')});
   const download=page.waitForEvent('download');
   await page.click('#project-export');
@@ -334,6 +363,14 @@ try{
   await multiContext.close();
 
   const {context:mobile,page:phone}=await createPage({width:390,height:844});
+  const mobilePad=phone.locator('#pad-toggle');
+  nodeAssert.equal(await mobilePad.getAttribute('aria-expanded'),'true');
+  await mobilePad.click();
+  nodeAssert.equal(await phone.locator('#pad-content').isVisible(),false);
+  nodeAssert.equal(await phone.locator('#side').getAttribute('data-keyboard-collapsed'),'1');
+  await phone.screenshot({path:resolve(screenshots,'mobile-camadas-com-teclado-recolhido.png')});
+  await mobilePad.click();
+  nodeAssert.equal(await phone.locator('#pad-content').isVisible(),true);
   const tabs=phone.locator('#tabs .tab');
   nodeAssert.equal(await tabs.count(),6);
   const widths=await tabs.evaluateAll(nodes=>nodes.map(n=>({

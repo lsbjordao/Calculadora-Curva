@@ -3189,6 +3189,70 @@ const sectionPanel=createSectionPanel({
   panel:sectionElement,
   onClose:()=>{dualSection=false;draw();scheduleSave();}
 });
+// Keep the divider position between sessions; using the same ratios for
+// rendering and CSS prevents mismatch after responsive layout changes.
+const splitHandle=document.getElementById('dual-splitter');
+const splitMobile=()=>typeof window.matchMedia==='function'&&window.matchMedia('(max-width:850px)').matches;
+const splitClamp=(v,min,max,defaultValue)=>Number.isFinite(v)?Math.max(min,Math.min(max,v)):defaultValue;
+function readSplit(key,fallback){
+  try { const value=Number(localStorage.getItem(key));return value>0?value:fallback; }
+  catch(_) {return fallback;}
+}
+let split3dWidth=splitClamp(readSplit('curva-split-width',60),30,75,60);
+let split3dHeight=splitClamp(readSplit('curva-split-height',56),30,75,56);
+function updateSplitLayout(redraw=true){
+  stage?.style?.setProperty?.('--dual-3d-width',split3dWidth+'%');
+  stage?.style?.setProperty?.('--dual-3d-height',split3dHeight+'%');
+  if(splitHandle){
+    const mobile=splitMobile(),value=mobile?split3dHeight:split3dWidth;
+    splitHandle.setAttribute?.('aria-orientation',mobile?'horizontal':'vertical');
+    splitHandle.setAttribute?.('aria-valuenow',String(Math.round(value)));
+    splitHandle.setAttribute?.('aria-valuetext',Math.round(value)+'% para o visor 3D');
+  }
+  if(redraw)resize();
+}
+updateSplitLayout(false);
+if(splitHandle){
+  let dragging=false;
+  const updateFromPointer=e=>{
+    const r=stage.getBoundingClientRect();
+    if(splitMobile())split3dHeight=splitClamp(100*(e.clientY-r.top)/Math.max(1,r.height),30,75,56);
+    else split3dWidth=splitClamp(100*(e.clientX-r.left)/Math.max(1,r.width),30,75,60);
+    updateSplitLayout();
+  };
+  splitHandle.addEventListener?.('pointerdown',e=>{
+    if(e.button!==0)return;
+    dragging=true;splitHandle.classList.add('dragging');
+    splitHandle.setPointerCapture?.(e.pointerId);updateFromPointer(e);
+    e.preventDefault?.();
+  });
+  splitHandle.addEventListener?.('pointermove',e=>{if(dragging)updateFromPointer(e);});
+  const finish=()=>{
+    if(!dragging)return;dragging=false;splitHandle.classList.remove('dragging');
+    try{localStorage.setItem('curva-split-width',String(split3dWidth));
+      localStorage.setItem('curva-split-height',String(split3dHeight));}catch(_){}
+  };
+  splitHandle.addEventListener?.('pointerup',finish);
+  splitHandle.addEventListener?.('pointercancel',finish);
+  splitHandle.addEventListener?.('keydown',e=>{
+    const delta=e.key==='ArrowRight'||e.key==='ArrowDown'?2:
+      e.key==='ArrowLeft'||e.key==='ArrowUp'?-2:0;
+    if(delta){
+      e.preventDefault?.();
+      if(splitMobile())split3dHeight=splitClamp(split3dHeight+delta,30,75,56);
+      else split3dWidth=splitClamp(split3dWidth+delta,30,75,60);
+      updateSplitLayout();finish();
+      try{localStorage.setItem('curva-split-width',String(split3dWidth));
+        localStorage.setItem('curva-split-height',String(split3dHeight));}catch(_){}
+    } else if(e.key==='Home'||e.key==='End'){
+      e.preventDefault?.();
+      if(splitMobile())split3dHeight=e.key==='Home'?30:75;
+      else split3dWidth=e.key==='Home'?30:75;
+      updateSplitLayout();finish();
+    }
+  });
+  window.addEventListener?.('resize',()=>updateSplitLayout(false));
+}
 function activeSectionEquation(){
   return equations.find(eq=>eq?.visible!==false&&!eq.error&&eq.kind==='geometry'&&eq.geometry?.section&&eq.geometry?.scene3d?.length);
 }
@@ -3207,6 +3271,7 @@ function syncSectionLayout(){
     planeDragButton.setAttribute?.('aria-pressed',planeDragMode?'true':'false');
   }
   if(sectionElement)sectionElement.hidden=!show;
+  if(splitHandle)splitHandle.hidden=!show;
   const was=stage?.classList?.contains?.('dual-conic')||false;
   stage?.classList?.toggle?.('dual-conic',show);
   // Attach the 3D engine selector to the 3D toolbar only in the dual view.
@@ -3265,8 +3330,8 @@ function resize(){
   // In side-by-side mode the graph uses the left 60%, or the upper 56% on mobile.
   const r=stage.getBoundingClientRect();
   const dual=stage.classList?.contains?.('dual-conic')||false;
-  W=r.width*(dual&&r.width>850?.60:1);
-  H=r.height*(dual&&r.width<=850?.56:1);
+  W=r.width*(dual&&!splitMobile()?split3dWidth/100:1);
+  H=r.height*(dual&&splitMobile()?split3dHeight/100:1);
   cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
   ctx.setTransform(dpr,0,0,dpr,0,0);
   fitCameraToViewport();

@@ -13,6 +13,7 @@ import { makeConicSectionScene, makeAngledConicSectionScene } from './conic-sect
 import { quadricScene } from './quadrics.js';
 import { quadricPlaneSection } from './quadric-sections.js';
 import { tangentScene } from './surface-calculus.js';
+import { generalQuadricFromEquation,analyseGeneralQuadric,meshImplicitQuadric } from './implicit-quadric.js';
 
 const EPS=1e-9;
 // Object names: identifiers, plus π, π1… for planes (§7).
@@ -108,6 +109,26 @@ function scenePoint(point){
   const prim={kind:'point', p:toVec3(point), role:'main'};
   if(point.label) prim.label=point.label;
   return prim;
+}
+
+function generalSurfaceCommand(body,ctx){
+  const polynomial=generalQuadricFromEquation(body,ctx.params||{});
+  const classification=analyseGeneralQuadric(polynomial);
+  const mesh=meshImplicitQuadric(polynomial,{resolution:24});
+  const result=result3('surface','Superfície · '+classification.type);
+  result.generalQuadric={polynomial,classification,extent:mesh.extent,mesh,
+    expression:String(body).trim()};
+  result.scene3d=mesh.faces.length?[{
+    kind:'mesh',vertices:mesh.vertices,faces:mesh.faces,color:'#318fa8',
+    alpha:.62,quadric:true,generalSurface:true
+  }]:[];
+  result.info=['Superfície: '+String(body).trim(),'Classificação: '+classification.type,
+    'Posto da matriz quadrática: '+classification.rank,
+    'Assinatura (+,−,0): '+classification.signature.join(', '),
+    'Autovalores: '+classification.eigen.map(x=>core.fmt(x.value)).join(', '),
+    'Autovetores (eixos principais): '+classification.eigen.map(e=>fmtVec(e.vector)).join(' · '),
+    'Malha finita: ±'+core.fmt(mesh.extent)+' em x, y, z; análise independente da malha.'];
+  return result;
 }
 
 function quadricCommand(body,ctx){
@@ -269,6 +290,7 @@ function vectorCommand(body,ctx,definitionName){
 
 // Returns a 3D result, or null when the command has no ℝ³ version yet.
 export function parse3dCommand(command,body,ctx={},definitionName=''){
+  if(command==='surface') return generalSurfaceCommand(body,ctx);
   if(command==='section') return sectionCommand(body,ctx);
   if(command==='quadric-slice') return quadricSliceCommand(body,ctx);
   if(command==='tangent') return tangentCommand(body,ctx);
@@ -288,7 +310,7 @@ export function parse3dCommand(command,body,ctx={},definitionName=''){
 // intersecao, distancia and angulo go to ℝ³ when an object is 3D or when an
 // equation (a "=") mentions the variable z (lines without z keep the 2D
 // analyzers, §7a.3). A registered object named z keeps its old meaning.
-const ALWAYS_3D=new Set(['plane','position','section','quadric','quadric-slice','tangent']);
+const ALWAYS_3D=new Set(['plane','position','section','quadric','quadric-slice','tangent','surface']);
 const Z_EQUATION_COMMANDS=new Set(['line','intersect','distance','angle']);
 
 function equationWithZ(text,ctx){

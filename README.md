@@ -392,6 +392,22 @@ WebGL ainda depende da compatibilidade do dispositivo.
 
 
 
+## Interface: teclado recolhível e lista de camadas ampliada
+
+Na barra lateral, o bloco **teclado** agora tem um botão de expandir/
+recolher, como os painéis de presets, aulas e ajuda. Ao recolher, as
+seis abas (123, funções, curvas, stats, álgebra e geo) e os botões do
+teclado deixam de ocupar espaço, liberando altura para as **camadas**.
+A lista de camadas mantém sua própria rolagem. A aba selecionada
+continua ativa ao expandir novamente.
+
+A preferência é salva apenas neste navegador em
+`curva-keyboard-collapsed`, independentemente das equações e de
+projetos exportados. Por padrão o teclado continua expandido para
+preservar o fluxo de digitação já conhecido; após o primeiro ajuste,
+a interface restaura o estado escolhido inclusive depois de atualizar
+a página. Em telas estreitas, a ampliação se adapta à altura disponível.
+
 ## Laboratórios avançados: equações livres e cálculo multivariável
 
 A Curva também aceita superfícies diretamente por equação, sem selecionar

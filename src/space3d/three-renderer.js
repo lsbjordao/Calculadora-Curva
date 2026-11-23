@@ -302,6 +302,14 @@ export function renderThree3D(primitives,options={}){
 export function resizeThree3D(){
   if(engine)engine.width=engine.height=0;
 }
+export function captureThree3D(){
+  if(!engine||!three||!pending)throw new Error('Three.js ainda não está pronto.');
+  // Capture in the same synchronous task as WebGL rendering, before the
+  // default drawing buffer is discarded. preserveDrawingBuffer isn't needed.
+  renderPending();
+  engine.renderer.render(engine.scene,engine.camera);
+  return engine.renderer.domElement.toDataURL('image/png');
+}
 export function clearThree3D(){
   pending=null;
   if(engine){disposeGroup(engine.group);lastSignature=null;}

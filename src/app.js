@@ -37,6 +37,7 @@ import { algebraDeclaration, createAlgebraSymbols } from './algebra-symbols.js';
 import { createTransformControls, buildSystemScene, buildSystemScene3D } from './linear-transform-view.js';
 import { initAlgebraWorkbench } from './algebra-workbench.js';
 import { initProjectControls } from './project-controls.js';
+import { exportGraphPng } from './export-graphic.js';
 import { createCamera, zoomCamera, presetView, fitCameraScale } from './space3d/camera.js';
 import { axesPrimitives } from './space3d/scene3d.js';
 import { buildDrawList, drawScene3d, colorsFromTheme } from './space3d/render3d.js';
@@ -5569,6 +5570,17 @@ if(installBtn)installBtn.onclick=async()=>{
   await prompt.prompt();
 };
 window.addEventListener('appinstalled',()=>{deferredInstall=null;if(installBtn)installBtn.hidden=true;});
+const exportGraphicBtn=document.getElementById('export-graphic');
+if(exportGraphicBtn)exportGraphicBtn.onclick=async()=>{
+  const status=document.getElementById('export-graphic-status');
+  try{
+    await exportGraphPng({viewMode:view3d.mode,canvas:cv});
+    if(status)status.textContent='Imagem PNG exportada.';
+  }catch(error){
+    if(status)status.textContent='Não foi possível exportar: '+error.message;
+    exportGraphicBtn.title='Falha: '+error.message;
+  }
+};
 const fullscreenBtn=document.getElementById('fullscreen');
 if(fullscreenBtn){
   fullscreenBtn.onclick=async()=>{

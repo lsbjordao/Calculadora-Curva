@@ -5,13 +5,15 @@ import {validateProjectState} from './project-file.js';
 // We don't share local annotations, UI history or personal lesson progress.
 const MAX_LINK_BYTES=12000;
 const allowed=new Set(['text','name','params','visible','style','color','lw','showA','showD','showL','showI',
-  'showD2','showGeoLabels','showGeoGuides','showAlgebraTransform','showAlgebraTransform3d','showAlgebraSystem']);
+  'showD2','showGeoLabels','showGeoGuides','showAlgebraTransform','showAlgebraTransform3d','showAlgebraSystem','clipSide','surfaceDirection','surfacePoint']);
 const isObj=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 function compactEquation(eq){
   const out={};
   for(const [key,value] of Object.entries(eq||{}))if(allowed.has(key)){
     if(key==='params'&&isObj(value))out.params=Object.fromEntries(
       Object.entries(value).filter(([,x])=>typeof x==='number'&&Number.isFinite(x)));
+    else if(key==='surfacePoint'&&Array.isArray(value)&&value.length===2&&value.every(Number.isFinite))
+      out.surfacePoint=[...value];
     else if(value===null||['string','number','boolean'].includes(typeof value))out[key]=value;
   }
   return out;

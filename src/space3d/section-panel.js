@@ -1,5 +1,6 @@
 "use strict";
 import {sectionCurves,conicMetricSummary} from './section-analysis.js';
+import {nearestSectionInPlane,linkedWorldFromSection,linkedSectionFromWorld} from './section-sync.js';
 
 const pad=28;
 const fmt=x=>Number.isFinite(x)?Number(x.toFixed(4)):0;
@@ -75,6 +76,7 @@ function paint(ctx,section,view,c,hover){
     const [x,y]=view.xy(hover);
     ctx.strokeStyle=c.point;ctx.setLineDash([3,4]);ctx.beginPath();
     ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();ctx.setLineDash([]);
+    ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fillStyle=c.point;ctx.fill();
   }
 }
 export function sectionSvg(section,width=760,height=540,{dark=false}={}){
@@ -89,7 +91,8 @@ export function sectionSvg(section,width=760,height=540,{dark=false}={}){
 }
 export function createSectionPanel({
   panel=document.getElementById('section2d-panel'),
-  onClose=()=>{}
+  onClose=()=>{},
+  onHoverPoint=()=>{}
 }={}){
   if(!panel)return {draw:()=>{},resize:()=>{}};
   const canvas=panel.querySelector?.('canvas');
@@ -120,14 +123,29 @@ export function createSectionPanel({
     paint(ctx,last,lastView,colors(lastDark),hover);
   };
   canvas?.addEventListener('pointermove',e=>{
-    if(!lastView)return;
+    if(!lastView||!last)return;
     const bounds=canvas.getBoundingClientRect();
-    hover=lastView.inv(e.clientX-bounds.left,e.clientY-bounds.top);
-    if(hoverLabel)hoverLabel.textContent='s: '+fmt(hover[0])+' · t: '+fmt(hover[1]);
+    const px=e.clientX-bounds.left,py=e.clientY-bounds.top;
+    const hit=nearestSectionInPlane(last.segments,lastView.xy,px,py);
+    hover=hit?.local||lastView.inv(px,py);
+    const world=hit?linkedWorldFromSection(hit.local,last):null;
+    if(hoverLabel)hoverLabel.textContent='s: '+fmt(hover[0])+' · t: '+fmt(hover[1])+
+      (world?' · xyz: ('+world.map(fmt).join(', ')+')':'');
+    onHoverPoint(world,hit?.local||null);
     redraw();
   });
-  canvas?.addEventListener('pointerleave',()=>{hover=null;if(hoverLabel)hoverLabel.textContent='';redraw();});
+  canvas?.addEventListener('pointerleave',()=>{
+    hover=null;if(hoverLabel)hoverLabel.textContent='';
+    onHoverPoint(null,null);redraw();
+  });
   return {
+    highlightWorld(world){
+      if(!last||!lastView)return;
+      hover=world?linkedSectionFromWorld(world,last):null;
+      if(hoverLabel)hoverLabel.textContent=world&&hover?
+        's: '+fmt(hover[0])+' · t: '+fmt(hover[1])+' · xyz: ('+world.map(fmt).join(', ')+')':'';
+      redraw();
+    },
     draw(geometry,dark=false){
       const next=sectionCurves(geometry);if(!next)return;
       const current=JSON.stringify([geometry.section,geometry.scene3d?.length,dark]);

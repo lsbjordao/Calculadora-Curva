@@ -106,6 +106,17 @@ try{
   }));
   nodeAssert.ok(dualSizing.canvas/dualSizing.stage>.58&&dualSizing.canvas/dualSizing.stage<.62);
   nodeAssert.ok(dualSizing.side/dualSizing.stage>.38&&dualSizing.side/dualSizing.stage<.42);
+  const rendererPosition=await page.evaluate(()=>{
+    const selector=document.querySelector('#3d-library-selector');
+    return {
+      parent:selector.parentElement.id,
+      selector:selector.getBoundingClientRect().toJSON(),
+      section:document.querySelector('#section2d-panel').getBoundingClientRect().toJSON()
+    };
+  });
+  nodeAssert.equal(rendererPosition.parent,'view3d-bar','motor 3D deve acompanhar a barra do visor 3D');
+  nodeAssert.ok(rendererPosition.selector.right<=rendererPosition.section.left-4,
+    'seletor do motor 3D não pode cobrir o título da seção 2D');
   await page.screenshot({path:resolve(screenshots,'desktop-hiperbole-duas-vistas.png')});
   await page.screenshot({path:resolve(screenshots,'desktop-hiperbole-plano-cone-3d.png')});
   // The section preset must expose independent shape, placement and
@@ -160,6 +171,8 @@ try{
   await sectionToggle.click();
   await page.waitForFunction(()=>!document.querySelector('#stage').classList.contains('dual-conic'));
   nodeAssert.equal(await dualPane.isVisible(),false);
+  nodeAssert.equal(await page.locator('#3d-library-selector').evaluate(el=>el.parentElement.id),'stage',
+    'motor 3D deve voltar à sua posição original na vista única');
   await sectionToggle.click();
   await page.waitForFunction(()=>document.querySelector('#stage').classList.contains('dual-conic'));
   nodeAssert.equal(await dualPane.isVisible(),true);
@@ -205,6 +218,20 @@ try{
     return {height:stage.height,side:preview.height,top:preview.top-stage.top};
   });
   nodeAssert.ok(portrait.side/portrait.height>.38&&portrait.side/portrait.height<.49);
+  const mobileSelector=await phone.evaluate(()=>{
+    const selector=document.querySelector('#3d-library-selector');
+    return {
+      parent:selector.parentElement.id,
+      rect:selector.getBoundingClientRect().toJSON(),
+      stage:document.querySelector('#stage').getBoundingClientRect().toJSON(),
+      section:document.querySelector('#section2d-panel').getBoundingClientRect().toJSON()
+    };
+  });
+  nodeAssert.equal(mobileSelector.parent,'view3d-bar');
+  nodeAssert.ok(mobileSelector.rect.left>=mobileSelector.stage.left-1&&
+    mobileSelector.rect.right<=mobileSelector.stage.right+1,'seletor 3D deve caber na largura mobile');
+  nodeAssert.ok(mobileSelector.rect.bottom<=mobileSelector.section.top+1,
+    'seletor 3D não pode entrar no painel 2D no mobile');
   await phone.screenshot({path:resolve(screenshots,'mobile-secao-2d-e-3d.png')});
   await mobile.close();
   console.log('Browser UI: preset 2D/3D, seis abas, espaçamento, projetos, transformação 3D e mobile OK.');

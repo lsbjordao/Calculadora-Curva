@@ -494,6 +494,17 @@ export const PRESETS=[
     ]
   },
   {
+    id:'quadric-tangents-3d',
+    label:'Planos tangentes e gradientes (3D)',
+    view:{cx:0,cy:0,scale:52},
+    equations:[
+      {text:'tangente: paraboloide,a,b,c,d,u,v,r',params:{a:1.5,b:1.2,c:1,d:0,u:.62,v:.18,r:1},name:'Paraboloide: gradiente, normal e plano tangente'},
+      {text:'tangente: elipsoide,a,b,c,d,u,v,r',params:{a:2,b:1.2,c:1.5,d:0,u:.65,v:.1,r:1},name:'Elipsoide: plano tangente',visible:false},
+      {text:'tangente: sela,a,b,c,d,u,v,r',params:{a:1.1,b:1.1,c:.5,d:0,u:.7,v:.58,r:1},name:'Sela: derivadas parciais',visible:false},
+      {text:'tangente: hiperboloide1,a,b,c,d,u,v,r',params:{a:1,b:1,c:1,d:0,u:.6,v:.2,r:1},name:'Hiperboloide: plano tangente',visible:false}
+    ]
+  },
+  {
     id:'quadric-gallery-3d',
     label:'Superfícies quádricas (3D)',
     view:{cx:0,cy:0,scale:52},
@@ -720,6 +731,7 @@ const PRESET_DETAILS={
   'cone-sections-3d':['Cônicas e quádricas','Cone duplo 3D recortado por um plano: circunferência, elipse, parábola e hipérbole. Ative uma linha por vez e ajuste k.'],
   'cone-hyperbola-planes-3d':['Cônicas e quádricas','Hipérbole como seção 3D de um cone duplo por um plano oblíquo; compare inclinações com as demais linhas.'],
   'quadric-plane-cuts-3d':['Cônicas e quádricas','Cortes analíticos de sete quádricas por planos com inclinação e azimute livres; visão 2D e 3D sincronizada.'],
+  'quadric-tangents-3d':['Cônicas e quádricas','Explore gradiente, normal e plano tangente a quádricas; altere u e v para mover o ponto sobre a superfície.'],
   'quadric-gallery-3d':['Cônicas e quádricas','Sete superfícies quádricas ajustáveis. Ative uma por vez para comparar elipsoide, paraboloides, hiperboloides e cilindro.'],
   'linear-algebra':['Álgebra linear','Vetores, matrizes 2x2, determinante e transformação do quadrado unitário.'],
   'linear-algebra-advanced':['Álgebra linear','Determinante NxN, cross 3D, linsolve, somatório e sequências.'],

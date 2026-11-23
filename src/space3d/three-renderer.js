@@ -1,13 +1,13 @@
 "use strict";
 
 // Three.js (WebGL) renderer for the same geometric primitives used by Canvas
-// and Plotly. Loading is lazy, so the rest of Curva works without network/WebGL.
-// Pinned to a tested npm release: no build tools or bare module imports needed.
+// and Plotly. Loading is lazy; the pinned MIT-licensed module is bundled for offline WebGL.
+// Pinned to Three.js r187; uses local ES modules and no build tools.
 import { clipPlaneToBox, clipLineToBox } from './scene3d.js';
 import { cameraBasis } from './camera.js';
 import { attachCameraControls } from './view3d.js';
 
-export const THREE_MODULE_URL = 'https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.js';
+export const THREE_MODULE_URL = new URL('../../assets/vendor/three.module.js',import.meta.url).href;
 const valid3 = p => Array.isArray(p) && p.length===3 && p.every(Number.isFinite);
 const defaultBox = {min:[-5,-5,-5],max:[5,5,5]};
 const THIN = [1,2,5,10,20,50,100];

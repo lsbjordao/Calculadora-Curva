@@ -480,6 +480,20 @@ export const PRESETS=[
     ]
   },
   {
+    id:'quadric-plane-cuts-3d',
+    label:'Cortes de quádricas (3D + 2D)',
+    view:{cx:0,cy:0,scale:52},
+    equations:[
+      {text:'corte: elipsoide,a,b,c,d,q,p,h',params:{a:2,b:1.5,c:1.7,d:0,q:20,p:0,h:0},name:'Elipsoide + plano secante'},
+      {text:'corte: esfera,a,b,c,d,q,p,h',params:{a:1.7,b:1.7,c:1.7,d:0,q:55,p:20,h:0},name:'Esfera + plano secante',visible:false},
+      {text:'corte: paraboloide,a,b,c,d,q,p,h',params:{a:1.5,b:1.2,c:1,d:0,q:0,p:0,h:2},name:'Paraboloide elíptico + plano',visible:false},
+      {text:'corte: hiperboloide1,a,b,c,d,q,p,h',params:{a:1.4,b:1,c:1,d:0,q:90,p:0,h:0},name:'Hiperboloide de uma folha + plano vertical',visible:false},
+      {text:'corte: hiperboloide2,a,b,c,d,q,p,h',params:{a:1.4,b:1,c:1,d:0,q:0,p:0,h:2},name:'Hiperboloide de duas folhas + plano',visible:false},
+      {text:'corte: sela,a,b,c,d,q,p,h',params:{a:1.5,b:1.5,c:1,d:0,q:0,p:0,h:0},name:'Sela + plano secante',visible:false},
+      {text:'corte: cilindro,a,b,c,d,q,p,h',params:{a:1.6,b:1.1,c:1,d:0,q:90,p:0,h:0},name:'Cilindro elíptico + plano vertical',visible:false}
+    ]
+  },
+  {
     id:'quadric-gallery-3d',
     label:'Superfícies quádricas (3D)',
     view:{cx:0,cy:0,scale:52},
@@ -705,6 +719,7 @@ const PRESET_DETAILS={
   'conic-analysis':['Geometria','Cônicas com centro, raio, focos, diretrizes e eixos quando detectáveis.'],
   'cone-sections-3d':['Cônicas e quádricas','Cone duplo 3D recortado por um plano: circunferência, elipse, parábola e hipérbole. Ative uma linha por vez e ajuste k.'],
   'cone-hyperbola-planes-3d':['Cônicas e quádricas','Hipérbole como seção 3D de um cone duplo por um plano oblíquo; compare inclinações com as demais linhas.'],
+  'quadric-plane-cuts-3d':['Cônicas e quádricas','Cortes analíticos de sete quádricas por planos com inclinação e azimute livres; visão 2D e 3D sincronizada.'],
   'quadric-gallery-3d':['Cônicas e quádricas','Sete superfícies quádricas ajustáveis. Ative uma por vez para comparar elipsoide, paraboloides, hiperboloides e cilindro.'],
   'linear-algebra':['Álgebra linear','Vetores, matrizes 2x2, determinante e transformação do quadrado unitário.'],
   'linear-algebra-advanced':['Álgebra linear','Determinante NxN, cross 3D, linsolve, somatório e sequências.'],

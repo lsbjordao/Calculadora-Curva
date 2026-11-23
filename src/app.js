@@ -1662,9 +1662,33 @@ function renderRows(){
       refreshMathInfo();
       renderCurveSummary(summary,eq);
     });
+    const rowStartParams={...eq.params};
     const refreshParamControls=()=>{
       paramControls.innerHTML='';
+      paramControls.dataset.kind='';
       if(!eq.paramNames?.length) return;
+      const isSectionRow=/^\s*(?:secao|seccao|secaocone|section)\s*:/i.test(eq.text);
+      const isQuadricRow=/^\s*(?:quadrica|quadricas|quadric)\s*:/i.test(eq.text);
+      const lab=isSectionRow||isQuadricRow;
+      paramControls.dataset.kind=isSectionRow?'section':isQuadricRow?'quadric':'';
+      const groupNodes=new Map();
+      if(lab){
+        const groups=isSectionRow?[
+          ['plano','Plano secante',['q','k','b','h','p']],
+          ['cone','Cone duplo',['a','d']]
+        ]:[
+          ['escala','Escalas da superfície',['a','b','c']],
+          ['posicao','Posição',['d']]
+        ];
+        for(const [id,title,names] of groups){
+          const details=document.createElement('details');
+          details.className='param-group';details.open=true;details.dataset.group=id;
+          const summary=document.createElement('summary');summary.textContent=title;
+          const wrap=document.createElement('div');wrap.className='param-group-grid';
+          details.append(summary,wrap);paramControls.appendChild(details);
+          for(const name of names)groupNodes.set(name,wrap);
+        }
+      }
       eq.paramNames.forEach(name=>{
         // Limits for conic-section parameters must not change the same symbols
         // used in unrelated matrix and function expressions.
@@ -1734,8 +1758,24 @@ function renderRows(){
         const a=animations.get(animKey(eq,name));
         if(a){ a.range=range; a.number=number; }
         param.append(label,range,number,play);
-        paramControls.appendChild(param);
+        (groupNodes.get(name)||paramControls).appendChild(param);
       });
+      if(lab){
+        const reset=document.createElement('button');
+        reset.type='button';reset.className='param-reset';
+        reset.title='Restaurar valores desta construção';
+        reset.textContent='↺ restaurar parâmetros';
+        reset.onclick=()=>{
+          for(const name of eq.paramNames){
+            if(Number.isFinite(rowStartParams[name]))eq.params[name]=rowStartParams[name];
+          }
+          recompileAllEquations();
+          refreshParamControls();
+          resultRefreshers.forEach(refresh=>refresh());
+          draw();scheduleSave();notifyLessonAction('param');
+        };
+        paramControls.appendChild(reset);
+      }
     };
 
     const dBtn=document.createElement('button');

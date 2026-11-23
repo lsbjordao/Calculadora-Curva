@@ -1797,3 +1797,24 @@
   #stage.dual-conic .section2d-properties{max-height:32%;padding:4px 0;margin:3px 10px}
   #stage.dual-conic .section2d-actions{padding:5px 10px}
 }
+
+
+/* Agrupamento de parâmetros geométricos em seções legíveis e acessíveis. */
+.param-tools[data-kind="section"],.param-tools[data-kind="quadric"]{gap:8px;margin-top:8px}
+.param-group{border:1px solid var(--field-edge);border-radius:9px;
+  background:var(--panel);padding:0;min-width:0}
+.param-group summary{cursor:pointer;color:var(--ink);font-weight:650;font-size:11px;
+  padding:8px 10px;list-style-position:inside}
+.param-group-grid{display:grid;gap:8px;padding:3px 10px 10px}
+.param-group-grid .param-control{display:grid;
+  grid-template-columns:minmax(0,1fr) 61px 26px;
+  gap:4px 8px;align-items:center;font-size:11px}
+.param-group-grid .param-control span{grid-column:1/-1;text-align:left;
+  white-space:normal;line-height:1.3;color:var(--ink)}
+.param-group-grid .param-control input[type="range"]{grid-column:1;min-width:0}
+.param-group-grid .param-control input[type="number"]{grid-column:2;width:61px}
+.param-group-grid .param-control .param-play{grid-column:3}
+.param-reset{cursor:pointer;justify-self:start;background:var(--field);
+  border:1px solid var(--field-edge);border-radius:6px;padding:7px 11px;
+  color:var(--ink);font-size:11px}
+.param-reset:hover{border-color:var(--accent)}

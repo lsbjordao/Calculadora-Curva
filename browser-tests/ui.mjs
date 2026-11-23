@@ -293,7 +293,7 @@ try{
   nodeAssert.match(await freePage.locator('.row').first().innerText(),/Elipsoide|elipsoide/);
   const clip=freePage.locator('.row').first().locator('.row-tools button', {hasText:'recorte'});
   await clip.click();
-  nodeAssert.equal(await clip.innerText(),'corte +');
+  nodeAssert.equal(await freePage.locator('.row').first().locator('.row-tools button', {hasText:'corte +'}).innerText(),'corte +');
   await freePage.waitForFunction(()=>{
     const state=JSON.parse(localStorage.getItem('curva-state-v1')||'{}');
     return state?.equations?.[0]?.clipSide===1;

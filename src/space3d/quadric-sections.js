@@ -153,8 +153,22 @@ export function samplePlaneConic(q,{extent=8,resolution=110}={}){
   const step=2*span/n,segments=[];
   const grid=Array.from({length:n+1},(_,j)=>Array.from({length:n+1},(_,i)=>
     evaluatePlaneConic(q,-span+i*step,-span+j*step)));
+  // Refine each marching-square edge crossing against the *analytical*
+  // polynomial. Linear interpolation alone can visibly miss the actual
+  // surface/plane intersection, especially in the wider view windows.
   const interp=(a,b,fa,fb)=>{
-    const t=Math.abs(fa-fb)<1e-14?.5:fa/(fa-fb);
+    if(fa===0)return [...a];
+    if(fb===0)return [...b];
+    let lo=0,hi=1;
+    const negative=fa<0;
+    for(let k=0;k<14;k++){
+      const mid=(lo+hi)/2;
+      const x=a[0]+mid*(b[0]-a[0]),y=a[1]+mid*(b[1]-a[1]);
+      const fm=evaluatePlaneConic(q,x,y);
+      if((fm<0)===negative)lo=mid;
+      else hi=mid;
+    }
+    const t=(lo+hi)/2;
     return [a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1])];
   };
   for(let j=0;j<n;j++)for(let i=0;i<n;i++){
@@ -183,7 +197,8 @@ export function quadricPlaneSection(type,params={},planeParams={}){
   const analysis=analysePlaneQuadratic(q);
   const base=Math.max(params.a??1,params.b??1,params.c??1,1);
   const extent=Math.min(28,Math.max(5,base*3.3,Math.abs(plane.offset)*1.5+base*2));
-  const segments=samplePlaneConic(q,{extent});
+  const resolution=Math.min(190,Math.max(110,Math.round(extent*11)));
+  const segments=samplePlaneConic(q,{extent,resolution});
   const toWorld=st=>plus(plane.origin,plus(times(plane.axisS,st[0]),times(plane.axisT,st[1])));
   return {
     ...analysis, ...plane,

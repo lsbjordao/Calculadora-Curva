@@ -3393,9 +3393,20 @@ function pickTangentSurface(e){
   if(x<0||x>W||y<0||y>H)return;
   let nearest=null;
   for(const eq of equations){
-    if(eq.visible===false||eq.error||!eq.geometry?.tangent||!eq.geometry?.scene3d)continue;
+    if(eq.visible===false||eq.error||(!eq.geometry?.tangent&&!eq.geometry?.multivar)||!eq.geometry?.scene3d)continue;
     const meshes=eq.geometry.scene3d.filter(p=>p.kind==='mesh');
     for(const [sheetIndex,mesh] of meshes.entries()){
+      if(eq.geometry.multivar){
+        for(const vertex of mesh.vertices||[]){
+          if(!vertex.every(Number.isFinite))continue;
+          const projected=projectPoint(view3d.camera,vertex,{width:W,height:H});
+          if(projected.behind)continue;
+          const dist=Math.hypot(projected.x-x,projected.y-y);
+          if(dist<18&&(!nearest||dist<nearest.dist))
+            nearest={eq,dist,depth:projected.depth,surfacePoint:vertex.slice(0,2),multi:true};
+        }
+        continue;
+      }
       const cols=mesh.vertices.length===33*33?33:45;
       const rows=mesh.vertices.length/cols;
       if(!Number.isInteger(rows))continue;
@@ -3413,10 +3424,14 @@ function pickTangentSurface(e){
   }
   if(!nearest)return;
   const {eq,u,v,face,sheetCount}=nearest;
-  eq.params.u=Number(u.toFixed(3));eq.params.v=Number(v.toFixed(3));
-  if(sheetCount>1)eq.params.r=face;
+  if(nearest.multi){
+    eq.surfacePoint=nearest.surfacePoint.map(x=>Number(x.toFixed(3)));
+  }else{
+    eq.params.u=Number(u.toFixed(3));eq.params.v=Number(v.toFixed(3));
+    if(sheetCount>1)eq.params.r=face;
+  }
   recompileAllEquations();resultRefreshers.forEach(refresh=>refresh());
-  draw();scheduleSave();
+  renderRows();draw();scheduleSave();
 }
 for(const id of ['cv','three-3d-container']){
   const target=document.getElementById(id);

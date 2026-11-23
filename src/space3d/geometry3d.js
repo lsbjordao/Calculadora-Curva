@@ -128,7 +128,14 @@ function tangentCommand(body,ctx){
   if(parts.length<7||parts.length>8)
     throw new Error('Tangente: use tangente: tipo,a,b,c,d,u,v[,r]; u,v de 0 a 1.');
   const type=parts[0].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  const [a,b,c,d,u,v,r=1]=parts.slice(1).map(value=>core.evalScalar(value,ctx));
+  // Surface coordinates u/v are scoped to this command; do not reserve these
+  // identifiers globally (they remain available for user-defined functions).
+  const surfaceScalar=value=>{
+    if((value==='u'||value==='v')&&Number.isFinite(ctx.params?.[value]))
+      return ctx.params[value];
+    return core.evalScalar(value,ctx);
+  };
+  const [a,b,c,d,u,v,r=1]=parts.slice(1).map(surfaceScalar);
   const {surface,tangent,scene}=tangentScene(type,{a,b,c,d},u,v,r);
   const result=result3('tangent','plano tangente a '+surface.label.toLowerCase());
   result.scene3d=scene;result.quadric=surface;result.tangent=tangent;

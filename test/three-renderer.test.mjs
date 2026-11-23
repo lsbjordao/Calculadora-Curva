@@ -8,11 +8,15 @@ import {scenePrimitives} from '../src/space3d/view3d.js';
 import {readFileSync} from 'node:fs';
 
 const box={min:[-5,-5,-5],max:[5,5,5]};
-test('Three.js: módulo remoto com versão fixada, carregado apenas sob demanda',()=>{
-  assert.match(THREE_MODULE_URL,/^https:\/\/cdn\.jsdelivr\.net\/npm\/three@0\.187\.0\/build\/three\.module\.js$/);
+test('Three.js: módulo local r187 carregado sob demanda e disponível offline',()=>{
+  assert.match(THREE_MODULE_URL,/assets\/vendor\/three\.module\.js$/);
   const source=readFileSync(new URL('../src/space3d/three-renderer.js',import.meta.url),'utf8');
   assert.match(source,/import\(THREE_MODULE_URL\)/);
   assert.doesNotMatch(source,/^import .*https:\/\/cdn/m);
+  const vendor=readFileSync(new URL('../assets/vendor/three.module.js',import.meta.url),'utf8');
+  const core=readFileSync(new URL('../assets/vendor/three.core.js',import.meta.url),'utf8');
+  assert.match(vendor,/SPDX-License-Identifier: MIT/);
+  assert.match(core,/REVISION = '187'/);
 });
 test('Three.js: os três planos de solveinfo ficam distintos e são recortados',()=>{
   const system=buildSystemScene3D([[1,1,1],[2,-1,1],[1,2,-1]],[6,3,2],[1,2,3]);

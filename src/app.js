@@ -3500,7 +3500,8 @@ function syncSectionLayout(){
     sectionToggle.setAttribute?.('aria-pressed',show?'true':'false');
   }
   if(planeDragButton){
-    planeDragButton.hidden=!(available&&getActive3DLibrary()==='threejs');
+    planeDragButton.hidden=!(getActive3DLibrary()==='threejs'&&view3d.mode==='3d'&&
+      (available||equations.some(eq=>eq.visible!==false&&!eq.error&&eq.geometry?.type==='plane')));
     planeDragButton.dataset.on=planeDragMode?'1':'0';
     planeDragButton.setAttribute?.('aria-pressed',planeDragMode?'true':'false');
   }
@@ -5883,9 +5884,47 @@ if(planeDragButton)planeDragButton.onclick=()=>{
 };
 initThreePlaneDragging({
   isEnabled:()=>view3d.mode==='3d'&&getActive3DLibrary()==='threejs'&&planeDragMode,
-  onDrag:({phase,eqId,kind,dx,dy})=>{
+  onDrag:({phase,eqId,kind,axis,shiftKey,ctrlKey,dx,dy})=>{
     const eq=equations.find(item=>item.id===eqId);
-    if(!eq||!eq.geometry?.section||!eq.text.includes('angulo('))return;
+    if(!eq)return;
+    // Real XYZ gizmos on explicitly written planes. Drag a colored axis
+    // arrow to translate along it, the plane to translate normally, or
+    // Shift+drag the plane to rotate around its original anchor point.
+    if(eq.geometry?.type==='plane'){
+      const plane=eq.geometry.scene3d?.find(p=>p.kind==='plane'&&p.role==='main');
+      if(phase==='start'){
+        if(!plane)return;
+        const n=[...plane.n],d=plane.d,norm2=n.reduce((acc,x)=>acc+x*x,0);
+        planeDragStart={eqId,general:true,n,d,anchor:n.map(x=>x*d/norm2)};
+        return;
+      }
+      if(!planeDragStart?.general||planeDragStart.eqId!==eqId)return;
+      if(phase==='end'){
+        planeDragStart=null;renderRows();scheduleSave();return;
+      }
+      if(phase!=='move')return;
+      const start=planeDragStart,{n:source,anchor}=start;
+      let n=[...source],point=[...anchor],d=start.d;
+      if(kind==='handle'&&Number.isInteger(axis)&&axis>=0&&axis<3){
+        point[axis]+=(dx-dy)*.023;
+        d=n.reduce((acc,x,i)=>acc+x*point[i],0);
+      }else if(shiftKey){
+        const yaw=dx*.006,pitch=-dy*.006;
+        const cy=Math.cos(yaw),sy=Math.sin(yaw),cx=Math.cos(pitch),sx=Math.sin(pitch);
+        n=[cy*source[0]+sy*source[2],source[1],-sy*source[0]+cy*source[2]];
+        n=[n[0],cx*n[1]-sx*n[2],sx*n[1]+cx*n[2]];
+        d=n.reduce((acc,x,i)=>acc+x*anchor[i],0);
+      }else{
+        d+=(dx-dy)*.023*Math.hypot(...n);
+      }
+      const fmt=value=>String(Number((Math.abs(value)<1e-11?0:value).toPrecision(7)));
+      eq.text='plano: '+n.map((x,i)=>fmt(x)+'*'+'xyz'[i]).join(' + ')+' = '+fmt(d);
+      recompileAllEquations();
+      resultRefreshers.forEach(refresh=>refresh());
+      draw();
+      return;
+    }
+    if(!eq.geometry?.section||!eq.text.includes('angulo('))return;
     if(phase==='start'){
       planeDragStart={eqId,q:eq.params.q,b:eq.params.b,a:eq.params.a,d:eq.params.d};
       return;
@@ -5899,8 +5938,7 @@ initThreePlaneDragging({
       resultRefreshers.forEach(refresh=>refresh());
       draw();
     }else if(phase==='end'){
-      planeDragStart=null;
-      scheduleSave();
+      planeDragStart=null;renderRows();scheduleSave();
     }
   }
 });

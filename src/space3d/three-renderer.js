@@ -336,6 +336,18 @@ export function renderThree3D(primitives,options={}){
     if(root()?.style.display!=='none')message('Não foi possível iniciar Three.js (WebGL ou conexão indisponível). Use Plotly.js ou Canvas 2D.');
   }).finally(()=>{initializing=false;});
 }
+// Read-only diagnostics for browser regression checks and performance tuning.
+export function threeSurfaceGuideStats(){
+  const counts={meshes:0,guides:0,segments:0};
+  engine?.group?.traverse?.(obj=>{
+    if(obj.isMesh&&obj.geometry?.getAttribute?.('position'))counts.meshes++;
+    if(obj.userData?.surfaceGuides){
+      counts.guides++;
+      counts.segments+=Math.floor((obj.geometry?.getAttribute?.('position')?.count||0)/2);
+    }
+  });
+  return counts;
+}
 export function resizeThree3D(){
   if(engine)engine.width=engine.height=0;
 }

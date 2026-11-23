@@ -1917,3 +1917,18 @@
 .conic-rotation-demo input:focus-visible,.conic-rotation-demo button:focus-visible{
   outline:2px solid var(--accent);outline-offset:2px;
 }
+
+/* Free-form two-variable function: explicit numerical inspection point. */
+.surface-point-controls[hidden]{display:none!important}
+.surface-point-controls{
+  display:grid;gap:9px;margin:9px 0;padding:11px;
+  border:1px solid var(--panel-edge);border-radius:10px;background:var(--panel);
+}
+.surface-point-controls strong{font-size:12px;color:var(--ink)}
+.surface-point-controls > span{font-size:11px;color:var(--muted)}
+.surface-point-axis{display:grid;grid-template-columns:44px minmax(30px,1fr) 76px;gap:9px;align-items:center}
+.surface-point-axis span{font-size:11px;font-weight:600;color:var(--ink)}
+.surface-point-axis input[type="range"]{min-width:0;width:100%;accent-color:var(--accent)}
+.surface-point-axis input[type="number"]{min-width:0;width:100%;padding:4px 5px;border-radius:6px;
+  background:var(--field);color:var(--ink);border:1px solid var(--field-edge);font-size:12px}
+.surface-point-axis input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}

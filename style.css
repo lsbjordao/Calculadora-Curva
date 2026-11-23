@@ -1608,6 +1608,20 @@
   border-color: var(--accent);
 }
 
+/* In 3D + 2D, the selector is a wrapping child of the 3D toolbar,
+   so its position follows the actual 3D pane rather than the whole stage. */
+#stage.dual-conic #view3d-bar .library-selector-container {
+  position: static;
+  flex: 0 1 auto;
+  min-width: min(285px, 100%);
+  max-width: 100%;
+  box-sizing: border-box;
+}
+#stage.dual-conic #view3d-bar .library-selector {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 @media (max-width: 720px) {
   .library-selector-container {
     top: auto;

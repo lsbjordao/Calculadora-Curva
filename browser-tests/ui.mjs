@@ -366,6 +366,52 @@ try{
   await multiPage.screenshot({path:resolve(screenshots,'desktop-calculo-multivariavel-curvas-nivel.png')});
   await multiContext.close();
 
+  // Three.js: sparse mathematical grid lines must actually live in WebGL,
+  // follow the camera, and support three persistent density settings.
+  const {context:wireContext,page:wirePage}=await createPage({width:1440,height:900});
+  await wirePage.locator('#preset-toggle').click();
+  await wirePage.selectOption('#preset-list','quadric-gallery-3d');
+  await wirePage.click('#preset-load');
+  await wirePage.waitForFunction(()=>document.querySelector('#view-mode')?.dataset.mode==='3d');
+  await wirePage.locator('#3d-lib-select').selectOption('threejs');
+  const wireToggle=wirePage.locator('#three-surface-lines');
+  await wireToggle.waitFor({state:'visible'});
+  await wirePage.waitForFunction(async()=>{
+    const renderer=await import('/src/space3d/three-renderer.js');
+    return renderer.threeSurfaceGuideStats().guides>0;
+  },{timeout:18000});
+  const stats=()=>wirePage.evaluate(async()=>{
+    const renderer=await import('/src/space3d/three-renderer.js');
+    return renderer.threeSurfaceGuideStats();
+  });
+  const light=await stats();
+  nodeAssert.ok(light.guides>=1&&light.segments>50,'malha de referências deve renderizar no WebGL');
+  nodeAssert.equal(await wireToggle.getAttribute('data-mode'),'normal');
+  await wirePage.screenshot({path:resolve(screenshots,'threejs-superficie-linhas-leves.png')});
+  await wireToggle.click();
+  await wirePage.waitForFunction(async()=>{
+    const renderer=await import('/src/space3d/three-renderer.js');
+    return document.querySelector('#three-surface-lines')?.dataset.mode==='detailed'&&
+      renderer.threeSurfaceGuideStats().segments>0;
+  });
+  const detailed=await stats();
+  nodeAssert.ok(detailed.segments>light.segments,'malha densa deve ter mais linhas');
+  await wirePage.screenshot({path:resolve(screenshots,'threejs-superficie-linhas-densas.png')});
+  await wireToggle.click();
+  nodeAssert.equal(await wireToggle.getAttribute('data-mode'),'off');
+  await wirePage.waitForFunction(async()=>{
+    const renderer=await import('/src/space3d/three-renderer.js');
+    return renderer.threeSurfaceGuideStats().guides===0;
+  });
+  nodeAssert.equal(await wireToggle.getAttribute('aria-pressed'),'false');
+  await wireToggle.click();
+  nodeAssert.equal(await wirePage.evaluate(()=>localStorage.getItem('curva-three-surface-lines')),'normal');
+  await wirePage.reload({waitUntil:'domcontentloaded'});
+  await wirePage.waitForFunction(()=>document.querySelector('#three-surface-lines')?.dataset.mode==='normal'&&
+    document.querySelector('#3d-lib-select')?.value==='threejs');
+  nodeAssert.equal(await wireToggle.isVisible(),true);
+  await wireContext.close();
+
   const {context:mobile,page:phone}=await createPage({width:390,height:844});
   const mobilePad=phone.locator('#pad-toggle');
   nodeAssert.equal(await mobilePad.getAttribute('aria-expanded'),'true');

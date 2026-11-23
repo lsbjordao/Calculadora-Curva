@@ -158,8 +158,10 @@ try{
   nodeAssert.equal(await toggle.getAttribute('data-mode'),'3d');
   const sectionToggle=page.locator('#section-toggle');
   await sectionToggle.click();
+  await page.waitForFunction(()=>!document.querySelector('#stage').classList.contains('dual-conic'));
   nodeAssert.equal(await dualPane.isVisible(),false);
   await sectionToggle.click();
+  await page.waitForFunction(()=>document.querySelector('#stage').classList.contains('dual-conic'));
   nodeAssert.equal(await dualPane.isVisible(),true);
   await context.close();
 

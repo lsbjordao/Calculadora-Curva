@@ -3,6 +3,7 @@
 import { compile, setImplicitY, splitTop } from './parser.js';
 import { det as matrixDet, trace as matrixTrace, eiginfo, dot as algebraDot, norm as algebraNorm, angle as algebraAngle, proj as algebraProjection, validateMatrix } from './linear-algebra.js';
 import { wants3d, parse3dCommand } from './space3d/geometry3d.js';
+import { analysePlaneQuadratic } from './space3d/quadric-sections.js';
 
 const EPS=1e-9;
 const GEOMETRY_PARAM_NAMES=new Set(['a','b','c','d','h','k','m','n','p','q','r']);
@@ -847,18 +848,84 @@ function conicDelta(q){
 }
 
 function analyzeRotatedConic(q){
-  const genus=conicGenus(q);
-  const delta=conicDelta(q);
-  const degenerate=Math.abs(delta)<=1e-9*coeffScale(q)**3;
-  let type;
-  if(genus.sign>0) type=degenerate ? 'par de retas concorrentes' : 'hiperbole';
-  else if(genus.sign<0) type=degenerate ? 'ponto (elipse degenerada)' : (q.A+q.C)*delta>0 ? 'conica sem pontos reais' : 'elipse';
-  else type=degenerate ? 'retas paralelas ou coincidentes (parabola degenerada)' : 'parabola';
-  const theta=0.5*Math.atan2(q.B,q.A-q.C)*180/Math.PI;
-  return {
-    info:['conica rotacionada',type,genus.label,'rotacao dos eixos = '+fmt(theta)+'°','termo xy detectado: desenho implicito sem focos/eixos'],
-    points:[],lines:[],segments:[]
+  // A general real quadratic is a symmetric matrix. Its eigenvectors give
+  // the principal axes, so foci/directrices can be drawn even with xy present.
+  const genus=conicGenus(q), analysis=analysePlaneQuadratic(q);
+  const p=st=>({x:st[0],y:st[1]});
+  const point=(st,label)=>({...p(st),label});
+  const add=(a,b)=>a.map((x,i)=>x+b[i]);
+  const mul=(v,t)=>v.map(x=>x*t);
+  const lineThrough=(origin,direction,label,style='dotted')=>{
+    const n=[-direction[1],direction[0]];
+    return {a:n[0],b:n[1],c:-(n[0]*origin[0]+n[1]*origin[1]),label,style};
   };
+  const perpendicularAt=(point,axis,label)=>({
+    a:axis[0],b:axis[1],c:-(axis[0]*point[0]+axis[1]*point[1]),label,style:'dashed'
+  });
+  const points=[],lines=[],segments=[];
+  const title={
+    ellipse:'elipse',circle:'circunferência',hyperbola:'hipérbole',parabola:'parábola',
+    empty:'cônica sem pontos reais','vertex-point':'ponto (elipse degenerada)',
+    'two-lines':'par de retas concorrentes','parallel-lines':'retas paralelas',
+    'one-line':'reta','all-plane':'plano inteiro'
+  }[analysis.type]||analysis.type;
+  const info=['cônica rotacionada',title,genus.label,
+    'rotação dos eixos principais = '+fmt(analysis.rotation)+'°',
+    'autovalores da parte quadrática = '+analysis.eigenvalues.map(fmt).join(', ')];
+  if(analysis.canonical)info.push('forma canônica no referencial rotacionado: '+analysis.canonical);
+  if(analysis.center){
+    points.push(point(analysis.center,'C'));
+    info.push('centro C = '+fmtPoint(p(analysis.center)));
+    const axisLength=Math.max(2,analysis.semiaxes?.major||analysis.semiaxes?.real||3)*1.3;
+    for(let i=0;i<2;i++){
+      const dir=analysis.axes[i];
+      lines.push(lineThrough(analysis.center,dir,'eixo principal '+(i+1)));
+      segments.push({a:p(add(analysis.center,mul(dir,-axisLength))),
+        b:p(add(analysis.center,mul(dir,axisLength))),style:'dotted'});
+    }
+  }
+  if(analysis.vertex){
+    points.push(point(analysis.vertex,'V'));
+    info.push('vértice V = '+fmtPoint(p(analysis.vertex)));
+  }
+  if(analysis.foci.length){
+    analysis.foci.forEach((focus,i)=>points.push(point(focus,'F'+(i+1))));
+    info.push('focos = '+analysis.foci.map(f=>fmtPoint(p(f))).join(' e '));
+  }
+  if(analysis.eccentricity!==null)info.push('excentricidade e = '+fmt(analysis.eccentricity));
+  if(analysis.semiaxes){
+    if(analysis.type==='ellipse'||analysis.type==='circle'){
+      const {major,minor}=analysis.semiaxes;
+      info.push('semieixos = '+fmt(major)+' e '+fmt(minor));
+    }else{
+      const {real,conjugate}=analysis.semiaxes;
+      info.push('semieixos real/conjugado = '+fmt(real)+' e '+fmt(conjugate));
+    }
+  }
+  if(analysis.asymptotes?.length&&analysis.center){
+    for(const [i,dir] of analysis.asymptotes.entries())
+      lines.push(lineThrough(analysis.center,dir,'assíntota '+(i+1),'dashed'));
+  }
+  // Focal directrices: n·(X-C) = ±a/e for ellipses/hyperbolas.
+  if(analysis.center&&analysis.foci.length===2&&analysis.eccentricity>1e-9&&analysis.semiaxes){
+    const axis=analysis.foci[1].map((v,i)=>v-analysis.center[i]);
+    const norm=Math.hypot(...axis);
+    if(norm>0){
+      const dir=axis.map(v=>v/norm),a=analysis.semiaxes.major||analysis.semiaxes.real;
+      for(const sign of [-1,1])lines.push(perpendicularAt(
+        add(analysis.center,mul(dir,sign*a/analysis.eccentricity)),dir,'diretriz'));
+      info.push('diretrizes perpendiculares ao eixo focal');
+    }
+  }
+  if(analysis.type==='parabola'&&analysis.vertex&&analysis.foci[0]){
+    const axis=analysis.foci[0].map((v,i)=>v-analysis.vertex[i]);
+    const focal=Math.hypot(...axis);
+    const dir=axis.map(v=>v/(focal||1));
+    lines.push(lineThrough(analysis.vertex,dir,'eixo da parábola'));
+    lines.push(perpendicularAt(add(analysis.vertex,mul(dir,-focal)),dir,'diretriz'));
+    info.push('distância focal = '+fmt(focal),'excentricidade e = 1');
+  }
+  return {info,points,lines,segments};
 }
 
 function analyzeConic(q){

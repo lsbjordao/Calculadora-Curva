@@ -3399,6 +3399,30 @@ const stage=document.getElementById('stage');
 const sectionElement=document.getElementById('section2d-panel');
 const sectionToggle=document.getElementById('section-toggle');
 const planeDragButton=document.getElementById('plane-drag-mode');
+const surfaceLinesButton=document.getElementById('three-surface-lines');
+const SURFACE_LINE_MODES=['normal','detailed','off'];
+let threeSurfaceLines='normal';
+try{
+  const stored=localStorage.getItem('curva-three-surface-lines');
+  if(SURFACE_LINE_MODES.includes(stored))threeSurfaceLines=stored;
+}catch(_){}
+function updateSurfaceLinesButton(){
+  if(!surfaceLinesButton)return;
+  surfaceLinesButton.hidden=view3d.mode!=='3d'||getActive3DLibrary()!=='threejs';
+  const labels={normal:'leves',detailed:'densas',off:'sem'};
+  surfaceLinesButton.textContent='linhas: '+labels[threeSurfaceLines];
+  surfaceLinesButton.dataset.mode=threeSurfaceLines;
+  surfaceLinesButton.setAttribute?.('aria-pressed',threeSurfaceLines==='off'?'false':'true');
+  surfaceLinesButton.setAttribute?.('aria-label','Linhas de referência 3D: '+labels[threeSurfaceLines]);
+  surfaceLinesButton.title='Linhas que acompanham as superfícies no giro · clique para alternar entre leves, densas e desativadas';
+}
+surfaceLinesButton?.addEventListener?.('click',()=>{
+  const current=SURFACE_LINE_MODES.indexOf(threeSurfaceLines);
+  threeSurfaceLines=SURFACE_LINE_MODES[(current+1)%SURFACE_LINE_MODES.length];
+  updateSurfaceLinesButton();
+  try{localStorage.setItem('curva-three-surface-lines',threeSurfaceLines);}catch(_){}
+  draw();
+});
 const sectionLinkedMarker=document.getElementById('section-linked-marker');
 let sectionLinkedWorld=null;
 function setSectionLinkedWorld(world){
@@ -3567,6 +3591,7 @@ function activeSectionEquation(){
   return equations.find(eq=>eq?.visible!==false&&!eq.error&&eq.kind==='geometry'&&eq.geometry?.section&&eq.geometry?.scene3d?.length);
 }
 function syncSectionLayout(){
+  updateSurfaceLinesButton();
   for(const item of equations)
     item.showPlaneGizmo=planeDragMode&&item.visible!==false&&item.geometry?.type==='plane';
   const eq=view3d.mode==='3d'?activeSectionEquation():null;
@@ -5676,6 +5701,7 @@ function render3d(){
       range,
       box,
       grid:view3d.grid,
+      surfaceLines:threeSurfaceLines,
       camera:view3d.camera
     });
   } else {

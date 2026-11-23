@@ -1568,6 +1568,53 @@ function renderRows(){
     stepsZone.className='steps-zone';
     const paramControls=document.createElement('div');
     paramControls.className='param-tools';
+    const conicDemoZone=document.createElement('div');
+    conicDemoZone.className='conic-rotation-demo';
+    const refreshConicDemo=()=>{
+      conicDemoZone.replaceChildren();
+      const demo=eq.geometry?.conics?.[0]?.analysis?.rotationDemo;
+      conicDemoZone.hidden=!demo;
+      if(!demo)return;
+      let sequence=0;
+      eq.conicDemoProgress=Number.isFinite(eq.conicDemoProgress)?
+        Math.max(0,Math.min(1,eq.conicDemoProgress)):0;
+      const caption=document.createElement('strong');
+      caption.textContent='Diagonalização · rotação dos eixos principais';
+      const slider=document.createElement('input');
+      slider.type='range';slider.min='0';slider.max='100';slider.step='1';
+      slider.value=String(Math.round(eq.conicDemoProgress*100));
+      slider.setAttribute('aria-label','Progresso da rotação dos eixos da cônica');
+      const output=document.createElement('output');
+      const describe=()=>{
+        const data=eq.geometry?.conics?.[0]?.analysis?.rotationDemo||demo;
+        const theta=data.angle*Math.PI/180*eq.conicDemoProgress;
+        const [A,B,C]=data.coefficients,cos=Math.cos(theta),sin=Math.sin(theta);
+        const mixed=2*(C-A)*cos*sin+B*(cos*cos-sin*sin);
+        output.textContent='θ = '+(theta*180/Math.PI).toFixed(1)+'° · termo misto B′ = '+(Math.abs(mixed)<1e-9?0:mixed).toFixed(4);
+      };
+      const play=document.createElement('button');
+      play.type='button';play.textContent='▶ animar';
+      play.title='Demonstrar a rotação dos eixos até eliminar o termo misto';
+      slider.oninput=()=>{
+        sequence++;
+        eq.conicDemoProgress=Number(slider.value)/100;
+        describe();draw();
+      };
+      play.onclick=()=>{
+        const id=++sequence,start=performance.now();
+        eq.conicDemoProgress=0;
+        const step=time=>{
+          if(id!==sequence||!document.body.contains(play)||!equations.includes(eq))return;
+          eq.conicDemoProgress=Math.min(1,Math.max(0,(time-start)/2600));
+          slider.value=String(Math.round(eq.conicDemoProgress*100));
+          describe();draw();
+          if(eq.conicDemoProgress<1)requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      };
+      describe();
+      conicDemoZone.append(caption,slider,output,play);
+    };
     const opTools=document.createElement('div');
     opTools.className='op-tools';
     const transformZone=document.createElement('details');
@@ -2046,9 +2093,10 @@ function renderRows(){
     refreshControls();
     refreshMathInfo();
     refreshParamControls();
+    refreshConicDemo();
     refreshOps();
     refreshDataTable();
-    body.append(wrap,contextActions,controls,info,stepsZone,paramControls,transformZone,transform3dZone,opTools,tableZone);
+    body.append(wrap,contextActions,controls,info,stepsZone,paramControls,conicDemoZone,transformZone,transform3dZone,opTools,tableZone);
     row.append(head,summary,body);
     rowsEl.appendChild(row);
   });

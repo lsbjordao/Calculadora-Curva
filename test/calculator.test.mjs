@@ -449,7 +449,9 @@ test('all presets contain valid expressions',()=>{
     assert.equal(signatures.has(signature),false, `duplicated preset: ${preset.id}`);
     signatures.add(signature);
     for(const equation of preset.equations){
-      assert.ok(equationValid(equation.text,geometryRegistry,equation.params||{},symbols), `${preset.id}: ${equation.text}`);
+      const valid=equationValid(equation.text,geometryRegistry,equation.params||{},symbols);
+      const detail=valid?'':parseGeometryInput(equation.text,{registry:geometryRegistry,params:equation.params||{},symbols})?.error;
+      assert.ok(valid, `${preset.id}: ${equation.text} - ${detail||'expressão inválida'}`);
     }
   }
 });

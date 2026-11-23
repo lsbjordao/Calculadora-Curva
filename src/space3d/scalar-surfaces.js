@@ -28,17 +28,19 @@ function numeric(fn,x,y,dx=1e-3){
   const fxy=(fn(x+h,y+h)-fn(x+h,y-h)-fn(x-h,y+h)+fn(x-h,y-h))/(4*h*h);
   return {z,fx,fy,fxx,fyy,fxy};
 }
-export function multivariateAt(fn,x=0,y=0){
+export function multivariateAt(fn,x=0,y=0,angle=0){
   if(![x,y].every(Number.isFinite))throw new Error('Ponto de cálculo inválido.');
   const d=numeric(fn,x,y),point=[x,y,d.z];
   const gradient=[d.fx,d.fy],rawNormal=[-d.fx,-d.fy,1],norm=vlen(rawNormal);
+  const radians=angle*Math.PI/180,direction=[Math.cos(radians),Math.sin(radians)];
+  const directionalDerivative=gradient[0]*direction[0]+gradient[1]*direction[1];
   const normal=rawNormal.map(a=>a/norm);
   const hessian=[[d.fxx,d.fxy],[d.fxy,d.fyy]];
   const det=d.fxx*d.fyy-d.fxy*d.fxy;
   const eps=.002*Math.max(1,Math.abs(d.fxx),Math.abs(d.fyy),Math.abs(d.fxy));
   const critical=vlen(gradient)<1e-3;
   const kind=det>eps?(d.fxx>0?'mínimo local':'máximo local'):det< -eps?'ponto de sela':'inconclusivo';
-  return {point,gradient,normal,hessian,detHessian:det,directional:gradient,
+  return {point,gradient,normal,hessian,detHessian:det,direction,directionalDerivative,angle,
     tangentOffset:normal.reduce((a,b,i)=>a+b*point[i],0),
     critical,criticalType:critical?kind:null,
     derivatives:d};
@@ -125,15 +127,28 @@ export function scalarSurfaceScene(raw,params={},opts={}){
   }
   const px=clamp(Number.isFinite(opts.x)?opts.x:0,-extent,extent),
     py=clamp(Number.isFinite(opts.y)?opts.y:0,-extent,extent);
-  const calc=multivariateAt(fn,px,py);
+  const calc=multivariateAt(fn,px,py,opts.direction||0);
   const critical=findStationaryPoints(fn,{extent});
   const levels=sampleLevelContours(fn,{extent});
+  // Invalid domain vertices are entirely excluded from the render mesh;
+  // one undefined z must not invalidate the whole WebGL surface.
+  const validVertices=[],validFaces=[],indexMap=new Map();
+  for(const face of faces){
+    const next=face.map(idx=>{
+      if(!indexMap.has(idx)){indexMap.set(idx,validVertices.length);validVertices.push(vertices[idx]);}
+      return indexMap.get(idx);
+    });
+    validFaces.push(next);
+  }
   const point=calc.point,vectorTo=point.map((v,i)=>v+calc.normal[i]*1.2);
+  const unit=calc.direction,endpoint=[point[0]+unit[0],point[1]+unit[1],
+    point[2]+calc.directionalDerivative];
   const scene=[
-    {kind:'mesh',vertices,faces,alpha:.75,color:'#3c98b0',scalarSurface:true},
+    {kind:'mesh',vertices:validVertices,faces:validFaces,alpha:.75,color:'#3c98b0',scalarSurface:true},
     {kind:'plane',n:calc.normal,d:calc.tangentOffset,alpha:.26,color:'#efba43'},
     {kind:'point',p:point,color:'#e44780',label:'P'},
     {kind:'arrow',from:point,to:vectorTo,color:'#e44780',weight:2.5},
+    {kind:'arrow',from:point,to:endpoint,color:'#e0a33f',weight:2.5,label:'Dᵥf'},
     ...critical.map((root,i)=>({kind:'point',p:root.point,label:'C'+(i+1),color:'#33bc85'}))
   ];
   const analysis={kind:'level-curves',type:'level-curves',
@@ -141,5 +156,5 @@ export function scalarSurfaceScene(raw,params={},opts={}){
     center:null,vertex:null,foci:[],semiaxes:null,eccentricity:null,asymptotes:null,
     ...levels,origin:[0,0,0],axisS:[1,0,0],axisT:[0,1,0],normal:[0,0,1],
     toWorld:local=>[local[0],local[1],fn(local[0],local[1])]};
-  return {expr,fn,scene,calc,critical,levels:analysis,extent,mesh:{vertices,faces}};
+  return {expr,fn,scene,calc,critical,levels:analysis,extent,mesh:{vertices:validVertices,faces:validFaces}};
 }

@@ -12,7 +12,8 @@ const PLANE_COLOR='#e4a53a';
 const CURVE_COLOR='#ef4b86';
 const TAU=2*Math.PI;
 const CLASSIFICATIONS={
-  circle:'circunferência',ellipse:'elipse',parabola:'parábola',hyperbola:'hipérbole'
+  circle:'circunferência',ellipse:'elipse',parabola:'parábola',hyperbola:'hipérbole',
+  'two-lines':'duas retas concorrentes','one-line':'uma reta geratriz','vertex-point':'vértice do cone'
 };
 const finite=x=>typeof x==='number'&&Number.isFinite(x);
 function validSectionOptions({aperture=1,vertexZ=0,azimuth=0}={}){
@@ -90,15 +91,16 @@ export function conePlaneIntersection(h,k,{halfHeight=5,samples=360,aperture=1,v
 /**
  * Angle-based plane model for an exactly vertical orientation at ±90°.
  * Plane: cos(q)(z-d-h) - sin(q)u = b |sin(q)|,
- * u = x cos(p) + y sin(p).  b > 0 keeps the plane off the cone apex
- * when vertical, so the section remains a non-degenerate hyperbola.
+ * u = x cos(p) + y sin(p). Signed b moves the plane to either side of
+ * the origin. At b=0 and q=±90° the plane crosses the cone's apex,
+ * yielding two intersecting generator lines (degenerate conic).
  * Legacy slope-based geometry is unchanged.
  */
 function angledParameters(h,angle,{aperture=1,vertexZ=0,azimuth=0,offset=.75}={}){
   validSectionOptions({aperture,vertexZ,azimuth});
   if(!finite(h)||h<=0||h>50)throw new Error('Altura h deve ser positiva e no máximo 50.');
   if(!finite(angle)||angle< -90||angle>90)throw new Error('O ângulo deve estar entre −90° e +90°.');
-  if(!finite(offset)||offset<=0||offset>10)throw new Error('O afastamento b deve ser maior que 0 e no máximo 10.');
+  if(!finite(offset)||Math.abs(offset)>10)throw new Error('O afastamento b deve ficar entre −10 e 10.');
   const rad=angle*Math.PI/180;
   const cosine=Math.abs(angle)===90?0:Math.cos(rad);
   const sine=Math.sin(rad);
@@ -115,8 +117,35 @@ export function classifyAngledConicSection(angle,aperture=1){
   if(Math.abs(slopeAxis-upright)<1e-10)return 'parabola';
   return slopeAxis<upright?'ellipse':'hyperbola';
 }
+// A plane through the apex produces a degenerate conic. Solve directly for
+// the cone's generator directions; the ordinary parametrization divides by
+// zero here and would otherwise make the entire section disappear.
+function degenerateAngledSection(params,halfHeight){
+  if(Math.abs(params.numerator)>1e-10)return null;
+  const {cosine,sine,aperture,azimuth,vertexZ}=params;
+  if(Math.abs(sine)<1e-12)return {type:'vertex-point',segments:[]};
+  const projected=cosine/(aperture*sine);
+  if(Math.abs(projected)>1+1e-10)return {type:'vertex-point',segments:[]};
+  const delta=Math.acos(Math.max(-1,Math.min(1,projected)));
+  const angles=Math.abs(delta)<1e-8||Math.abs(delta-Math.PI)<1e-8
+    ?[azimuth+delta]:[azimuth+delta,azimuth-delta];
+  const segments=angles.map(theta=>{
+    const v=[aperture*Math.cos(theta),aperture*Math.sin(theta),1];
+    return {
+      kind:'segment',
+      a:[-halfHeight*v[0],-halfHeight*v[1],vertexZ-halfHeight],
+      b:[halfHeight*v[0],halfHeight*v[1],vertexZ+halfHeight],
+      color:CURVE_COLOR,weight:3.5,conicSection:true,sectionCurve:true,
+      degenerate:true
+    };
+  });
+  return {type:segments.length===2?'two-lines':'one-line',segments};
+}
+
 export function conePlaneIntersectionAngle(h,angle,{halfHeight=5,samples=360,aperture=1,vertexZ=0,azimuth=0,offset=.75}={}){
   const p=angledParameters(h,angle,{aperture,vertexZ,azimuth,offset});
+  const degenerate=degenerateAngledSection(p,halfHeight);
+  if(degenerate)return degenerate.segments;
   const segments=[],n=Math.max(72,Math.min(720,Math.round(samples)));
   const point=(sign,theta)=>{
     const denominator=p.cosine-sign*aperture*p.sine*Math.cos(theta-azimuth);
@@ -141,8 +170,9 @@ export function makeAngledConicSectionScene(h=2,angle=0,{halfHeight,aperture=1,v
   const normal=[-pars.sine*Math.cos(azimuth),-pars.sine*Math.sin(azimuth),pars.cosine];
   const planeD=pars.cosine*(vertexZ+h)+offset*Math.abs(pars.sine);
   const polygon=clipPlaneToBox(normal,planeD,box);
+  const degenerate=degenerateAngledSection(pars,size);
   const curve=conePlaneIntersectionAngle(h,angle,{halfHeight:size,aperture,vertexZ,azimuth,offset});
-  const type=classifyAngledConicSection(angle,aperture);
+  const type=degenerate?.type||classifyAngledConicSection(angle,aperture);
   const scene=[cone];
   if(polygon.length>=3)scene.push({kind:'polygon',points:polygon,color:PLANE_COLOR,
     alpha:.22,conicSection:true,sectionPlane:true});
@@ -152,11 +182,12 @@ export function makeAngledConicSectionScene(h=2,angle=0,{halfHeight,aperture=1,v
     const at=mid.a.map((v,i)=>(v+mid.b[i])/2);
     scene.push({kind:'label',p:at,text:CLASSIFICATIONS[type],color:CURVE_COLOR,conicSection:true});
   }
-  return {scene,type,count:curve.length,info:[
+  return {scene,type,count:curve.length||(degenerate?.type==='vertex-point'?1:0),info:[
     'Cone: x² + y² = '+Number((aperture*aperture).toFixed(4))+'(z − '+vertexZ+')²',
     'Ângulo do plano: '+angle+'°'+(Math.abs(angle)===90?' (vertical)':''),
     'Equação do plano: cos(q)(z − d − h) − sin(q)(x cos(p) + y sin(p)) = b|sin(q)|',
-    'Parâmetros: q é o ângulo em graus; b afasta horizontalmente o plano do vértice',
+    'Parâmetros: q é o ângulo em graus; b desloca o plano para ambos os lados (inclusive 0)',
+    ...(degenerate?['Seção degenerada: o plano passa pelo vértice do cone.']:[]),
     'Interseção: '+CLASSIFICATIONS[type],
     'Curva e cone truncados apenas pela janela de visualização.'
   ]};

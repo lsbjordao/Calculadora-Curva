@@ -107,15 +107,34 @@ try{
   }
   const modifiedImage=await page.locator('#stage').screenshot();
   nodeAssert.notDeepEqual(modifiedImage,initialImage,'Parâmetros devem alterar o gráfico 3D');
-  const geometryDownload=page.waitForEvent('download');
-  await page.click('#project-export');
-  const geometryFile=await geometryDownload;
-  const geometryState=JSON.parse(await readFile(await geometryFile.path(),'utf8')).state;
+  const horizontalOffset=firstConic.locator('.param-control[data-param="b"] input[type="number"]');
+  const horizontalSlider=firstConic.locator('.param-control[data-param="b"] input[type="range"]');
+  nodeAssert.equal(await horizontalSlider.getAttribute('min'),'-4');
+  nodeAssert.equal(await horizontalSlider.getAttribute('max'),'4');
+  await horizontalOffset.fill('0');
+  await page.waitForTimeout(120);
+  nodeAssert.equal(await horizontalOffset.inputValue(),'0');
+  const crossing=await page.locator('#stage').screenshot();
+  await horizontalOffset.fill('-1');
+  await page.waitForTimeout(120);
+  const negative=await page.locator('#stage').screenshot();
+  nodeAssert.notDeepEqual(crossing,negative,'Mover b de 0 para -1 deve alterar o plano na cena');
+  await horizontalOffset.fill('0');
+  // UI edits are persisted with a debounce; inspect the state directly
+  // instead of requesting a second browser download (Chromium can block it).
+  await page.waitForFunction(()=>{
+    const state=JSON.parse(localStorage.getItem('curva-state-v1')||'{}');
+    const eq=state.equations?.[0];
+    return eq?.params?.b===0&&eq.params.q===90&&eq.params.h===3;
+  },undefined,{timeout:10000});
+  const geometryState=await page.evaluate(()=>JSON.parse(localStorage.getItem('curva-state-v1')));
   nodeAssert.equal(geometryState.equations[0].params.h,3);
   nodeAssert.equal(geometryState.equations[0].params.a,1.5);
   nodeAssert.equal(geometryState.equations[0].params.d,1.1);
   nodeAssert.equal(geometryState.equations[0].params.p,.7);
   nodeAssert.equal(geometryState.equations[0].params.q,90);
+  nodeAssert.equal(geometryState.equations[0].params.b,0,'O deslocamento b=0 deve ser preservado');
+  await page.screenshot({path:resolve(screenshots,'desktop-plano-vertical-em-x-zero.png')});
   await page.screenshot({path:resolve(screenshots,'desktop-hiperbole-parametros-ajustados.png')});
 
   await toggle.click();

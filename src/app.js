@@ -31,6 +31,7 @@ import {
 import { addGeometryDefinitions, extractGeometryParams, parseGeometryInput } from './geometry.js';
 import { choosePointSourceIndex, constructionExpression, formatPointCommand, nextPointLabel, normalizePoint, updatePoint, usedGeometryNames } from './geometry-builder.js';
 import { describeCanvas, formatMathVisual } from './accessibility.js';
+import { splitInfoLines, infoLabelValue } from './info-format.js';
 import { isStructuredResult, resultInfo, renderAlgebraResult } from './algebra-ui.js';
 import { matrixInfo } from './linear-algebra.js';
 import { algebraDeclaration, createAlgebraSymbols } from './algebra-symbols.js';
@@ -1792,6 +1793,24 @@ function renderRows(){
       if(eq.kind==='geometry') return;
       eq.showAlgebraTransform=transformZone.open; refreshTransform(); draw(); scheduleSave();
     });
+    const renderInformationLines=value=>{
+      info.replaceChildren();
+      for(const line of splitInfoLines(value)){
+        const {label,value:text}=infoLabelValue(line);
+        const item=document.createElement('div');
+        item.className='row-info-line';
+        if(label){
+          const key=document.createElement('strong');
+          key.className='row-info-key';
+          key.textContent=formatMathVisual(label)+':';
+          item.append(key,document.createTextNode(' '));
+        }
+        const detail=document.createElement('span');
+        detail.textContent=formatMathVisual(text);
+        item.appendChild(detail);
+        info.appendChild(item);
+      }
+    };
     const refreshMathInfo=()=>{
       info.classList.remove('algebra-result');
       if(eq.error){info.replaceChildren();info.textContent=eq.errorMessage||eq.geometry?.error||'Expressão inválida.';}
@@ -1801,13 +1820,12 @@ function renderRows(){
       else if(eq.kind==='regression' && eq.showResultTable) renderFitParameterGrid(eq, info);
       else if(eq.kind==='fitcompare' && eq.showResultTable) renderCompareGrid(eq, info);
       else if(eq.kind==='points' && eq.pointLabel==='resid' && eq.showResultTable) renderResidualGrid(eq, info);
-      else info.textContent=formatMathVisual(mathInfo(eq));
+      else renderInformationLines(mathInfo(eq));
       const notice=viewNotice(eq,view3d.mode);
       if(notice){
-        const note=document.createElement('span');
-        note.className='view-notice';
+        const note=document.createElement('div');
+        note.className='row-info-line view-notice';
         note.textContent=notice;
-        if(String(info.textContent||'').trim()) info.append(' · ');
         info.append(note);
       }
       renderStepsZone(eq, stepsZone);

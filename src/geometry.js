@@ -2,7 +2,7 @@
 
 import { compile, setImplicitY, splitTop } from './parser.js';
 import { det as matrixDet, trace as matrixTrace, eiginfo, dot as algebraDot, norm as algebraNorm, angle as algebraAngle, proj as algebraProjection, validateMatrix } from './linear-algebra.js';
-import { wants3d, parse3dCommand, parseUnprefixed3d } from './space3d/geometry3d.js';
+import { wants3d, parse3dCommand, parseUnprefixed3d, matrix3Result } from './space3d/geometry3d.js';
 import { analysePlaneQuadratic } from './space3d/quadric-sections.js';
 
 const EPS=1e-9;
@@ -802,12 +802,14 @@ function parseMatrixText(body,ctx={}){
   if(!text.startsWith('[')&&!text.startsWith('@')) text='['+text+']';
   const values=compile(text,ctx.params||{},{},ctx.symbols)(0);
   validateMatrix(values);
-  if(values.length!==2||values[0].length!==2) throw new Error('matriz 2x2 esperada');
+  const n=values.length;
+  if((n!==2&&n!==3)||values.some(row=>row.length!==n)) throw new Error('matriz 2x2 ou 3x3 esperada');
   return values;
 }
 
 function parseMatrixCommand(body,ctx={},definitionName=''){
   const m=parseMatrixText(body,ctx);
+  if(m.length===3) return matrix3Result(m,ctx,definitionName);
   const [[a,b],[c,d]]=m;
   const det=matrixDet(m);
   const tr=matrixTrace(m);

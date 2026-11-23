@@ -431,3 +431,18 @@ test('sintaxe do livro: rótulos não viram sliders; equações em z e corte: po
   assert.deepEqual(params,[[],[],[],[],[],[],[],[],['k'],[]]);
   assert.equal(saved.view3d.mode,'3d');
 });
+
+test('matriz: 3×3 abre a transformação 3D e desenha as direções próprias; sistema 3×3 resume a solução',async()=>{
+  await boot({version:1,theme:'light',view3d:{mode:'3d'},equations:[mk(0,'matriz: [2,1,0; 1,2,0; 0,0,3]')]});
+  const zone=created.find(el=>el.children?.some(c=>c.textContent==='transformação 3D'));
+  assert.ok(zone,'zona transformação 3D');
+  assert.equal(zone.hidden,false);
+  assert.equal(zone.open,true);
+  const shown=texts();
+  assert.ok(shown.includes('λ = 1')&&shown.includes('λ = 3'),shown.join(' '));
+  assert.ok(shown.includes('e1')&&shown.includes('A(t)e1'));
+  await boot({version:1,theme:'light',view3d:{mode:'3d'},equations:[{...mk(0,'calc: solveinfo([[1,1,1],[2,2,2],[1,-1,0]],[1,2,0])'),showAlgebraSystem:true}]});
+  const summary=created.find(el=>el.className==='system-summary');
+  assert.match(summary.textContent,/infinitas soluções: reta X = /);
+  assert.ok(texts().includes('Solução (reta)'));
+});

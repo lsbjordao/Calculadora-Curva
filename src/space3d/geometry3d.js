@@ -15,7 +15,8 @@ import { quadricPlaneSection } from './quadric-sections.js';
 import { tangentScene } from './surface-calculus.js';
 import { generalQuadricFromEquation,analyseGeneralQuadric,meshImplicitQuadric,intersectGeneralQuadricPlane } from './implicit-quadric.js';
 import {scalarSurfaceScene} from './scalar-surfaces.js';
-import { rank as matrixRank } from '../linear-algebra.js';
+import { rank as matrixRank, det as matrixDet3, trace as matrixTrace3 } from '../linear-algebra.js';
+import { buildTransform3DScene, symmetricEigen3 } from './transform3d.js';
 
 const EPS=1e-9;
 // Object names: identifiers, plus π, π1… for planes (§7).
@@ -469,6 +470,36 @@ export function wants3d(command,body,ctx={}){
     if(scaled&&involves3d(scaled.vec,ctx)) return true;
   }
   return Z_EQUATION_COMMANDS.has(command) && equationWithZ(body,ctx);
+}
+
+// ── matriz: 3×3 (§5.2 Transformações) ───────────────────────────────────────
+// The unit cube (dashed) and its image, e1..e3 and their images, the
+// eigen-directions of a symmetric A, det as the volume factor. The app animates
+// A(t) = (1−t)I + tA with the "transformação 3D" controls (transform3d.js).
+export function matrix3Result(values,ctx={},definitionName=''){
+  const A=values.map(row=>row.map(noNegZero));
+  const det=noNegZero(matrixDet3(A)), tr=noNegZero(matrixTrace3(A));
+  const scale=Math.max(...A.flat().map(Math.abs));
+  const singular=Math.abs(det)<=1e-12*Math.max(1,scale)**3;
+  const r=result3('matrix','matriz 3x3');
+  r.matrix={values:A, det:singular?0:det, trace:tr, eigen:null, size:3};
+  r.scene3d=buildTransform3DScene(A,{t:1,showUnitBasis:true,showEigen:true}).scene;
+  r.info=['A = ['+A.map(row=>row.map(core.fmt).join(' ')).join('; ')+']',
+    'det = '+core.fmt(singular?0:det)+' (fator de volume)'];
+  if(singular){
+    const rank=scale>0 ? matrixRank(A) : 0;
+    const where=rank>=2 ? 'num plano' : rank===1 ? 'numa reta' : 'num ponto';
+    r.info.push('det = 0: o cubo colapsa '+where+' (posto '+rank+')');
+  } else if(det<0) r.info.push('det < 0: orientação invertida (o volume é multiplicado por |det| = '+core.fmt(-det)+')');
+  r.info.push('traço = '+core.fmt(tr));
+  const pairs=symmetricEigen3(A);
+  if(pairs){
+    r.matrix.eigen=pairs;
+    r.info.push('autovalores = '+pairs.map(p=>core.fmt(p.value)).join(', ')+' (direções próprias tracejadas)');
+  } else r.info.push('autovalores: só para matrizes 3×3 simétricas');
+  r.info.push('A(t) = (1−t)I + tA: use "transformação 3D" para animar');
+  if(definitionName) core.define(r,definitionName,'matrix',r.matrix);
+  return r;
 }
 
 // ── Unprefixed equations in z (§7a.3) ─────────────────────────────────────

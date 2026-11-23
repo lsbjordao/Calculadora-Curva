@@ -34,7 +34,7 @@ import { describeCanvas, formatMathVisual } from './accessibility.js';
 import { isStructuredResult, resultInfo, renderAlgebraResult } from './algebra-ui.js';
 import { matrixInfo } from './linear-algebra.js';
 import { algebraDeclaration, createAlgebraSymbols } from './algebra-symbols.js';
-import { createTransformControls, buildSystemScene, buildSystemScene3D } from './linear-transform-view.js';
+import { createTransformControls, buildSystemScene, buildSystemScene3D, systemSceneSummary } from './linear-transform-view.js';
 import { initAlgebraWorkbench } from './algebra-workbench.js';
 import { initProjectControls } from './project-controls.js';
 import { exportGraphPng, exportCombinedPng } from './export-graphic.js';
@@ -812,7 +812,7 @@ function eqDeriv2Fn(eq){
 function recompileEq(eq, geometryRegistry=null){
   eq.analysisCache=null;
   eq.intCache=null;
-  eq.algebraResult=null; eq.algebraInput=null; eq.errorMessage=null; eq.systemScene=null; eq.systemScene3d=null; eq.transformScene3d=null;
+  eq.algebraResult=null; eq.algebraInput=null; eq.errorMessage=null; eq.systemScene=null; eq.systemScene3d=null; eq.systemSummary3d=""; eq.transformScene3d=null;
   eq.kind='function'; eq.ineqOp=null; eq.domain=null;
   eq.fn=null; eq.xFn=null; eq.yFn=null; eq.rFn=null; eq.points=null; eq.pointSource=null; eq.pointLabel=null; eq.histSource=null; eq.valueFn=null; eq.fitInfo=null; eq.fitSpec=null; eq.fitSource=null; eq.regInfo=null; eq.defName=null; eq.geometry=null;
   eq.deriv1=null; eq.deriv2=null; eq.antider=null;
@@ -1057,7 +1057,8 @@ function setComputedResult(eq,value,fn){
   if(eq.algebraResult.kind==='solveinfo' && fn?.inputValues?.length===2){
     const [A,b]=fn.inputValues;
     eq.systemScene=buildSystemScene(A,b,eq.algebraResult.metadata.classification==='unique'?eq.algebraResult.value:null);
-    eq.systemScene3d=buildSystemScene3D(A,b,eq.algebraResult.metadata.classification==='unique'?eq.algebraResult.value:null);
+    eq.systemScene3d=buildSystemScene3D(A,b,eq.algebraResult.metadata.classification==='unique'?eq.algebraResult.value:null,eq.algebraResult);
+    eq.systemSummary3d=eq.systemScene3d ? systemSceneSummary(eq.algebraResult,A) : '';
   }
   eq.regInfo={label:'resultado = '+formatCalcValue(isStructuredResult(value)?value.value:value),r2:null};
   eq.error=false;
@@ -1731,14 +1732,16 @@ function renderRows(){
     transform3dZone.append(transform3dSummary,transform3dHost);
     let matrix3dSignature='';
     const getTransformMatrix3d=()=>{
-      const value=eq.algebraResult?.kind==='svd' ? eq.algebraInput : eq.algebraResult?.value;
+      const value=eq.geometry?.matrix?.size===3 ? eq.geometry.matrix.values
+        : eq.algebraResult?.kind==='svd' ? eq.algebraInput : eq.algebraResult?.value;
       return Array.isArray(value)&&value.length===3&&value.every(row=>
         Array.isArray(row)&&row.length===3&&row.every(Number.isFinite)) ? value : null;
     };
     const refreshTransform3d=()=>{
       const matrix=!eq.error&&getTransformMatrix3d();
       transform3dZone.hidden=!matrix;
-      const active=!!matrix&&!!eq.showAlgebraTransform3d;
+      // matriz: 3×3 rows always show their controls, like matriz: 2×2.
+      const active=!!matrix&&(eq.kind==='geometry'||!!eq.showAlgebraTransform3d);
       transform3dZone.open=active;
       if(!active){
         transform3dControllers.get(eq.id)?.dispose();
@@ -1760,7 +1763,7 @@ function renderRows(){
       matrix3dSignature=signature;
     };
     transform3dZone.addEventListener('toggle',()=>{
-      if(!getTransformMatrix3d())return;
+      if(eq.kind==='geometry'||!getTransformMatrix3d())return;
       eq.showAlgebraTransform3d=transform3dZone.open;
       refreshTransform3d();
       draw();scheduleSave();
@@ -2198,8 +2201,12 @@ function renderRows(){
         if(eq.systemScene||eq.systemScene3d){
           const show=document.createElement('button');show.type='button';show.className='calc';show.textContent=eq.systemScene3d?'ver planos 3D':'ver retas';
           show.dataset.on=eq.showAlgebraSystem?'1':'0';
-          show.onclick=()=>{eq.showAlgebraSystem=!eq.showAlgebraSystem;show.dataset.on=eq.showAlgebraSystem?'1':'0';draw();scheduleSave();};
+          const summary=document.createElement('span');summary.className='system-summary';
+          const syncSummary=()=>{summary.textContent=eq.showAlgebraSystem&&eq.systemSummary3d?eq.systemSummary3d:'';};
+          syncSummary();
+          show.onclick=()=>{eq.showAlgebraSystem=!eq.showAlgebraSystem;show.dataset.on=eq.showAlgebraSystem?'1':'0';syncSummary();draw();scheduleSave();};
           controls.appendChild(show);
+          if(eq.systemScene3d) controls.appendChild(summary);
         }
         return;
       }

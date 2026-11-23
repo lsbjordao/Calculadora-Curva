@@ -387,6 +387,8 @@
     gap:6px;
   }
   .row-tools:empty{display:none}
+  .row-tools .system-summary{grid-column:1/-1;font-size:12px;line-height:1.35;color:var(--muted);overflow-wrap:anywhere}
+  .row-tools .system-summary:empty{display:none}
   .calc{
     min-width:0;
     height:26px;padding:0 6px;

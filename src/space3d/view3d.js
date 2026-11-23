@@ -243,7 +243,9 @@ export function scenePrimitives(equations = [], {colorOf = () => '', box = defau
   const prims = [];
   for (const eq of equations) {
     if (!eq || eq.visible === false || eq.error) continue;
-    const source = eq.showAlgebraTransform3d && eq.transformScene3d ? eq.transformScene3d
+    // A matriz: 3×3 row animates like the calc: view: its controls fill transformScene3d.
+    const animated = eq.transformScene3d && (eq.showAlgebraTransform3d || eq.kind === 'geometry');
+    const source = animated ? eq.transformScene3d
       : eq.showAlgebraSystem && eq.systemScene3d ? eq.systemScene3d
       : is3dEquation(eq) ? eq.geometry.scene3d : promote2d(scene2dOf(eq), box);
     if (!Array.isArray(source) || !source.length) continue;

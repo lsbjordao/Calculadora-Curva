@@ -56,13 +56,21 @@ function makeEl(id){
         case 'textContent': return t.children.map(child=>
           typeof child==='string'?child:String(child?.textContent??'')).join('');
         case 'appendChild': case 'append': return (...c)=>{ t.children.push(...c); return c[0]; };
-        case 'replaceChildren': return (...c)=>{ t.children=[...c]; };
+        case 'replaceChildren': return (...c)=>{ t.children=[...c]; delete t.textContent; };
         case 'cloneNode': return ()=>makeEl();
         case 'contains': case 'matches': return ()=>false;
         default: return ()=>{};
       }
     },
-    set(t,prop,val){ t[prop]=val; return true; }
+    set(t,prop,val){
+      if(prop==='textContent'){
+        // Writing textContent replaces descendants in browsers.
+        t.children=[{textContent:String(val??'')}];
+        delete t.textContent;
+        return true;
+      }
+      t[prop]=val;return true;
+    }
   });
   return proxy;
 }

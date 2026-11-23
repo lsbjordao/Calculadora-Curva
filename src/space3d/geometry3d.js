@@ -122,7 +122,7 @@ function generalSurfaceCommand(body,ctx,forceScalar=false){
       !/quadrática|quadrática em|quadrática em x/i.test(error.message))
       throw error;
     const scalar=scalarSurfaceScene(body,ctx.params||{},
-      {x:ctx.surfacePoint?.[0],y:ctx.surfacePoint?.[1]});
+      {x:ctx.surfacePoint?.[0],y:ctx.surfacePoint?.[1],direction:ctx.surfaceDirection||0});
     const result=result3('surface','Função de duas variáveis');
     result.multivar=scalar;
     result.section={kind:'function-levels',analysis:scalar.levels};
@@ -131,6 +131,8 @@ function generalSurfaceCommand(body,ctx,forceScalar=false){
     result.info=['z = '+scalar.expr,
       'P = ('+c.point.map(core.fmt).join(', ')+')',
       '∂z/∂x = '+core.fmt(c.gradient[0])+' · ∂z/∂y = '+core.fmt(c.gradient[1]),
+      'Derivada direcional Dᵥf em θ = '+c.angle+'°: '+core.fmt(c.directionalDerivative),
+      'Direção unitária v = '+fmtVec([c.direction[0],c.direction[1],0]),
       'Hessiana H = ['+c.hessian.map(row=>row.map(core.fmt).join(', ')).join(' ; ')+']',
       'det(H) = '+core.fmt(c.detHessian),
       'Plano tangente: z − '+core.fmt(c.point[2])+' = '+core.fmt(c.gradient[0])+

@@ -837,7 +837,7 @@ function recompileEq(eq, geometryRegistry=null){
     // Data points / regression: points:/fit:/fitN:/fitexp:/fitpow:/fitlog:/fitsig:/histogram:/hist:/seq:/intersec:
     const fm=raw.match(DATA_COMMAND_RE);
     if(!fm){
-      const geometryNames=extractGeometryParams(raw);
+      const geometryNames=extractGeometryParams(raw,{registry:geometryRegistry});
       if(geometryNames.length) setupParams(eq, geometryNames);
       const geometry=parseGeometryInput(raw,{params:eq.params,registry:geometryRegistry,symbols:algebraSymbols.resolve,surfacePoint:eq.surfacePoint,surfaceDirection:eq.surfaceDirection});
       if(geometry){

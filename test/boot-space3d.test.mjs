@@ -418,3 +418,16 @@ test('linhas 3D mostram só os chips que agem nelas (vetor, rótulo, guias); 2D 
   vetor.onclick();
   assert.ok(created.some(el=>/vetores: \|u\| = 3\.74166/.test(String(el.textContent||''))));
 });
+
+test('sintaxe do livro: rótulos não viram sliders; equações em z e corte: por nome entram em 3D',async()=>{
+  const lines=['vetor: u=(1,2,3)','vetor: v=(4,5,6)','vetorial: u, v','vetorial: u=(1,2,3), v=(4,5,6)',
+    'x + y + z = 3','x^2/4 + y^2/9 - z^2 = 1','Q = superficie(x^2 + y^2 - z^2 = 0)','corte: Q, z = 1',
+    'plano: P=(1,0,0), n=(2,-1,k)','x^2 + y^2 = 4'];
+  await boot({version:1,theme:'light',view3d:{mode:'3d'},equations:lines.map((text,i)=>mk(i%8,text))});
+  byId('theme').onclick(); // any change saves the state
+  await settle();
+  assert.deepEqual(saved.equations.map(e=>e.text),lines);
+  const params=saved.equations.map(eq=>Object.keys(eq.params||{}).sort());
+  assert.deepEqual(params,[[],[],[],[],[],[],[],[],['k'],[]]);
+  assert.equal(saved.view3d.mode,'3d');
+});

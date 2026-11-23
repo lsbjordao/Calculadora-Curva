@@ -376,25 +376,23 @@ try{
   await wirePage.locator('[id="3d-lib-select"]').selectOption('threejs');
   const wireToggle=wirePage.locator('#three-surface-lines');
   await wireToggle.waitFor({state:'visible'});
-  await wirePage.waitForFunction(async()=>{
+  const lightHandle=await wirePage.waitForFunction(async()=>{
     const renderer=await import('/src/space3d/three-renderer.js');
-    return renderer.threeSurfaceGuideStats().guides>0;
-  },{timeout:18000});
-  const stats=()=>wirePage.evaluate(async()=>{
-    const renderer=await import('/src/space3d/three-renderer.js');
-    return renderer.threeSurfaceGuideStats();
-  });
-  const light=await stats();
+    const counts=renderer.threeSurfaceGuideStats();
+    return counts.guides>=1&&counts.segments>50?counts:false;
+  },null,{timeout:18000});
+  const light=await lightHandle.jsonValue();
   nodeAssert.ok(light.guides>=1&&light.segments>50,'malha de referências deve renderizar no WebGL: '+JSON.stringify(light));
   nodeAssert.equal(await wireToggle.getAttribute('data-mode'),'normal');
   await wirePage.screenshot({path:resolve(screenshots,'threejs-superficie-linhas-leves.png')});
   await wireToggle.click();
-  await wirePage.waitForFunction(async()=>{
+  const detailedHandle=await wirePage.waitForFunction(async()=>{
     const renderer=await import('/src/space3d/three-renderer.js');
+    const counts=renderer.threeSurfaceGuideStats();
     return document.querySelector('#three-surface-lines')?.dataset.mode==='detailed'&&
-      renderer.threeSurfaceGuideStats().segments>0;
+      counts.guides>0&&counts.segments>0?counts:false;
   });
-  const detailed=await stats();
+  const detailed=await detailedHandle.jsonValue();
   nodeAssert.ok(detailed.segments>light.segments,'malha densa deve ter mais linhas');
   await wirePage.screenshot({path:resolve(screenshots,'threejs-superficie-linhas-densas.png')});
   await wireToggle.click();

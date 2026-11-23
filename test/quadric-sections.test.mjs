@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {quadricPolynomial,sectionPlane,restrictQuadricToPlane,
   analysePlaneQuadratic,quadricPlaneSection,evaluatePlaneConic} from '../src/space3d/quadric-sections.js';
-import {parseGeometry} from '../src/geometry.js';
 
 const close=(a,b,eps=1e-7)=>assert.ok(Math.abs(a-b)<eps, a+' != '+b);
 const planes=[

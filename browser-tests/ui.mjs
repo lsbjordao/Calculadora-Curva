@@ -104,6 +104,10 @@ try{
     'preferência deve sobreviver à atualização da página');
   await page.locator('#pad-toggle').click();
   nodeAssert.equal(await page.locator('#pad-content').isVisible(),true);
+  // Presets intentionally start collapsed on each navigation, unlike the
+  // keyboard preference. Restore them for the rest of this long UI scenario.
+  await page.locator('#preset-toggle').click();
+  nodeAssert.equal(await page.locator('#preset-list').isVisible(),true);
   await page.screenshot({path:resolve(screenshots,'desktop-conicas-2d.png')});
   const download=page.waitForEvent('download');
   await page.click('#project-export');

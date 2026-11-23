@@ -10,6 +10,7 @@
 import { _geometryCore as core } from '../geometry.js';
 import { compile, setImplicitY } from '../parser.js';
 import { makeConicSectionScene, makeAngledConicSectionScene } from './conic-sections.js';
+import { quadricScene } from './quadrics.js';
 
 const EPS=1e-9;
 // Object names: identifiers, plus π, π1… for planes (§7).
@@ -107,6 +108,19 @@ function scenePoint(point){
   return prim;
 }
 
+function quadricCommand(body,ctx){
+  const parts=core.splitTopAny(String(body),',').map(x=>x.trim());
+  if(parts.length<1||parts.length>5)throw new Error('Quádrica: use quadrica: tipo[,a,b,c,d].');
+  const type=parts[0].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const [a=1,b=1,c=1,d=0]=parts.slice(1).map(v=>core.evalScalar(v,ctx));
+  const geometry=quadricScene(type,{a,b,c,d});
+  const result=result3('quadric',geometry.label);
+  result.scene3d=geometry.scene;result.quadric=geometry;
+  result.info=[geometry.equations,'a = '+a+' · b = '+b+' · c = '+c+' · d = '+d,
+    'Superfície em janela finita; altere os parâmetros para deformá-la.'];
+  return result;
+}
+
 function sectionCommand(body,ctx){
   const parts=core.splitTopAny(String(body),',').map(x=>x.trim());
   if(parts.length<2||parts.length>6)throw new Error('Seção: use secao: h,k[,a,d,p] ou secao: h,angulo(q),a,d,p,b.');
@@ -189,6 +203,7 @@ function vectorCommand(body,ctx,definitionName){
 // Returns a 3D result, or null when the command has no ℝ³ version yet.
 export function parse3dCommand(command,body,ctx={},definitionName=''){
   if(command==='section') return sectionCommand(body,ctx);
+  if(command==='quadric') return quadricCommand(body,ctx);
   if(command==='point') return pointCommand(body,ctx,definitionName);
   if(command==='vector') return vectorCommand(body,ctx,definitionName);
   if(command==='plane') return planeCommand(body,ctx,definitionName);
@@ -204,7 +219,7 @@ export function parse3dCommand(command,body,ctx={},definitionName=''){
 // intersecao, distancia and angulo go to ℝ³ when an object is 3D or when an
 // equation (a "=") mentions the variable z (lines without z keep the 2D
 // analyzers, §7a.3). A registered object named z keeps its old meaning.
-const ALWAYS_3D=new Set(['plane','position','section']);
+const ALWAYS_3D=new Set(['plane','position','section','quadric']);
 const Z_EQUATION_COMMANDS=new Set(['line','intersect','distance','angle']);
 
 function equationWithZ(text,ctx){

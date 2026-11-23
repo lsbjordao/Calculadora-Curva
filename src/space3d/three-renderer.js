@@ -192,9 +192,15 @@ function polygonObject(T,prim,opts){
 function addPrimitive(T,group,p,opts){
   const color=p.color;
   switch(p.kind){
-    case 'polygon':group.add(polygonObject(T,p,opts));break;
+    case 'polygon':{
+      const obj=polygonObject(T,p,opts);
+      if(p.sectionPlane)obj.userData.sectionEqId=p.sectionEqId;
+      group.add(obj);break;
+    }
     case 'mesh': {
-      group.add(meshObject(T,p.vertices,p.faces,color,p.alpha??.55));
+      const obj=meshObject(T,p.vertices,p.faces,color,p.alpha??.55);
+      if(p.conicSection)obj.userData.coneEqId=p.sectionEqId;
+      group.add(obj);
       break;
     }
     case 'segment':group.add(segmentObject(T,p.a,p.b,color,p));break;
@@ -216,7 +222,9 @@ function addPrimitive(T,group,p,opts){
     case 'point':{
       const radius=p.systemSolution?.17:.075;
       const sphere=new T.Mesh(new T.SphereGeometry(radius,16,12),new T.MeshBasicMaterial({color,depthTest:true}));
-      sphere.position.copy(asVector(T,p.p));sphere.renderOrder=5;group.add(sphere);
+      sphere.position.copy(asVector(T,p.p));sphere.renderOrder=5;
+      if(p.conicSection&&p.label==='vértice')sphere.userData.vertexEqId=p.sectionEqId;
+      group.add(sphere);
       if(p.label)group.add(labelSprite(T,p.label,[p.p[0],p.p[1],p.p[2]+radius*1.8],color,{dark:opts.dark}));
       break;
     }
@@ -302,6 +310,14 @@ export function renderThree3D(primitives,options={}){
 export function resizeThree3D(){
   if(engine)engine.width=engine.height=0;
 }
+export function captureThree3D(){
+  if(!engine||!three||!pending)throw new Error('Three.js ainda não está pronto.');
+  // Capture in the same synchronous task as WebGL rendering, before the
+  // default drawing buffer is discarded. preserveDrawingBuffer isn't needed.
+  renderPending();
+  engine.renderer.render(engine.scene,engine.camera);
+  return engine.renderer.domElement.toDataURL('image/png');
+}
 export function clearThree3D(){
   pending=null;
   if(engine){disposeGroup(engine.group);lastSignature=null;}
@@ -318,4 +334,66 @@ export function initThree3DControls(getCamera,setCamera,requestDraw,{isActive,on
   const container=root();
   if(!container)return;
   attachCameraControls(container,getCamera,setCamera,requestDraw,{isActive,onCommit,defaultCamera});
+}
+
+
+/**
+ * Optional direct manipulation of actual cutting-plane meshes in Three.js.
+ * With the tool active (or Alt held), clicking a plane starts a gesture.
+ * Capture-phase listeners suppress orbit controls only during that gesture;
+ * otherwise the familiar camera interactions are preserved.
+ */
+export function initThreePlaneDragging({isEnabled=()=>false,onDrag=()=>{}}={}){
+  const container=root();
+  if(!container)return;
+  let active=null;
+  const findHit=event=>{
+    if(!three||!engine?.camera)return null;
+    const rect=container.getBoundingClientRect();
+    if(!(rect.width>0&&rect.height>0))return null;
+    const pt=new three.Vector2(
+      (event.clientX-rect.left)/rect.width*2-1,
+      -(event.clientY-rect.top)/rect.height*2+1
+    );
+    const raycaster=new three.Raycaster();
+    raycaster.setFromCamera(pt,engine.camera);
+    const hits=raycaster.intersectObjects(engine.group.children,true);
+    for(const hit of hits){
+      let obj=hit.object;
+      while(obj&&obj!==engine.group){
+        if(Number.isInteger(obj.userData.sectionEqId))return {eqId:obj.userData.sectionEqId,kind:'plane'};
+        if(Number.isInteger(obj.userData.vertexEqId))return {eqId:obj.userData.vertexEqId,kind:'vertex'};
+        if(Number.isInteger(obj.userData.coneEqId))return {eqId:obj.userData.coneEqId,kind:'cone'};
+        obj=obj.parent;
+      }
+    }
+    return null;
+  };
+  const stop=event=>{
+    if(!active||active.pointerId!==event.pointerId)return;
+    onDrag({phase:'end',eqId:active.eqId,kind:active.kind,
+      dx:event.clientX-active.x,dy:event.clientY-active.y});
+    active=null;
+    try{container.releasePointerCapture?.(event.pointerId);}catch{}
+    container.style.cursor='grab';
+    event.preventDefault();event.stopImmediatePropagation();
+  };
+  container.addEventListener('pointerdown',event=>{
+    if(event.button!==0||!(isEnabled()||event.altKey))return;
+    const hit=findHit(event);
+    if(!hit)return;
+    active={pointerId:event.pointerId,x:event.clientX,y:event.clientY,...hit};
+    try{container.setPointerCapture?.(event.pointerId);}catch{}
+    container.style.cursor='grabbing';
+    onDrag({phase:'start',eqId:active.eqId,kind:active.kind,dx:0,dy:0});
+    event.preventDefault();event.stopImmediatePropagation();
+  },true);
+  container.addEventListener('pointermove',event=>{
+    if(!active||active.pointerId!==event.pointerId)return;
+    onDrag({phase:'move',eqId:active.eqId,kind:active.kind,
+      dx:event.clientX-active.x,dy:event.clientY-active.y});
+    event.preventDefault();event.stopImmediatePropagation();
+  },true);
+  container.addEventListener('pointerup',stop,true);
+  container.addEventListener('pointercancel',stop,true);
 }

@@ -37,13 +37,17 @@ import { algebraDeclaration, createAlgebraSymbols } from './algebra-symbols.js';
 import { createTransformControls, buildSystemScene, buildSystemScene3D } from './linear-transform-view.js';
 import { initAlgebraWorkbench } from './algebra-workbench.js';
 import { initProjectControls } from './project-controls.js';
+import { exportGraphPng } from './export-graphic.js';
 import { createCamera, zoomCamera, presetView, fitCameraScale } from './space3d/camera.js';
 import { axesPrimitives } from './space3d/scene3d.js';
 import { buildDrawList, drawScene3d, colorsFromTheme } from './space3d/render3d.js';
 import { attachCameraControls, autoAxisLimit, CAMERA_HINT, decideViewMode, hasGuidesChip, has3dObjects, normalizeView3d, scenePrimitives, serializeView3d, viewNotice } from './space3d/view3d.js';
 import { init3DLibrarySelector, getActive3DLibrary, render3DScene, show3DLibrarySelector, hide3DLibrarySelector, handle3DResize, onActive3DLibraryChange, updatePlotlyCamera } from './space3d/library-manager.js';
-import { initThree3DControls } from './space3d/three-renderer.js';
+import { initThree3DControls, initThreePlaneDragging } from './space3d/three-renderer.js';
 import { createTransform3DControls } from './space3d/transform3d.js';
+import { createSectionPanel } from './space3d/section-panel.js';
+import { dragPlaneParameters, dragConeParameters } from './space3d/plane-interaction.js';
+import { finiteSceneBounds } from './space3d/camera-fit.js';
 
 const PALETTES={
   light:["#c0492f","#2d70b3","#2f7d5b","#6042a6","#d98324","#1d1d1f","#0a8aa6","#a8336e"],
@@ -90,6 +94,9 @@ let view3d=normalizeView3d(null);
 let view3dFit=0;
 let view3dFitAxisRange=null;
 let has3dSeen=null;
+let dualSection=true;
+let planeDragMode=false;
+let planeDragStart=null;
 let W=0,H=0,dpr=1;
 let mouse={inside:false, px:0, py:0};
 let saveTimer=null;
@@ -214,6 +221,7 @@ function plainState(){
     annotations: annotations.map(a => ({id:a.id, x:a.x, y:a.y, text:a.text, color:a.color, noBorder:a.noBorder})),
     view:{cx:view.cx, cy:view.cy, scale:view.scale},
     view3d:serializeView3d(view3d, view3dFit),
+    dualSection,
     equations:equations.map(serializeEq),
     lessonProgress:normalizeLessonProgress(lessonProgress)
   };
@@ -266,6 +274,7 @@ function applyState(snap){
     if(Number.isFinite(state.view.scale)) view.scale=Math.min(Math.max(state.view.scale,0.02),50000);
   }
   restoreView3d(state.view3d);
+  dualSection=state.dualSection!==false;
   equations.splice(0,equations.length);
   nextId=1;               // rebuild ids deterministically for this state
   (Array.isArray(state.equations)?state.equations:[]).forEach(saved=>{
@@ -359,6 +368,7 @@ function restoreState(state){
     if(Number.isFinite(state.view.scale)) view.scale=Math.min(Math.max(state.view.scale,0.02),50000);
   }
   restoreView3d(state.view3d);
+  dualSection=state.dualSection!==false;
   const savedEquations=Array.isArray(state.equations) ? state.equations : [];
   savedEquations.forEach(saved=>{
     const eq=hydrateEq(saved);
@@ -1657,9 +1667,33 @@ function renderRows(){
       refreshMathInfo();
       renderCurveSummary(summary,eq);
     });
+    const rowStartParams={...eq.params};
     const refreshParamControls=()=>{
       paramControls.innerHTML='';
+      paramControls.dataset.kind='';
       if(!eq.paramNames?.length) return;
+      const isSectionRow=/^\s*(?:secao|seccao|secaocone|section)\s*:/i.test(eq.text);
+      const isQuadricRow=/^\s*(?:quadrica|quadricas|quadric)\s*:/i.test(eq.text);
+      const lab=isSectionRow||isQuadricRow;
+      paramControls.dataset.kind=isSectionRow?'section':isQuadricRow?'quadric':'';
+      const groupNodes=new Map();
+      if(lab){
+        const groups=isSectionRow?[
+          ['plano','Plano secante',['q','k','b','h','p']],
+          ['cone','Cone duplo',['a','d']]
+        ]:[
+          ['escala','Escalas da superfície',['a','b','c']],
+          ['posicao','Posição',['d']]
+        ];
+        for(const [id,title,names] of groups){
+          const details=document.createElement('details');
+          details.className='param-group';details.open=true;details.dataset.group=id;
+          const summary=document.createElement('summary');summary.textContent=title;
+          const wrap=document.createElement('div');wrap.className='param-group-grid';
+          details.append(summary,wrap);paramControls.appendChild(details);
+          for(const name of names)groupNodes.set(name,wrap);
+        }
+      }
       eq.paramNames.forEach(name=>{
         // Limits for conic-section parameters must not change the same symbols
         // used in unrelated matrix and function expressions.
@@ -1673,7 +1707,14 @@ function renderRows(){
           d:{min:-4,max:4,step:0.1,label:'d · altura do vértice'},
           p:{min:-3.14,max:3.14,step:0.05,label:'p · rotação do plano (rad)'}
         };
-        const limits=isSection&&sectionControls[name]||PARAM_LIMITS[name]||{min:-5,max:5,step:0.1};
+        const isQuadric=/^\s*(?:quadrica|quadricas|quadric)\s*:/i.test(eq.text);
+        const quadricControls={
+          a:{min:.25,max:5,step:.05,label:'a · escala X'},
+          b:{min:.25,max:5,step:.05,label:'b · escala Y'},
+          c:{min:.25,max:5,step:.05,label:'c · escala Z'},
+          d:{min:-5,max:5,step:.1,label:'d · altura da superfície'}
+        };
+        const limits=(isSection&&sectionControls[name])||(isQuadric&&quadricControls[name])||PARAM_LIMITS[name]||{min:-5,max:5,step:0.1};
         const param=document.createElement('label');
         param.className='param-control';
         param.dataset.param=name;
@@ -1722,8 +1763,24 @@ function renderRows(){
         const a=animations.get(animKey(eq,name));
         if(a){ a.range=range; a.number=number; }
         param.append(label,range,number,play);
-        paramControls.appendChild(param);
+        (groupNodes.get(name)||paramControls).appendChild(param);
       });
+      if(lab){
+        const reset=document.createElement('button');
+        reset.type='button';reset.className='param-reset';
+        reset.title='Restaurar valores desta construção';
+        reset.textContent='↺ restaurar parâmetros';
+        reset.onclick=()=>{
+          for(const name of eq.paramNames){
+            if(Number.isFinite(rowStartParams[name]))eq.params[name]=rowStartParams[name];
+          }
+          recompileAllEquations();
+          refreshParamControls();
+          resultRefreshers.forEach(refresh=>refresh());
+          draw();scheduleSave();notifyLessonAction('param');
+        };
+        paramControls.appendChild(reset);
+      }
     };
 
     const dBtn=document.createElement('button');
@@ -3111,6 +3168,38 @@ function initGeoBuilder(){
 
 const cv=document.getElementById('cv');
 const ctx=cv.getContext('2d');
+const stage=document.getElementById('stage');
+const sectionElement=document.getElementById('section2d-panel');
+const sectionToggle=document.getElementById('section-toggle');
+const planeDragButton=document.getElementById('plane-drag-mode');
+const sectionPanel=createSectionPanel({
+  panel:sectionElement,
+  onClose:()=>{dualSection=false;draw();scheduleSave();}
+});
+function activeSectionEquation(){
+  return equations.find(eq=>eq?.visible!==false&&!eq.error&&eq.kind==='geometry'&&eq.geometry?.section&&eq.geometry?.scene3d?.length);
+}
+function syncSectionLayout(){
+  const eq=view3d.mode==='3d'?activeSectionEquation():null;
+  const available=!!eq;
+  const show=available&&dualSection;
+  if(sectionToggle){
+    sectionToggle.hidden=!available;
+    sectionToggle.dataset.on=show?'1':'0';
+    sectionToggle.setAttribute?.('aria-pressed',show?'true':'false');
+  }
+  if(planeDragButton){
+    planeDragButton.hidden=!(available&&getActive3DLibrary()==='threejs');
+    planeDragButton.dataset.on=planeDragMode?'1':'0';
+    planeDragButton.setAttribute?.('aria-pressed',planeDragMode?'true':'false');
+  }
+  if(sectionElement)sectionElement.hidden=!show;
+  const was=stage?.classList?.contains?.('dual-conic')||false;
+  stage?.classList?.toggle?.('dual-conic',show);
+  if(show)sectionPanel.draw(eq.geometry,theme==='dark');
+  if(was!==show){resize();return true;}
+  return false;
+}
 const readout=document.getElementById('readout');
 const canvasDescription=document.getElementById('canvas-description');
 const lessonGraphToast=document.getElementById('lesson-graph-toast');
@@ -3149,15 +3238,17 @@ const dataTable=createDataTable();
 
 function resize(){
   dpr=window.devicePixelRatio||1;
-  // Canvas is hidden in Plotly/Three.js, so measure the visible stage.
-  const canvasRect=cv.getBoundingClientRect();
-  const r=canvasRect.width>0&&canvasRect.height>0
-    ?canvasRect:document.getElementById('stage').getBoundingClientRect();
-  W=r.width; H=r.height;
+  // Use the stage, never the canvas: inactive Plotly/Three.js modes hide it.
+  // In side-by-side mode the graph uses the left 60%, or the upper 56% on mobile.
+  const r=stage.getBoundingClientRect();
+  const dual=stage.classList?.contains?.('dual-conic')||false;
+  W=r.width*(dual&&r.width>850?.60:1);
+  H=r.height*(dual&&r.width<=850?.56:1);
   cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
   ctx.setTransform(dpr,0,0,dpr,0,0);
   fitCameraToViewport();
   handle3DResize();
+  sectionPanel.resize();
   draw();
 }
 function initSideResizer(){
@@ -3461,8 +3552,11 @@ function restoreAnnotations(saved){
 
 function fitToView(){
   if(view3d.mode==='3d'){
-    const fit=fitCameraScale({width:W,height:H},axisBox());
-    view3d.camera=createCamera({...view3d.camera,target:[0,0,0],scale:fit});
+    const actual=finiteSceneBounds(equations);
+    const target=actual?.target||[0,0,0];
+    const box=actual||axisBox();
+    const fit=fitCameraScale({width:W,height:H},box,.9);
+    view3d.camera=createCamera({...view3d.camera,target,scale:fit});
     view3dFit=fit;
     view3dFitAxisRange=activeAxisRange();
     draw(); scheduleSave(); return;
@@ -5170,6 +5264,7 @@ function render3d(){
 function render(){
   syncUserFunctions();
   syncViewMode();
+  if(syncSectionLayout())return;
   ctx.clearRect(0,0,W,H);
   if(view3d.mode==='3d'){ render3d(); return; }
   
@@ -5424,6 +5519,36 @@ initThree3DControls(()=>view3d.camera,camera=>{view3d.camera=camera;},draw,{
 });
 const viewModeBtn=document.getElementById('view-mode');
 if(viewModeBtn) viewModeBtn.onclick=()=>setViewMode(view3d.mode==='3d'?'2d':'3d');
+if(sectionToggle)sectionToggle.onclick=()=>{
+  dualSection=!dualSection;
+  draw();scheduleSave();
+};
+if(planeDragButton)planeDragButton.onclick=()=>{
+  planeDragMode=!planeDragMode;draw();
+};
+initThreePlaneDragging({
+  isEnabled:()=>view3d.mode==='3d'&&getActive3DLibrary()==='threejs'&&planeDragMode,
+  onDrag:({phase,eqId,kind,dx,dy})=>{
+    const eq=equations.find(item=>item.id===eqId);
+    if(!eq||!eq.geometry?.section||!eq.text.includes('angulo('))return;
+    if(phase==='start'){
+      planeDragStart={eqId,q:eq.params.q,b:eq.params.b,a:eq.params.a,d:eq.params.d};
+      return;
+    }
+    if(!planeDragStart||planeDragStart.eqId!==eqId)return;
+    if(phase==='move'){
+      const next=kind==='plane'?dragPlaneParameters(planeDragStart,{dx,dy})
+        :dragConeParameters(planeDragStart,{dx,dy},{kind});
+      Object.assign(eq.params,next);
+      recompileAllEquations();
+      resultRefreshers.forEach(refresh=>refresh());
+      draw();
+    }else if(phase==='end'){
+      planeDragStart=null;
+      scheduleSave();
+    }
+  }
+});
 ['xy','xz','yz','iso'].forEach(name=>{
   const button=document.getElementById('view-'+name);
   if(button) button.onclick=()=>{
@@ -5484,6 +5609,17 @@ if(installBtn)installBtn.onclick=async()=>{
   await prompt.prompt();
 };
 window.addEventListener('appinstalled',()=>{deferredInstall=null;if(installBtn)installBtn.hidden=true;});
+const exportGraphicBtn=document.getElementById('export-graphic');
+if(exportGraphicBtn)exportGraphicBtn.onclick=async()=>{
+  const status=document.getElementById('export-graphic-status');
+  try{
+    await exportGraphPng({viewMode:view3d.mode,canvas:cv});
+    if(status)status.textContent='Imagem PNG exportada.';
+  }catch(error){
+    if(status)status.textContent='Não foi possível exportar: '+error.message;
+    exportGraphicBtn.title='Falha: '+error.message;
+  }
+};
 const fullscreenBtn=document.getElementById('fullscreen');
 if(fullscreenBtn){
   fullscreenBtn.onclick=async()=>{

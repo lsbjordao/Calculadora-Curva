@@ -227,3 +227,80 @@ A calculadora exibe essas duas retas corretamente. Com outras inclinações,
 o plano pode passar pelo vértice para alguns valores negativos de `b`;
 esses casos também são tratados como cônicas degeneradas. A sintaxe
 existente `secao: h,angulo(q),a,d,p,b` e os presets são preservados.
+
+
+## Laboratório de quádricas
+
+O preset **Superfícies quádricas (3D)** reúne elipsoide, esfera, paraboloide elíptico, paraboloide hiperbólico (sela), hiperboloides de uma e duas folhas, e cilindro elíptico. Ative uma linha de cada vez. O comando é `quadrica: tipo,a,b,c,d`, por exemplo `quadrica: hiperboloide1,1.2,1,1,0`. Os parâmetros a,b,c são escalas geométricas positivas e d desloca a superfície verticalmente. As superfícies são malhas limitadas para visualização, compatíveis com Canvas 2D, Plotly.js e Three.js.
+
+
+## Laboratório de geometria: duas vistas, quádricas e exportação (2026)
+
+### Seção em 2D + geometria no espaço
+
+Ao carregar **Presets → Cônicas e quádricas → Hipérbole e planos (3D)**
+ou **Seções do cone e circunferência**, a Curva oferece automaticamente
+duas vistas sincronizadas: o motor 3D ocupa a área principal e um painel
+mostra a **mesma curva no referencial ortonormal (s,t) do plano secante**.
+Com o botão **3D + 2D**, mostre ou oculte a segunda vista; essa escolha
+é preservada nos projetos JSON e no estado local.
+
+O painel matemático calcula, diretamente das equações do cone e do plano,
+a equação quadrática da seção, sua forma canônica quando aplicável,
+excentricidade, semieixos, centro/vértice, focos e assíntotas.
+Se o plano atravessar o ápice, são identificados os casos degenerados
+(duas retas, uma geratriz ou o ponto do vértice) sem inventar focos.
+
+Passe o cursor sobre a vista 2D para ler as coordenadas no plano.
+**Exportar SVG** produz desenho vetorial com eixos e curva;
+**Exportar PNG** captura o painel em pixels. O botão **PNG** na barra
+vertical exporta o gráfico principal 2D ou 3D, de acordo com o motor
+ativo. No modo 3D + 2D esse botão exporta apenas a vista 3D; os botões
+do painel exportam a seção separadamente.
+
+### Manipulação e controles
+
+Os parâmetros das seções cônicas ficam organizados em dois grupos,
+**Plano secante** e **Cone duplo**, com opção para restaurar os valores.
+Para quádricas, os grupos são **Escalas da superfície** e **Posição**.
+
+No **Three.js**, selecione **Editar 3D** para arrastar diretamente o
+plano amarelo (horizontal: deslocamento b; vertical: inclinação q), a
+superfície azul do cone (abertura a e altura d), ou o ponto do vértice
+(altura d). **Alt + arrastar** ativa momentaneamente a manipulação.
+O arrasto altera os mesmos parâmetros dos sliders; controles de câmera,
+órbita e zoom seguem disponíveis quando a ferramenta não está ativa.
+A precisão do gesto depende da tela: para introduzir valores exatos,
+use os campos numéricos.
+
+O botão **Enquadrar** na barra vertical agora centraliza a câmera nos
+limites efetivos dos objetos finitos, inclusive se o vértice ou
+a superfície tiverem sido deslocados verticalmente.
+
+### Quádricas
+
+O preset **Superfícies quádricas (3D)** reúne sete famílias paramétricas
+(esfera, elipsoide, paraboloide elíptico, hiperboloide de uma folha,
+hiperboloide de duas folhas, paraboloide hiperbólico/sela e cilindro
+elíptico). Os comandos usam `quadrica: tipo,a,b,c,d`; altere os eixos
+ou altura e mantenha somente as superfícies desejadas visíveis.
+O exemplo "esfera" somente é esférico quando a=b=c; em outras escalas,
+a equação torna-se a de um elipsoide. Malhas são amostras finitas
+das quádricas ideais.
+
+### Verificação
+
+A suíte matemática também verifica projeção inversível entre os
+referenciais da seção, focos, semieixos, excentricidade, casos
+degenerados, equações das malhas, transformações por arrasto e
+enquadramento. Os testes no Chromium verificam a tela dividida
+no desktop e no celular, os grupos de controles, a persistência de
+b=0, os presets de quádricas e a exportação PNG. As capturas
+são disponibilizadas como artefatos do GitHub Actions.
+
+**Limitações:** o modo 3D + 2D atual é específico para interseções
+do cone duplo com planos secantes; quádricas genéricas ainda não
+calculam automaticamente suas próprias seções. A manipulação
+direta da geometria usa WebGL/Three.js, cuja importação inicial
+depende da rede. O PNG de um motor gráfico não inclui a área do
+painel de propriedades; use as exportações individuais.

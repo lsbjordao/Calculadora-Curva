@@ -1672,13 +1672,17 @@ function renderRows(){
       paramControls.innerHTML='';
       paramControls.dataset.kind='';
       if(!eq.paramNames?.length) return;
-      const isSectionRow=/^\s*(?:secao|seccao|secaocone|section)\s*:/i.test(eq.text);
+      const isSliceRow=/^\s*(?:corte|cortequadrica|quadricsection)\s*:/i.test(eq.text);
+      const isSectionRow=/^\s*(?:secao|seccao|secaocone|section)\s*:/i.test(eq.text)||isSliceRow;
       const isQuadricRow=/^\s*(?:quadrica|quadricas|quadric)\s*:/i.test(eq.text);
       const lab=isSectionRow||isQuadricRow;
       paramControls.dataset.kind=isSectionRow?'section':isQuadricRow?'quadric':'';
       const groupNodes=new Map();
       if(lab){
-        const groups=isSectionRow?[
+        const groups=isSliceRow?[
+          ['plano','Plano secante',['q','p','h']],
+          ['superficie','Superfície quádrica',['a','b','c','d']]
+        ]:isSectionRow?[
           ['plano','Plano secante',['q','k','b','h','p']],
           ['cone','Cone duplo',['a','d']]
         ]:[
@@ -1708,13 +1712,22 @@ function renderRows(){
           p:{min:-3.14,max:3.14,step:0.05,label:'p · rotação do plano (rad)'}
         };
         const isQuadric=/^\s*(?:quadrica|quadricas|quadric)\s*:/i.test(eq.text);
+        const sliceControls={
+          q:{min:-90,max:90,step:1,label:'q · inclinação do plano (graus)'},
+          p:{min:-180,max:180,step:2,label:'p · azimute do plano (graus)'},
+          h:{min:-8,max:8,step:.1,label:'h · distância assinada do plano'},
+          a:{min:.25,max:5,step:.05,label:'a · escala X'},
+          b:{min:.25,max:5,step:.05,label:'b · escala Y'},
+          c:{min:.25,max:5,step:.05,label:'c · escala Z'},
+          d:{min:-5,max:5,step:.1,label:'d · altura da superfície'}
+        };
         const quadricControls={
           a:{min:.25,max:5,step:.05,label:'a · escala X'},
           b:{min:.25,max:5,step:.05,label:'b · escala Y'},
           c:{min:.25,max:5,step:.05,label:'c · escala Z'},
           d:{min:-5,max:5,step:.1,label:'d · altura da superfície'}
         };
-        const limits=(isSection&&sectionControls[name])||(isQuadric&&quadricControls[name])||PARAM_LIMITS[name]||{min:-5,max:5,step:0.1};
+        const limits=(isSliceRow&&sliceControls[name])||(isSection&&sectionControls[name])||(isQuadric&&quadricControls[name])||PARAM_LIMITS[name]||{min:-5,max:5,step:0.1};
         const param=document.createElement('label');
         param.className='param-control';
         param.dataset.param=name;

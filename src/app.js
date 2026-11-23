@@ -1534,6 +1534,7 @@ function renderRows(){
       if(before!==eq.paramNames.join(',')) refreshParamControls();
       refreshControls();
       refreshConicDemo();
+      refreshSurfacePointControls();
       refreshOps();
       renderContextActions(eq, contextActions);
       draw();
@@ -1649,6 +1650,45 @@ function renderRows(){
       };
       describe();
       conicDemoZone.append(caption,slider,output,play);
+    };
+    const surfacePointZone=document.createElement('div');
+    surfacePointZone.className='surface-point-controls';
+    const refreshSurfacePointControls=()=>{
+      surfacePointZone.replaceChildren();
+      const surface=eq.geometry?.multivar;
+      surfacePointZone.hidden=!surface;
+      if(!surface)return;
+      const header=document.createElement('strong');
+      header.textContent='Cálculo multivariável · ponto de inspeção P';
+      surfacePointZone.append(header);
+      for(const [axis,index] of [['x',0],['y',1]]){
+        const line=document.createElement('label');
+        line.className='surface-point-axis';
+        const title=document.createElement('span');
+        title.textContent='P · '+axis;
+        const slider=document.createElement('input');
+        slider.type='range';slider.min=-surface.extent;slider.max=surface.extent;slider.step='.05';
+        slider.value=eq.surfacePoint?.[index]??0;
+        slider.setAttribute('aria-label','Coordenada '+axis+' do ponto P');
+        const number=document.createElement('input');
+        number.type='number';number.min=slider.min;number.max=slider.max;number.step='.05';
+        number.value=slider.value;
+        const setPoint=value=>{
+          if(!Number.isFinite(Number(value)))return;
+          const v=Math.max(-surface.extent,Math.min(surface.extent,Number(value)));
+          eq.surfacePoint=Array.isArray(eq.surfacePoint)?[...eq.surfacePoint]:[0,0];
+          eq.surfacePoint[index]=v;
+          slider.value=v;number.value=v;
+          recompileAllEquations();
+          refreshMathInfo();draw();scheduleSave();
+        };
+        slider.oninput=()=>setPoint(slider.value);
+        number.oninput=()=>setPoint(number.value);
+        line.append(title,slider,number);surfacePointZone.append(line);
+      }
+      const note=document.createElement('span');
+      note.textContent='Clique também na superfície 3D para escolher P · curvas de nível à direita';
+      surfacePointZone.append(note);
     };
     const opTools=document.createElement('div');
     opTools.className='op-tools';
@@ -2146,9 +2186,10 @@ function renderRows(){
     refreshMathInfo();
     refreshParamControls();
     refreshConicDemo();
+    refreshSurfacePointControls();
     refreshOps();
     refreshDataTable();
-    body.append(wrap,contextActions,controls,info,stepsZone,paramControls,conicDemoZone,transformZone,transform3dZone,opTools,tableZone);
+    body.append(wrap,contextActions,controls,info,stepsZone,paramControls,conicDemoZone,surfacePointZone,transformZone,transform3dZone,opTools,tableZone);
     row.append(head,summary,body);
     rowsEl.appendChild(row);
   });

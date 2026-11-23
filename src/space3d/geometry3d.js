@@ -11,6 +11,7 @@ import { _geometryCore as core } from '../geometry.js';
 import { compile, setImplicitY } from '../parser.js';
 import { makeConicSectionScene, makeAngledConicSectionScene } from './conic-sections.js';
 import { quadricScene } from './quadrics.js';
+import { quadricPlaneSection } from './quadric-sections.js';
 
 const EPS=1e-9;
 // Object names: identifiers, plus π, π1… for planes (§7).
@@ -121,6 +122,34 @@ function quadricCommand(body,ctx){
   return result;
 }
 
+function quadricSliceCommand(body,ctx){
+  const parts=core.splitTopAny(String(body),',').map(x=>x.trim());
+  if(parts.length!==9)throw new Error('Corte: use corte: tipo,a,b,c,d,q,p,h (q e p em graus; h distância assinada do plano).');
+  const type=parts[0].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const [a,b,c,d,q,p,h]=parts.slice(1).map(v=>core.evalScalar(v,ctx));
+  const surface=quadricScene(type,{a,b,c,d});
+  const cut=quadricPlaneSection(type,{a,b,c,d},{inclination:q,azimuth:p,offset:h});
+  const r=result3('section','seção de '+surface.label.toLowerCase());
+  r.quadric=surface;
+  r.section={kind:'quadric-plane',analysis:cut,quadricType:type};
+  r.scene3d=[
+    ...surface.scene,
+    {kind:'plane',n:cut.normal,d:h,alpha:.23,color:'#e4a53a',conicSection:true},
+    ...cut.worldSegments.map(({a,b})=>({kind:'segment',a,b,color:'#ed3d8b',weight:2.8,conicSection:true,sectionCurve:true}))
+  ];
+  if(cut.type==='vertex-point'&&cut.center)
+    r.scene3d.push({kind:'point',p:cut.toWorld(cut.center),label:'P',color:'#ed3d8b',conicSection:true});
+  const types={circle:'circunferência',ellipse:'elipse',hyperbola:'hipérbole',parabola:'parábola',
+    'two-lines':'duas retas concorrentes','parallel-lines':'duas retas paralelas',
+    'one-line':'reta','vertex-point':'ponto tangente',empty:'sem interseção real','all-plane':'plano contido na superfície'};
+  r.info=[
+    surface.equations,'Plano: inclinação '+q+'° · azimute '+p+'° · distância '+h,
+    'Seção: '+(types[cut.type]||cut.type),cut.canonical||cut.equation,
+    'Curva ideal classificada analiticamente; desenho em janela finita.'
+  ];
+  return r;
+}
+
 function sectionCommand(body,ctx){
   const parts=core.splitTopAny(String(body),',').map(x=>x.trim());
   if(parts.length<2||parts.length>6)throw new Error('Seção: use secao: h,k[,a,d,p] ou secao: h,angulo(q),a,d,p,b.');
@@ -203,6 +232,7 @@ function vectorCommand(body,ctx,definitionName){
 // Returns a 3D result, or null when the command has no ℝ³ version yet.
 export function parse3dCommand(command,body,ctx={},definitionName=''){
   if(command==='section') return sectionCommand(body,ctx);
+  if(command==='quadric-slice') return quadricSliceCommand(body,ctx);
   if(command==='quadric') return quadricCommand(body,ctx);
   if(command==='point') return pointCommand(body,ctx,definitionName);
   if(command==='vector') return vectorCommand(body,ctx,definitionName);
@@ -219,7 +249,7 @@ export function parse3dCommand(command,body,ctx={},definitionName=''){
 // intersecao, distancia and angulo go to ℝ³ when an object is 3D or when an
 // equation (a "=") mentions the variable z (lines without z keep the 2D
 // analyzers, §7a.3). A registered object named z keeps its old meaning.
-const ALWAYS_3D=new Set(['plane','position','section','quadric']);
+const ALWAYS_3D=new Set(['plane','position','section','quadric','quadric-slice']);
 const Z_EQUATION_COMMANDS=new Set(['line','intersect','distance','angle']);
 
 function equationWithZ(text,ctx){

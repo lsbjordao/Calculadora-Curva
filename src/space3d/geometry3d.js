@@ -14,6 +14,7 @@ import { quadricScene } from './quadrics.js';
 import { quadricPlaneSection } from './quadric-sections.js';
 import { tangentScene } from './surface-calculus.js';
 import { generalQuadricFromEquation,analyseGeneralQuadric,meshImplicitQuadric } from './implicit-quadric.js';
+import {scalarSurfaceScene} from './scalar-surfaces.js';
 
 const EPS=1e-9;
 // Object names: identifiers, plus π, π1… for planes (§7).
@@ -112,7 +113,32 @@ function scenePoint(point){
 }
 
 function generalSurfaceCommand(body,ctx){
-  const polynomial=generalQuadricFromEquation(body,ctx.params||{});
+  let polynomial=null;
+  try{polynomial=generalQuadricFromEquation(body,ctx.params||{});}
+  catch(error){
+    if(!/^\\s*z\\s*=|=\\s*z\\s*$/i.test(String(body))||
+      !/quadrática|quadrática em|quadrática em x/i.test(error.message))
+      throw error;
+    const scalar=scalarSurfaceScene(body,ctx.params||{},
+      {x:ctx.surfacePoint?.[0],y:ctx.surfacePoint?.[1]});
+    const result=result3('surface','Função de duas variáveis');
+    result.multivar=scalar;
+    result.section={kind:'function-levels',analysis:scalar.levels};
+    result.scene3d=scalar.scene;
+    const c=scalar.calc;
+    result.info=['z = '+scalar.expr,
+      'P = ('+c.point.map(core.fmt).join(', ')+')',
+      '∂z/∂x = '+core.fmt(c.gradient[0])+' · ∂z/∂y = '+core.fmt(c.gradient[1]),
+      'Hessiana H = ['+c.hessian.map(row=>row.map(core.fmt).join(', ')).join(' ; ')+']',
+      'det(H) = '+core.fmt(c.detHessian),
+      'Plano tangente: z − '+core.fmt(c.point[2])+' = '+core.fmt(c.gradient[0])+
+        '(x − '+core.fmt(c.point[0])+') + '+core.fmt(c.gradient[1])+'(y − '+core.fmt(c.point[1])+')',
+      'Pontos críticos detectados na janela: '+scalar.critical.length,
+      ...scalar.critical.map((point,i)=>'C'+(i+1)+': '+point.criticalType+' '+fmtVec(point.point)),
+      'Curvas de nível: '+scalar.levels.levels.map(core.fmt).join(', ')
+    ];
+    return result;
+  }
   const classification=analyseGeneralQuadric(polynomial);
   const mesh=meshImplicitQuadric(polynomial,{resolution:24});
   const result=result3('surface','Superfície · '+classification.type);

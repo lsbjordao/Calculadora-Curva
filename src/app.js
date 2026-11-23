@@ -38,7 +38,7 @@ import { createTransformControls, buildSystemScene, buildSystemScene3D } from '.
 import { initAlgebraWorkbench } from './algebra-workbench.js';
 import { initProjectControls } from './project-controls.js';
 import { exportGraphPng } from './export-graphic.js';
-import { createCamera, zoomCamera, presetView, fitCameraScale } from './space3d/camera.js';
+import { createCamera, zoomCamera, presetView, fitCameraScale, projectPoint } from './space3d/camera.js';
 import { axesPrimitives } from './space3d/scene3d.js';
 import { buildDrawList, drawScene3d, colorsFromTheme } from './space3d/render3d.js';
 import { attachCameraControls, autoAxisLimit, CAMERA_HINT, decideViewMode, hasGuidesChip, has3dObjects, normalizeView3d, scenePrimitives, serializeView3d, viewNotice } from './space3d/view3d.js';
@@ -46,6 +46,7 @@ import { init3DLibrarySelector, getActive3DLibrary, render3DScene, show3DLibrary
 import { initThree3DControls, initThreePlaneDragging } from './space3d/three-renderer.js';
 import { createTransform3DControls } from './space3d/transform3d.js';
 import { createSectionPanel } from './space3d/section-panel.js';
+import {nearestProjectedSection} from './space3d/section-sync.js';
 import { dragPlaneParameters, dragConeParameters } from './space3d/plane-interaction.js';
 import { finiteSceneBounds } from './space3d/camera-fit.js';
 
@@ -3185,10 +3186,46 @@ const stage=document.getElementById('stage');
 const sectionElement=document.getElementById('section2d-panel');
 const sectionToggle=document.getElementById('section-toggle');
 const planeDragButton=document.getElementById('plane-drag-mode');
+const sectionLinkedMarker=document.getElementById('section-linked-marker');
+let sectionLinkedWorld=null;
+function setSectionLinkedWorld(world){
+  sectionLinkedWorld=world;
+  if(!sectionLinkedMarker)return;
+  if(!world||!stage?.classList?.contains('dual-conic')||view3d.mode!=='3d'||
+    getActive3DLibrary()==='plotly'){
+    sectionLinkedMarker.hidden=true;return;
+  }
+  const point=projectPoint(view3d.camera,world,{width:W,height:H});
+  if(point.behind||!Number.isFinite(point.x+point.y)||point.x<0||point.x>W||point.y<0||point.y>H){
+    sectionLinkedMarker.hidden=true;return;
+  }
+  sectionLinkedMarker.style.left=point.x+'px';
+  sectionLinkedMarker.style.top=point.y+'px';
+  sectionLinkedMarker.hidden=false;
+}
 const sectionPanel=createSectionPanel({
   panel:sectionElement,
-  onClose:()=>{dualSection=false;draw();scheduleSave();}
+  onClose:()=>{dualSection=false;draw();scheduleSave();},
+  onHoverPoint:world=>setSectionLinkedWorld(world)
 });
+for(const id of ['cv','three-3d-container']){
+  const target=document.getElementById(id);
+  target?.addEventListener?.('pointermove',e=>{
+    if(e.buttons||!stage?.classList?.contains('dual-conic')||view3d.mode!=='3d'||getActive3DLibrary()==='plotly')return;
+    const eq=activeSectionEquation();
+    const segments=eq?.geometry?.scene3d?.filter(p=>p.sectionCurve&&p.kind==='segment');
+    if(!segments?.length)return;
+    const rect=stage.getBoundingClientRect();
+    const hit=nearestProjectedSection(segments,view3d.camera,{width:W,height:H},
+      e.clientX-rect.left,e.clientY-rect.top);
+    setSectionLinkedWorld(hit?.world||null);
+    sectionPanel.highlightWorld?.(hit?.world||null);
+  });
+  target?.addEventListener?.('pointerleave',()=>{
+    setSectionLinkedWorld(null);
+    sectionPanel.highlightWorld?.(null);
+  });
+}
 // Keep the divider position between sessions; using the same ratios for
 // rendering and CSS prevents mismatch after responsive layout changes.
 const splitHandle=document.getElementById('dual-splitter');
@@ -3272,6 +3309,7 @@ function syncSectionLayout(){
   }
   if(sectionElement)sectionElement.hidden=!show;
   if(splitHandle)splitHandle.hidden=!show;
+  if(!show)setSectionLinkedWorld(null);
   const was=stage?.classList?.contains?.('dual-conic')||false;
   stage?.classList?.toggle?.('dual-conic',show);
   // Attach the 3D engine selector to the 3D toolbar only in the dual view.
@@ -3338,6 +3376,7 @@ function resize(){
   handle3DResize();
   sectionPanel.resize();
   draw();
+  if(sectionLinkedWorld)setSectionLinkedWorld(sectionLinkedWorld);
 }
 function initSideResizer(){
   const resizer=document.getElementById('side-resizer');
@@ -5347,6 +5386,7 @@ function render3d(){
   if(card) card.style.display='none';
   valueTable.update();
   if(canvasDescription) canvasDescription.textContent=describeCanvas({view3d,width:W,height:H,equations});
+  if(sectionLinkedWorld)setSectionLinkedWorld(sectionLinkedWorld);
 }
 
 function render(){

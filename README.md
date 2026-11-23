@@ -335,7 +335,9 @@ a classificação não é inferida pela imagem discretizada.
 A vista **3D + 2D** possui uma divisória arrastável. Use também
 **Tab** para focar a divisória e as setas para alterar a proporção;
 em telas estreitas a separação torna-se horizontal. A proporção é
-lembrada localmente. Ao aproximar o cursor da curva 2D, o ponto
+lembrada localmente. **⛶ 3D** e **⛶** no cabeçalho da seção
+maximizam temporariamente um dos visores e restauram a divisão anterior.
+Ao aproximar o cursor da curva 2D, o ponto
 correspondente é marcado no 3D com as coordenadas locais `(s,t)` e
 globais `(x,y,z)`; a seleção inversa funciona nos motores Canvas e
 Three.js. A vinculação inversa no Plotly.js ainda não está disponível.
@@ -346,6 +348,10 @@ O comando `conica:` agora completa a análise de expressões com
 termo misto `x*y`: diagonaliza a parte quadrática, identifica e desenha
 eixos principais, focos, diretrizes e assíntotas quando matematicamente
 definidos. Os casos degenerados continuam identificados separadamente.
+O painel **Diagonalização · rotação dos eixos principais** oferece um
+controle deslizante e uma animação de 0 até a rotação principal; duas linhas
+turquesa mostram os eixos em movimento enquanto o coeficiente misto
+`B′(θ)` tende a zero. A transformação preserva a cônica original.
 
 ### Gradientes e planos tangentes em 3D
 

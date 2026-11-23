@@ -104,6 +104,7 @@ export function sectionToWorld(st,analysis){
   return add(analysis.origin,add(scaled(analysis.axisS,st[0]),scaled(analysis.axisT,st[1])));
 }
 export function sectionCurves(geometry){
+  if(geometry?.section?.kind==='quadric-plane')return geometry.section.analysis||null;
   const analysis=analyseConicSection(geometry?.section);
   if(!analysis)return null;
   const segments=(geometry.scene3d||[]).filter(p=>p.sectionCurve&&p.kind==='segment')
@@ -114,7 +115,8 @@ export function conicMetricSummary(analysis){
   if(!analysis)return [];
   const info=[['Tipo',({
     circle:'Circunferência',ellipse:'Elipse',parabola:'Parábola',hyperbola:'Hipérbole',
-    'two-lines':'Duas retas concorrentes','one-line':'Reta geratriz','vertex-point':'Vértice do cone'
+    'two-lines':'Duas retas concorrentes','one-line':'Reta','vertex-point':'Ponto tangente',
+    'parallel-lines':'Duas retas paralelas',empty:'Sem interseção real','all-plane':'Plano contido na superfície'
   })[analysis.type]||analysis.type]];
   if(analysis.center)info.push(['Centro (s,t)',analysis.center.map(fmt).join(', ')]);
   if(analysis.vertex)info.push(['Vértice (s,t)',analysis.vertex.map(fmt).join(', ')]);

@@ -385,7 +385,7 @@ try{
     return renderer.threeSurfaceGuideStats();
   });
   const light=await stats();
-  nodeAssert.ok(light.guides>=1&&light.segments>50,'malha de referências deve renderizar no WebGL');
+  nodeAssert.ok(light.guides>=1&&light.segments>50,'malha de referências deve renderizar no WebGL: '+JSON.stringify(light));
   nodeAssert.equal(await wireToggle.getAttribute('data-mode'),'normal');
   await wirePage.screenshot({path:resolve(screenshots,'threejs-superficie-linhas-leves.png')});
   await wireToggle.click();

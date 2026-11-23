@@ -299,6 +299,13 @@ try{
     return state?.equations?.[0]?.clipSide===1;
   });
   await freePage.screenshot({path:resolve(screenshots,'desktop-quadrica-geral-corte-real.png')});
+  await freePage.locator('.row').nth(2).locator('.eye').click();
+  await freePage.waitForFunction(()=>{
+    const state=JSON.parse(localStorage.getItem('curva-state-v1')||'{}');
+    return state.equations?.[2]?.visible===true;
+  });
+  nodeAssert.match(await freePage.locator('#section2d-properties').innerText(),/Elipse/);
+  await freePage.screenshot({path:resolve(screenshots,'desktop-quadrica-com-dois-planos.png')});
   await freeContext.close();
 
   // Arbitrary z=f(x,y) has both a 3D graph and colored 2D level contours,
@@ -316,6 +323,13 @@ try{
     const state=JSON.parse(localStorage.getItem('curva-state-v1')||'{}');
     return Math.abs((state?.equations?.[0]?.surfacePoint?.[0]||0)-1.25)<1e-8;
   });
+  const directionAngle=multiPage.locator('.row').first().locator('.surface-point-controls input[type="number"]').nth(2);
+  await directionAngle.fill('45');
+  await multiPage.waitForFunction(()=>{
+    const state=JSON.parse(localStorage.getItem('curva-state-v1')||'{}');
+    return state.equations?.[0]?.surfaceDirection===45;
+  });
+  nodeAssert.match(await multiPage.locator('.row').first().innerText(),/Derivada direcional/);
   await multiPage.screenshot({path:resolve(screenshots,'desktop-calculo-multivariavel-curvas-nivel.png')});
   await multiContext.close();
 

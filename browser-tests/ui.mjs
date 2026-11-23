@@ -126,7 +126,7 @@ try{
     const state=JSON.parse(localStorage.getItem('curva-state-v1')||'{}');
     const eq=state.equations?.[0];
     return eq?.params?.b===0&&eq.params.q===90&&eq.params.h===3;
-  },{timeout:5000});
+  },undefined,{timeout:10000});
   const geometryState=await page.evaluate(()=>JSON.parse(localStorage.getItem('curva-state-v1')));
   nodeAssert.equal(geometryState.equations[0].params.h,3);
   nodeAssert.equal(geometryState.equations[0].params.a,1.5);

@@ -104,6 +104,7 @@ export function sectionToWorld(st,analysis){
   return add(analysis.origin,add(scaled(analysis.axisS,st[0]),scaled(analysis.axisT,st[1])));
 }
 export function sectionCurves(geometry){
+  if(geometry?.section?.kind==='function-levels')return geometry.section.analysis||null;
   if(geometry?.section?.kind==='quadric-plane')return geometry.section.analysis||null;
   const analysis=analyseConicSection(geometry?.section);
   if(!analysis)return null;
@@ -113,6 +114,11 @@ export function sectionCurves(geometry){
 }
 export function conicMetricSummary(analysis){
   if(!analysis)return [];
+  if(analysis.type==='level-curves')return [
+    ['Tipo','Curvas de nível'],
+    ['Níveis',analysis.levels?.map(fmt).join(', ')||''],
+    ['Intervalo z',analysis.range?.map(fmt).join(' a ')||'']
+  ];
   const info=[['Tipo',({
     circle:'Circunferência',ellipse:'Elipse',parabola:'Parábola',hyperbola:'Hipérbole',
     'two-lines':'Duas retas concorrentes','one-line':'Reta','vertex-point':'Ponto tangente',

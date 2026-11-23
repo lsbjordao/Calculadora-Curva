@@ -202,6 +202,7 @@ function serializeEq(eq){
     showAlgebraSystem:!!eq.showAlgebraSystem,
     clipSide:eq.clipSide||0,
     surfacePoint:Array.isArray(eq.surfacePoint)?eq.surfacePoint:undefined,
+    surfaceDirection:Number.isFinite(eq.surfaceDirection)?eq.surfaceDirection:0,
     showResultTable:eq.showResultTable
   };
 }
@@ -838,7 +839,7 @@ function recompileEq(eq, geometryRegistry=null){
     if(!fm){
       const geometryNames=extractGeometryParams(raw);
       if(geometryNames.length) setupParams(eq, geometryNames);
-      const geometry=parseGeometryInput(raw,{params:eq.params,registry:geometryRegistry,symbols:algebraSymbols.resolve,surfacePoint:eq.surfacePoint});
+      const geometry=parseGeometryInput(raw,{params:eq.params,registry:geometryRegistry,symbols:algebraSymbols.resolve,surfacePoint:eq.surfacePoint,surfaceDirection:eq.surfaceDirection});
       if(geometry){
         setupParams(eq, geometryNames);
         eq.kind='geometry';
@@ -1686,8 +1687,29 @@ function renderRows(){
         number.oninput=()=>setPoint(number.value);
         line.append(title,slider,number);surfacePointZone.append(line);
       }
+      const directionLabel=document.createElement('label');
+      directionLabel.className='surface-point-axis';
+      const angleName=document.createElement('span');
+      angleName.textContent='θ · direção';
+      const angleSlider=document.createElement('input');
+      angleSlider.type='range';angleSlider.min='-180';angleSlider.max='180';angleSlider.step='1';
+      angleSlider.value=eq.surfaceDirection||0;
+      angleSlider.setAttribute('aria-label','Direção da derivada direcional em graus');
+      const angleNumber=document.createElement('input');
+      angleNumber.type='number';angleNumber.min='-180';angleNumber.max='180';angleNumber.step='1';
+      angleNumber.value=angleSlider.value;
+      const setAngle=value=>{
+        if(!Number.isFinite(Number(value)))return;
+        eq.surfaceDirection=Math.max(-180,Math.min(180,Number(value)));
+        angleSlider.value=eq.surfaceDirection;angleNumber.value=eq.surfaceDirection;
+        recompileAllEquations();refreshMathInfo();draw();scheduleSave();
+      };
+      angleSlider.oninput=()=>setAngle(angleSlider.value);
+      angleNumber.oninput=()=>setAngle(angleNumber.value);
+      directionLabel.append(angleName,angleSlider,angleNumber);
+      surfacePointZone.append(directionLabel);
       const note=document.createElement('span');
-      note.textContent='Clique também na superfície 3D para escolher P · curvas de nível à direita';
+      note.textContent='Clique na superfície 3D para escolher P · altere θ para a derivada direcional · curvas de nível à direita';
       surfacePointZone.append(note);
     };
     const opTools=document.createElement('div');
@@ -2662,6 +2684,7 @@ function applyEquationOptions(eq, options={}){
   eq.lw=Number.isFinite(options.lw) ? Math.min(Math.max(options.lw,1),5) : 2;
   eq.params=sanitizeParams(options.params);
   eq.clipSide=[-1,0,1].includes(options.clipSide)?options.clipSide:0;
+  eq.surfaceDirection=Number.isFinite(options.surfaceDirection)?Math.max(-180,Math.min(180,options.surfaceDirection)):0;
   eq.surfacePoint=Array.isArray(options.surfacePoint)&&options.surfacePoint.length===2&&
     options.surfacePoint.every(Number.isFinite)?options.surfacePoint.map(v=>Math.max(-12,Math.min(12,v))):[0,0];
 

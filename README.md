@@ -390,3 +390,118 @@ esses módulos no cache do aplicativo. Isso elimina a necessidade
 de acessar uma CDN para o Three.js depois de instalar o cache;
 WebGL ainda depende da compatibilidade do dispositivo.
 
+
+
+## Laboratórios avançados: equações livres e cálculo multivariável
+
+A Curva também aceita superfícies diretamente por equação, sem selecionar
+previamente a família geométrica. Os exemplos estão nos presets
+**Quádricas gerais por equação (3D + 2D)**,
+**Cálculo multivariável e curvas de nível** e
+**Construções de retas, planos e interseções**.
+
+### Quádricas gerais: classificação exata e cortes por planos separados
+
+```text
+superficie: x² + 2xy + 3y² + z² = 9
+plano: x + y + z = 2
+plano: z = 1
+```
+
+`superficie:` reconhece qualquer equação **quadrática** real em
+`x,y,z` expressável pelo parser da Curva, inclusive termos cruzados
+`xy`, `xz` e `yz`, coeficientes negativos e translações.
+Os coeficientes são recuperados da expressão e verificados contra
+pontos adicionais, evitando classificar funções cúbicas como quádricas.
+A classificação utiliza uma matriz simétrica 3×3, autovalores
+e autovetores: elipsoides, cones, paraboloides, hiperboloides,
+cilindros e casos degenerados. A classificação não depende da
+discretização gráfica.
+
+Quando houver uma ou mais linhas `plano:` **visíveis**, a Curva
+intersecta automaticamente os primeiros quatro planos com cada
+superfície quadrática visível, independentemente da ordem das linhas.
+As curvas correspondentes aparecem no 3D e a primeira é exibida
+analiticamente no visor 2D, com focos, semieixos e classificação
+quando definidos. O segundo plano da demonstração começa oculto;
+use o controle de visibilidade da linha para ativá-lo.
+
+No painel de comandos da superfície, clique em **recorte**
+para alternar entre a superfície inteira, a metade do lado positivo
+(`corte +`) e a metade do lado negativo (`corte −`)
+do **primeiro plano**. A malha é efetivamente recortada,
+não apenas escondida por uma placa opaca. O recorte é uma
+visualização de malha triangular, sem tampas de volume.
+
+No motor **Three.js**, ative **Editar 3D** para revelar as
+alças X (vermelha), Y (verde) e Z (azul) no plano:
+arraste uma alça para transladá-lo ao longo daquele eixo;
+arraste o plano para deslocá-lo na direção normal;
+**Shift + arrastar** o plano gira sua orientação.
+**Alt + arrastar** permite iniciar a edição temporariamente.
+As movimentações atualizam a equação numérica do plano;
+expressões simbólicas introduzidas nessa linha são substituídas
+pelos coeficientes geométricos resultantes.
+
+### Superfícies explícitas arbitrárias: z = f(x,y)
+
+```text
+funcao3d: z = sin(x)*cos(y)
+funcao3d: z = x² - y²
+funcao3d: z = 4 - x² - y²
+```
+
+Use `funcao3d:` para forçar o laboratório de funções de duas
+variáveis, mesmo se `f(x,y)` for um polinômio quadrático.
+O comando `superficie: z = sin(x)*cos(y)` também encaminha
+funções não quadráticas explícitas para esse laboratório.
+
+A vista 3D representa a função em uma janela finita, com
+**gradiente**, **normal**, **plano tangente** e **derivada direcional**.
+A vista 2D ao lado exibe curvas de nível `f(x,y)=c`, cada
+uma em uma cor. As coordenadas de um ponto da curva de nível
+são sincronizadas com a posição `(x,y,f(x,y))` na superfície.
+
+Os controles **P · x**, **P · y** e **θ · direção** alteram o ponto
+de inspeção e a direção da derivada. Também é possível clicar
+na malha 3D nos motores Canvas e Three.js para aproximar o
+ponto escolhido. O painel apresenta:
+
+- derivadas parciais `∂f/∂x` e `∂f/∂y`;
+- Hessiana 2×2, determinante e plano tangente;
+- derivada direcional em `(cos θ, sin θ)`;
+- pontos críticos encontrados numericamente na janela e
+  classificação local como mínimo, máximo ou sela,
+  quando a Hessiana permite concluir.
+
+As derivadas e raízes de pontos críticos são **numéricas**
+(diferenças centrais e buscas locais): não constituem uma prova
+simbólica nem garantem encontrar todos os pontos críticos.
+Curvas de nível e malhas são aproximações amostradas; seções
+de quádricas, por outro lado, têm equação e classificação analíticas.
+
+### Construções espaciais
+
+```text
+ponto: (1,0,0),(0,1,0),(0,0,1)
+plano: (1,0,0),(0,1,0),(0,0,1)
+reta: (0,0,0),(1,1,1)
+intersecao: plano(x+y+z=1); reta((0,0,0),(1,1,1))
+```
+
+O laboratório reúne os recursos de pontos, retas, vetores, planos,
+distâncias, ângulos e interseções já presentes na geometria 3D da
+Curva. Os novos presets organizam esses recursos em construções
+reprodutíveis.
+
+### Limitações atuais
+
+As equações implícitas **não quadráticas** de três variáveis
+(por exemplo, `x³+y³+z³=1`) ainda não têm um gerador
+tridimensional geral. Nesses casos, use `funcao3d:` quando
+a superfície puder ser escrita explicitamente como `z=f(x,y)`.
+A associação automática de planos aplica-se às quádricas
+gerais; a vista 2D mostra o primeiro corte, embora até
+quatro curvas possam ser desenhadas em 3D.
+A seleção inversa no Plotly.js e tampas para superfícies
+recortadas continuam fora do escopo desta etapa.

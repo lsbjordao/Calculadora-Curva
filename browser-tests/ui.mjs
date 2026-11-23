@@ -36,6 +36,12 @@ async function createPage(viewport){
 }
 try{
   const {context,page}=await createPage({width:1440,height:900});
+  // The offline Three.js package must execute in the browser without CDN access.
+  const vendoredThreeRevision=await page.evaluate(async()=>{
+    const module=await import('/assets/vendor/three.module.js');
+    return module.REVISION;
+  });
+  nodeAssert.equal(vendoredThreeRevision,'187','Three.js local deve estar disponível sem CDN');
   // Presets are collapsed by default. Exercise the actual UI instead of
   // relying on selecting a hidden form field.
   await page.locator('#preset-toggle').click();

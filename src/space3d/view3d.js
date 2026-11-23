@@ -245,6 +245,23 @@ export function scenePrimitives(equations = [], {colorOf = () => '', box = defau
         if (c) prims.push({...g, a:c[0], b:c[1], color});
       }
     }
+    // The XYZ handles are a UI-only overlay, not part of the mathematical
+    // definition of a plane, and are shown solely while editing is enabled.
+    if(eq.showPlaneGizmo&&eq.geometry?.type==='plane'){
+      const plane=source.find(p=>p.kind==='plane'&&p.role==='main');
+      if(plane){
+        const norm2=plane.n.reduce((s,x)=>s+x*x,0);
+        if(norm2>1e-12){
+          const origin=plane.n.map(x=>x*plane.d/norm2);
+          for(let axis=0;axis<3;axis++){
+            const to=[...origin];
+            to[axis]+=Math.max(.65,Math.min(1.5,2/Math.sqrt(norm2)));
+            prims.push(styled({kind:'arrow',from:origin,to,planeHandle:true,planeHandleAxis:axis,
+              color:['#ed685f','#40b985','#5d91db'][axis],label:['X','Y','Z'][axis],role:'aux'},eq,color));
+          }
+        }
+      }
+    }
   }
   return prims;
 }

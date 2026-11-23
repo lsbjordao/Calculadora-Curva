@@ -2780,7 +2780,7 @@ function initKeyboardPanel(){
     content.hidden=collapsed;
     setPanelToggle(toggle,collapsed,'teclado');
     const active=panel.querySelector('#tabs .tab.active');
-    if(summary)summary.textContent=active?.textContent?.trim()||'123';
+    if(summary)summary.textContent=(typeof active?.textContent==='string'?active.textContent.trim():'123');
   };
   toggle.addEventListener('click',()=>{
     collapsed=!collapsed;
@@ -2789,7 +2789,7 @@ function initKeyboardPanel(){
   });
   panel.addEventListener('click',ev=>{
     if(ev.target.closest?.('#tabs .tab')&&summary)
-      summary.textContent=panel.querySelector('#tabs .tab.active')?.textContent?.trim()||'123';
+      summary.textContent=(panel.querySelector('#tabs .tab.active')?.textContent||'123').toString().trim();
   });
   render();
 }

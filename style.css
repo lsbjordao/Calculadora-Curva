@@ -1818,3 +1818,6 @@
   border:1px solid var(--field-edge);border-radius:6px;padding:7px 11px;
   color:var(--ink);font-size:11px}
 .param-reset:hover{border-color:var(--accent)}
+
+#plane-drag-mode[data-on="1"]{background:var(--accent);color:#fff;border-color:var(--accent)}
+#stage[data-plane-drag="1"] #three-3d-container{cursor:grab}

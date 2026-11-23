@@ -43,9 +43,10 @@ import { axesPrimitives } from './space3d/scene3d.js';
 import { buildDrawList, drawScene3d, colorsFromTheme } from './space3d/render3d.js';
 import { attachCameraControls, autoAxisLimit, CAMERA_HINT, decideViewMode, hasGuidesChip, has3dObjects, normalizeView3d, scenePrimitives, serializeView3d, viewNotice } from './space3d/view3d.js';
 import { init3DLibrarySelector, getActive3DLibrary, render3DScene, show3DLibrarySelector, hide3DLibrarySelector, handle3DResize, onActive3DLibraryChange, updatePlotlyCamera } from './space3d/library-manager.js';
-import { initThree3DControls } from './space3d/three-renderer.js';
+import { initThree3DControls, initThreePlaneDragging } from './space3d/three-renderer.js';
 import { createTransform3DControls } from './space3d/transform3d.js';
 import { createSectionPanel } from './space3d/section-panel.js';
+import { dragPlaneParameters } from './space3d/plane-interaction.js';
 
 const PALETTES={
   light:["#c0492f","#2d70b3","#2f7d5b","#6042a6","#d98324","#1d1d1f","#0a8aa6","#a8336e"],
@@ -93,6 +94,8 @@ let view3dFit=0;
 let view3dFitAxisRange=null;
 let has3dSeen=null;
 let dualSection=true;
+let planeDragMode=false;
+let planeDragStart=null;
 let W=0,H=0,dpr=1;
 let mouse={inside:false, px:0, py:0};
 let saveTimer=null;
@@ -3167,6 +3170,7 @@ const ctx=cv.getContext('2d');
 const stage=document.getElementById('stage');
 const sectionElement=document.getElementById('section2d-panel');
 const sectionToggle=document.getElementById('section-toggle');
+const planeDragButton=document.getElementById('plane-drag-mode');
 const sectionPanel=createSectionPanel({
   panel:sectionElement,
   onClose:()=>{dualSection=false;draw();scheduleSave();}
@@ -3182,6 +3186,11 @@ function syncSectionLayout(){
     sectionToggle.hidden=!available;
     sectionToggle.dataset.on=show?'1':'0';
     sectionToggle.setAttribute?.('aria-pressed',show?'true':'false');
+  }
+  if(planeDragButton){
+    planeDragButton.hidden=!(available&&getActive3DLibrary()==='threejs');
+    planeDragButton.dataset.on=planeDragMode?'1':'0';
+    planeDragButton.setAttribute?.('aria-pressed',planeDragMode?'true':'false');
   }
   if(sectionElement)sectionElement.hidden=!show;
   const was=stage?.classList?.contains?.('dual-conic')||false;
@@ -5510,6 +5519,31 @@ if(sectionToggle)sectionToggle.onclick=()=>{
   dualSection=!dualSection;
   draw();scheduleSave();
 };
+if(planeDragButton)planeDragButton.onclick=()=>{
+  planeDragMode=!planeDragMode;draw();
+};
+initThreePlaneDragging({
+  isEnabled:()=>view3d.mode==='3d'&&getActive3DLibrary()==='threejs'&&planeDragMode,
+  onDrag:({phase,eqId,dx,dy})=>{
+    const eq=equations.find(item=>item.id===eqId);
+    if(!eq||!eq.geometry?.section||!eq.text.includes('angulo('))return;
+    if(phase==='start'){
+      planeDragStart={eqId,q:eq.params.q,b:eq.params.b};
+      return;
+    }
+    if(!planeDragStart||planeDragStart.eqId!==eqId)return;
+    if(phase==='move'){
+      const next=dragPlaneParameters(planeDragStart,{dx,dy});
+      eq.params.q=next.q;eq.params.b=next.b;
+      recompileAllEquations();
+      resultRefreshers.forEach(refresh=>refresh());
+      draw();
+    }else if(phase==='end'){
+      planeDragStart=null;
+      scheduleSave();
+    }
+  }
+});
 ['xy','xz','yz','iso'].forEach(name=>{
   const button=document.getElementById('view-'+name);
   if(button) button.onclick=()=>{

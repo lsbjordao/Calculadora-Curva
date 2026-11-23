@@ -192,7 +192,11 @@ function polygonObject(T,prim,opts){
 function addPrimitive(T,group,p,opts){
   const color=p.color;
   switch(p.kind){
-    case 'polygon':group.add(polygonObject(T,p,opts));break;
+    case 'polygon':{
+      const obj=polygonObject(T,p,opts);
+      if(p.sectionPlane)obj.userData.sectionEqId=p.sectionEqId;
+      group.add(obj);break;
+    }
     case 'mesh': {
       group.add(meshObject(T,p.vertices,p.faces,color,p.alpha??.55));
       break;
@@ -326,4 +330,64 @@ export function initThree3DControls(getCamera,setCamera,requestDraw,{isActive,on
   const container=root();
   if(!container)return;
   attachCameraControls(container,getCamera,setCamera,requestDraw,{isActive,onCommit,defaultCamera});
+}
+
+
+/**
+ * Optional direct manipulation of actual cutting-plane meshes in Three.js.
+ * With the tool active (or Alt held), clicking a plane starts a gesture.
+ * Capture-phase listeners suppress orbit controls only during that gesture;
+ * otherwise the familiar camera interactions are preserved.
+ */
+export function initThreePlaneDragging({isEnabled=()=>false,onDrag=()=>{}}={}){
+  const container=root();
+  if(!container)return;
+  let active=null;
+  const findHit=event=>{
+    if(!three||!engine?.camera)return null;
+    const rect=container.getBoundingClientRect();
+    if(!(rect.width>0&&rect.height>0))return null;
+    const pt=new three.Vector2(
+      (event.clientX-rect.left)/rect.width*2-1,
+      -(event.clientY-rect.top)/rect.height*2+1
+    );
+    const raycaster=new three.Raycaster();
+    raycaster.setFromCamera(pt,engine.camera);
+    const hits=raycaster.intersectObjects(engine.group.children,true);
+    for(const hit of hits){
+      let obj=hit.object;
+      while(obj&&obj!==engine.group){
+        if(Number.isInteger(obj.userData.sectionEqId))return obj.userData.sectionEqId;
+        obj=obj.parent;
+      }
+    }
+    return null;
+  };
+  const stop=event=>{
+    if(!active||active.pointerId!==event.pointerId)return;
+    onDrag({phase:'end',eqId:active.eqId,
+      dx:event.clientX-active.x,dy:event.clientY-active.y});
+    active=null;
+    try{container.releasePointerCapture?.(event.pointerId);}catch{}
+    container.style.cursor='grab';
+    event.preventDefault();event.stopImmediatePropagation();
+  };
+  container.addEventListener('pointerdown',event=>{
+    if(event.button!==0||!(isEnabled()||event.altKey))return;
+    const eqId=findHit(event);
+    if(eqId===null)return;
+    active={pointerId:event.pointerId,x:event.clientX,y:event.clientY,eqId};
+    try{container.setPointerCapture?.(event.pointerId);}catch{}
+    container.style.cursor='grabbing';
+    onDrag({phase:'start',eqId,dx:0,dy:0});
+    event.preventDefault();event.stopImmediatePropagation();
+  },true);
+  container.addEventListener('pointermove',event=>{
+    if(!active||active.pointerId!==event.pointerId)return;
+    onDrag({phase:'move',eqId:active.eqId,
+      dx:event.clientX-active.x,dy:event.clientY-active.y});
+    event.preventDefault();event.stopImmediatePropagation();
+  },true);
+  container.addEventListener('pointerup',stop,true);
+  container.addEventListener('pointercancel',stop,true);
 }

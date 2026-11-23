@@ -3273,6 +3273,15 @@ for(const id of ['cv','three-3d-container']){
 // Keep the divider position between sessions; using the same ratios for
 // rendering and CSS prevents mismatch after responsive layout changes.
 const splitHandle=document.getElementById('dual-splitter');
+const focus3dButton=document.getElementById('view3d-focus');
+const focus2dButton=document.getElementById('section2d-max');
+let dualFocus=null; // transient: '3d', '2d' or null; independent of saved pane split
+const changeDualFocus=target=>{
+  dualFocus=dualFocus===target?null:target;
+  draw();
+};
+if(focus3dButton)focus3dButton.onclick=()=>changeDualFocus('3d');
+if(focus2dButton)focus2dButton.onclick=()=>changeDualFocus('2d');
 const splitMobile=()=>typeof window.matchMedia==='function'&&window.matchMedia('(max-width:850px)').matches;
 const splitClamp=(v,min,max,defaultValue)=>Number.isFinite(v)?Math.max(min,Math.min(max,v)):defaultValue;
 function readSplit(key,fallback){
@@ -3353,9 +3362,23 @@ function syncSectionLayout(){
   }
   if(sectionElement)sectionElement.hidden=!show;
   if(splitHandle)splitHandle.hidden=!show;
-  if(!show)setSectionLinkedWorld(null);
+  if(!show){setSectionLinkedWorld(null);dualFocus=null;}
   const was=stage?.classList?.contains?.('dual-conic')||false;
+  const was3d=stage?.classList?.contains?.('focus-3d')||false;
+  const was2d=stage?.classList?.contains?.('focus-2d')||false;
+  const focus3d=show&&dualFocus==='3d',focus2d=show&&dualFocus==='2d';
   stage?.classList?.toggle?.('dual-conic',show);
+  stage?.classList?.toggle?.('focus-3d',focus3d);
+  stage?.classList?.toggle?.('focus-2d',focus2d);
+  if(focus3dButton){
+    focus3dButton.hidden=!show;
+    focus3dButton.setAttribute('aria-pressed',focus3d?'true':'false');
+    focus3dButton.title=focus3d?'Restaurar divisão 3D + 2D':'Maximizar visor 3D';
+  }
+  if(focus2dButton){
+    focus2dButton.setAttribute('aria-pressed',focus2d?'true':'false');
+    focus2dButton.title=focus2d?'Restaurar divisão 3D + 2D':'Maximizar seção 2D';
+  }
   // Attach the 3D engine selector to the 3D toolbar only in the dual view.
   // Its position then follows toolbar wrapping and cannot cover the 2D pane.
   if(was!==show&&stage){
@@ -3367,7 +3390,7 @@ function syncSectionLayout(){
     }
   }
   if(show)sectionPanel.draw(eq.geometry,theme==='dark');
-  if(was!==show){resize();return true;}
+  if(was!==show||was3d!==focus3d||was2d!==focus2d){resize();return true;}
   return false;
 }
 const readout=document.getElementById('readout');
@@ -3412,8 +3435,9 @@ function resize(){
   // In side-by-side mode the graph uses the left 60%, or the upper 56% on mobile.
   const r=stage.getBoundingClientRect();
   const dual=stage.classList?.contains?.('dual-conic')||false;
-  W=r.width*(dual&&!splitMobile()?split3dWidth/100:1);
-  H=r.height*(dual&&splitMobile()?split3dHeight/100:1);
+  const focus3d=stage.classList?.contains?.('focus-3d')||false;
+  W=r.width*(dual&&!splitMobile()&&!focus3d?split3dWidth/100:1);
+  H=r.height*(dual&&splitMobile()&&!focus3d?split3dHeight/100:1);
   cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
   ctx.setTransform(dpr,0,0,dpr,0,0);
   fitCameraToViewport();

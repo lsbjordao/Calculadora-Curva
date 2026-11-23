@@ -1978,3 +1978,9 @@
     min-height:min(225px,42dvh);
   }
 }
+
+/* Three.js surface guides: compact density control next to the 3D view. */
+#three-surface-lines{white-space:nowrap;flex:0 0 auto}
+#three-surface-lines[data-mode="detailed"]{border-color:var(--accent);color:var(--accent)}
+#three-surface-lines[data-mode="off"]{opacity:.72}
+#three-surface-lines[hidden]{display:none!important}

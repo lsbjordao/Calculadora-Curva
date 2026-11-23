@@ -95,11 +95,25 @@ try{
   await page.waitForFunction(()=>document.querySelector('#view-mode')?.dataset.mode==='3d');
   nodeAssert.equal(await page.locator('.field').count(),3);
   nodeAssert.equal(await toggle.getAttribute('data-mode'),'3d');
+  await page.waitForFunction(()=>document.querySelector('#stage')?.classList.contains('dual-conic'));
+  const dualPane=page.locator('#section2d-panel');
+  nodeAssert.equal(await dualPane.isVisible(),true);
+  nodeAssert.match(await page.locator('#section2d-properties').innerText(),/Excentricidade/);
+  const dualSizing=await page.evaluate(()=>({
+    stage:document.getElementById('stage').getBoundingClientRect().width,
+    canvas:document.getElementById('cv').getBoundingClientRect().width,
+    side:document.getElementById('section2d-panel').getBoundingClientRect().width
+  }));
+  nodeAssert.ok(dualSizing.canvas/dualSizing.stage>.58&&dualSizing.canvas/dualSizing.stage<.62);
+  nodeAssert.ok(dualSizing.side/dualSizing.stage>.38&&dualSizing.side/dualSizing.stage<.42);
+  await page.screenshot({path:resolve(screenshots,'desktop-hiperbole-duas-vistas.png')});
   await page.screenshot({path:resolve(screenshots,'desktop-hiperbole-plano-cone-3d.png')});
   // The section preset must expose independent shape, placement and
   // rotation controls; modifying a slider must change the visible 3D scene.
   const firstConic=page.locator('.row').first();
   nodeAssert.equal(await firstConic.locator('.param-control').count(),6);
+  nodeAssert.equal(await firstConic.locator('details.param-group').count(),2);
+  nodeAssert.equal(await firstConic.locator('button.param-reset').count(),1);
   const initialImage=await page.locator('#stage').screenshot();
   for(const [name,value] of [['h','3'],['a','1.5'],['d','1.1'],['p','0.7'],['q','90']]){
     await firstConic.locator('.param-control[data-param="'+name+'"] input[type="number"]').fill(value);
@@ -134,6 +148,7 @@ try{
   nodeAssert.equal(geometryState.equations[0].params.p,.7);
   nodeAssert.equal(geometryState.equations[0].params.q,90);
   nodeAssert.equal(geometryState.equations[0].params.b,0,'O deslocamento b=0 deve ser preservado');
+  await page.waitForFunction(()=>document.querySelector('#section2d-properties')?.textContent.includes('Duas retas'));
   await page.screenshot({path:resolve(screenshots,'desktop-plano-vertical-em-x-zero.png')});
   await page.screenshot({path:resolve(screenshots,'desktop-hiperbole-parametros-ajustados.png')});
 
@@ -141,7 +156,31 @@ try{
   nodeAssert.equal(await toggle.getAttribute('data-mode'),'2d');
   await toggle.click();
   nodeAssert.equal(await toggle.getAttribute('data-mode'),'3d');
+  const sectionToggle=page.locator('#section-toggle');
+  await sectionToggle.click();
+  nodeAssert.equal(await dualPane.isVisible(),false);
+  await sectionToggle.click();
+  nodeAssert.equal(await dualPane.isVisible(),true);
   await context.close();
+
+  // Use a separate browser context for a single PNG download. Chromium may
+  // block multiple automatic downloads with the same filename in one context.
+  const {context:graphicContext,page:graphics}=await createPage({width:1440,height:900});
+  await graphics.locator('#preset-toggle').click();
+  await graphics.selectOption('#preset-list','quadric-gallery-3d');
+  await graphics.click('#preset-load');
+  await graphics.waitForFunction(()=>document.querySelector('#view-mode')?.dataset.mode==='3d');
+  nodeAssert.equal(await graphics.locator('.field').count(),7);
+  nodeAssert.equal(await graphics.locator('#section2d-panel').isVisible(),false);
+  nodeAssert.equal(await graphics.locator('.row').first().locator('.param-control').count(),4);
+  await graphics.screenshot({path:resolve(screenshots,'desktop-superficies-quadricas.png')});
+  const graphicDownload=graphics.waitForEvent('download');
+  await graphics.locator('#export-graphic').click();
+  const savedGraph=await graphicDownload;
+  nodeAssert.equal(savedGraph.suggestedFilename(),'curva-grafico-3d.png');
+  const savedBytes=await readFile(await savedGraph.path());
+  nodeAssert.ok(savedBytes.length>1000,'Imagem exportada em branco ou vazia');
+  await graphicContext.close();
 
   const {context:mobile,page:phone}=await createPage({width:390,height:844});
   const tabs=phone.locator('#tabs .tab');
@@ -154,6 +193,17 @@ try{
     nodeAssert.ok(parseFloat(tab.border)>=1);
   }
   await phone.screenshot({path:resolve(screenshots,'mobile-teclado.png')});
+  await phone.locator('#preset-toggle').click();
+  await phone.selectOption('#preset-list','cone-sections-3d');
+  await phone.click('#preset-load');
+  await phone.waitForFunction(()=>document.querySelector('#stage')?.classList.contains('dual-conic'));
+  const portrait=await phone.evaluate(()=>{
+    const stage=document.querySelector('#stage').getBoundingClientRect();
+    const preview=document.querySelector('#section2d-panel').getBoundingClientRect();
+    return {height:stage.height,side:preview.height,top:preview.top-stage.top};
+  });
+  nodeAssert.ok(portrait.side/portrait.height>.38&&portrait.side/portrait.height<.49);
+  await phone.screenshot({path:resolve(screenshots,'mobile-secao-2d-e-3d.png')});
   await mobile.close();
   console.log('Browser UI: preset 2D/3D, seis abas, espaçamento, projetos, transformação 3D e mobile OK.');
 }finally{

@@ -161,6 +161,17 @@ try{
   // The section preset must expose independent shape, placement and
   // rotation controls; modifying a slider must change the visible 3D scene.
   const firstConic=page.locator('.row').first();
+  // The mathematical explanations are now vertically stacked; each field
+  // before a colon is bold, and expressions remain plain (safe) text.
+  const infoLines=firstConic.locator('.row-info-line');
+  nodeAssert.ok(await infoLines.count()>=6,'descrição do cone deve ocupar linhas separadas');
+  nodeAssert.equal(await infoLines.first().locator('strong.row-info-key').innerText(),'Cone:');
+  nodeAssert.equal(await infoLines.nth(1).locator('strong.row-info-key').innerText(),'Ângulo do plano:');
+  nodeAssert.equal(await infoLines.nth(2).locator('strong.row-info-key').innerText(),'Equação do plano:');
+  nodeAssert.match(await infoLines.nth(2).innerText(),/cos\(q\)\(z/);
+  nodeAssert.equal(await infoLines.nth(4).locator('strong.row-info-key').innerText(),'Interseção:');
+  nodeAssert.equal(await infoLines.first().locator('strong').evaluate(el=>getComputedStyle(el).fontWeight),'700');
+  await page.screenshot({path:resolve(screenshots,'desktop-detalhes-geometricos-em-linhas.png')});
   nodeAssert.equal(await firstConic.locator('.param-control').count(),6);
   nodeAssert.equal(await firstConic.locator('details.param-group').count(),2);
   nodeAssert.equal(await firstConic.locator('button.param-reset').count(),1);

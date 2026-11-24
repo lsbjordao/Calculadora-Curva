@@ -2259,6 +2259,7 @@ function renderRows(){
   for(const [k,a] of animations){ if(!equations.includes(a.eq)) animations.delete(k); }
   refreshGeoBuilder();
   refreshLessonHighlight({scroll:false});
+  mathInspector?.render();
 }
 
 

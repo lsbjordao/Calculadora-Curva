@@ -101,8 +101,10 @@ export function createMathInspector({panel,toggle,getEquations=()=>[],onInsert=(
     if(append){
       ids=ids.includes(eq.id)?ids.filter(id=>id!==eq.id):[...ids.slice(-1),eq.id];
     }else ids=[eq.id];
-    opened=true;render();
+    // O painel só se abre por uma ação explícita no botão "inspecionar".
+    // Selecionar camadas não invade a visualização 3D.
+    render();
   }
   render();
-  return {select,render,has:id=>ids.includes(id)};
+  return {select,render,has:id=>ids.includes(id),isOpen:()=>opened};
 }

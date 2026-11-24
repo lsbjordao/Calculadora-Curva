@@ -18,6 +18,8 @@ import { compileXyz,canonical as canonicalXyz,generalQuadricFromEquation,analyse
 import {scalarSurfaceScene} from './scalar-surfaces.js';
 import { rank as matrixRank, det as matrixDet3, trace as matrixTrace3 } from '../linear-algebra.js';
 import { buildTransform3DScene, symmetricEigen3 } from './transform3d.js';
+import {compileImplicitSurface,meshImplicitFunction} from './implicit-surfaces.js';
+import {compileVectorField,fieldDifferentials,vectorFieldScene,lineIntegralCircle,fluxThroughDisk} from './vector-fields.js';
 
 const EPS=1e-9;
 // Object names: identifiers, plus π, π1… for planes (§7).
@@ -115,15 +117,109 @@ function scenePoint(point){
   return prim;
 }
 
+function vectorFieldCommand(body,ctx,dimension){
+  const expressions=core.splitTopAny(String(body),',').map(x=>x.trim());
+  if(expressions.length!==dimension||expressions.some(x=>!x))
+    throw new Error('Campo: informe '+dimension+' componentes separadas por vírgulas.');
+  const field=compileVectorField(expressions,ctx.params||{});
+  const diff=fieldDifferentials(field);
+  const r=result3('vector-field','Campo vetorial '+dimension+'D');
+  r.vectorField={field,diff};
+  r.scene3d=vectorFieldScene(field,{count:dimension===2?5:3,extent:2});
+  r.info=['F(x,y'+(dimension===3?',z':'')+') = '+fmtVec(expressions),
+    'F(0) = '+fmtVec(diff.value),
+    'Divergente (0) ≈ '+core.fmt(diff.divergence),
+    'Rotacional (0) ≈ '+fmtVec(diff.curl),
+    'Derivadas aproximadas por diferenças centrais.',
+    'Setas normalizadas visualmente: direção e sentido representam o campo.'];
+  return r;
+}
+function circleSegments(radius){
+  return Array.from({length:96},(_,i)=>{
+    const a=2*Math.PI*i/96,b=2*Math.PI*(i+1)/96;
+    return {kind:'segment',a:[radius*Math.cos(a),radius*Math.sin(a),0],
+      b:[radius*Math.cos(b),radius*Math.sin(b),0],color:'#e85d8b',weight:2};
+  });
+}
+function orientedDisk(radius){
+  const count=96,vertices=[[0,0,0]];
+  for(let i=0;i<count;i++){
+    const theta=2*Math.PI*i/count;
+    vertices.push([radius*Math.cos(theta),radius*Math.sin(theta),0]);
+  }
+  const faces=Array.from({length:count},(_,i)=>[0,i+1,((i+1)%count)+1]);
+  return {kind:'mesh',vertices,faces,alpha:.22,color:'#8d7bd7',
+    role:'aux',label:'Disco XY orientado com normal +z'};
+}
+function orientationArrow(radius){
+  // Tangente à circunferência orientada anti-horariamente.
+  const scale=Math.min(.6,Math.max(.16,.32*radius));
+  return {kind:'arrow',from:[radius,0,0],to:[radius,scale,0],
+    color:'#e85d8b',weight:2.8,label:'anti-horário'};
+}
+function lineIntegralCommand(body,ctx){
+  const parts=core.splitTopAny(String(body),',').map(x=>x.trim());
+  if(parts.length!==3)throw new Error('Integral de linha: use integrallinha: Fx,Fy,raio.');
+  const field=compileVectorField(parts.slice(0,2),ctx.params||{});
+  const radius=core.evalScalar(parts[2],ctx);
+  const calc=lineIntegralCircle(field,{radius});
+  const r=result3('vector-field','Integral de linha · circunferência');
+  r.scene3d=[...vectorFieldScene(field,{count:5,extent:radius*1.3}),
+    ...circleSegments(radius),orientationArrow(radius)];
+  r.info=['Campo F = ('+parts.slice(0,2).join(', ')+')',
+    'C: x = '+core.fmt(radius)+' cos(t), y = '+core.fmt(radius)+' sin(t), 0 ≤ t ≤ 2π',
+    '∮ F · dr ≈ '+core.fmt(calc.value),
+    'Estimativa de diferença entre refinamentos = '+core.fmt(calc.errorEstimate),
+    'Orientação anti-horária; quadratura numérica do ponto médio.'];
+  return r;
+}
+function fluxDiskCommand(body,ctx){
+  const parts=core.splitTopAny(String(body),',').map(x=>x.trim());
+  if(parts.length!==4)throw new Error('Fluxo: use fluxo: Fx,Fy,Fz,raio.');
+  const field=compileVectorField(parts.slice(0,3),ctx.params||{});
+  const radius=core.evalScalar(parts[3],ctx);
+  const calc=fluxThroughDisk(field,{radius});
+  const r=result3('vector-field','Fluxo pelo disco XY');
+  r.scene3d=[orientedDisk(radius),...vectorFieldScene(field,{count:3,extent:radius*1.2}),
+    ...circleSegments(radius),{kind:'arrow',from:[0,0,0],to:[0,0,Math.min(radius,1.2)],
+      color:'#8d7bd7',weight:3,label:'n = +z'}];
+  r.info=['Campo F = ('+parts.slice(0,3).join(', ')+')',
+    'Disco: x²+y² ≤ '+core.fmt(radius*radius)+', z=0',
+    '∬ F · n dS ≈ '+core.fmt(calc.value),
+    'Estimativa de diferença entre refinamentos = '+core.fmt(calc.errorEstimate),
+    'Normal +z; quadratura polar do ponto médio.'];
+  return r;
+}
+
 function generalSurfaceCommand(body,ctx,forceScalar=false,definitionName=''){
   let polynomial=null;
   try{if(forceScalar)throw new Error('expressão de função explicitamente selecionada, não quadrática');
     polynomial=generalQuadricFromEquation(body,ctx.params||{});
   }
   catch(error){
-    if(!/^\s*z\s*=|=\s*z\s*$/i.test(String(body))||
-      !/quadrática|quadrática em|quadrática em x/i.test(error.message))
-      throw error;
+    const explicit=/^\s*z\s*=|=\s*z\s*$/i.test(String(body));
+    const nonQuadratic=/grau máximo 2|não quadrática|não quadrático/i.test(error.message);
+    if(!forceScalar&&!nonQuadratic)throw error;
+    if(!forceScalar&&!explicit){
+      const fn=compileImplicitSurface(body,ctx.params||{});
+      const mesh=meshImplicitFunction(fn,{extent:4,resolution:24});
+      const result=result3('surface','Superfície implícita aproximada');
+      result.implicitSurface={fn,mesh,extent:mesh.extent,expression:String(body).trim()};
+      result.scene3d=mesh.faces.length?[{
+        kind:'mesh',vertices:mesh.vertices,faces:mesh.faces,color:'#318fa8',
+        alpha:.62,generalSurface:true
+      }]:[];
+      result.info=['Equação: '+String(body).trim(),
+        'Malha numérica (Marching Tetrahedra): '+mesh.faces.length+' triângulos',
+        'Janela de amostragem: ±'+mesh.extent,
+        'A representação é aproximada; não são inferidos focos, eixos ou tipo analítico.'];
+      if(mesh.truncated)result.info.push('Limite de triângulos atingido; diminua a complexidade.');
+      // A name keeps the surface known, so corte: Q, … can explain that it is not a quadric.
+      if(definitionName) core.define(result,definitionName,'surface',
+        {implicit:true,extent:mesh.extent,expression:String(body).trim(),dim:3});
+      return result;
+    }
+    if(!explicit)throw error;
     const scalar=scalarSurfaceScene(body,ctx.params||{},
       {x:ctx.surfacePoint?.[0],y:ctx.surfacePoint?.[1],direction:ctx.surfaceDirection||0});
     const result=result3('surface','Função de duas variáveis');
@@ -133,7 +229,16 @@ function generalSurfaceCommand(body,ctx,forceScalar=false,definitionName=''){
     const c=scalar.calc;
     result.info=['z = '+scalar.expr,
       'P = ('+c.point.map(core.fmt).join(', ')+')',
-      '∂z/∂x = '+core.fmt(c.gradient[0])+' · ∂z/∂y = '+core.fmt(c.gradient[1]),
+      'Derivadas parciais: '+c.derivativeSource,
+      '∂z/∂x = '+core.fmt(c.gradient[0]),
+      '∂z/∂y = '+core.fmt(c.gradient[1]),
+      ...(c.derivativeExpressions?[
+        '∂f/∂x (expressão) = '+c.derivativeExpressions.fx,
+        '∂f/∂y (expressão) = '+c.derivativeExpressions.fy,
+        '∂²f/∂x² = '+c.derivativeExpressions.fxx,
+        '∂²f/∂x∂y = '+c.derivativeExpressions.fxy,
+        '∂²f/∂y² = '+c.derivativeExpressions.fyy
+      ]:[]),
       'Derivada direcional Dᵥf em θ = '+c.angle+'°: '+core.fmt(c.directionalDerivative),
       'Direção unitária v = '+fmtVec([c.direction[0],c.direction[1],0]),
       'Hessiana H = ['+c.hessian.map(row=>row.map(core.fmt).join(', ')).join(' ; ')+']',
@@ -220,16 +325,25 @@ const BOOK_SECTION_TYPES={...SECTION_TYPES,'two-lines':'par de retas (concorrent
   'one-line':'uma reta','vertex-point':'um ponto',empty:'vazio (sem pontos reais)'};
 const CUT_USAGE='Corte: use corte: Q, z = 1 (superfície e plano, por nome ou equação) ou corte: tipo,a,b,c,d,q,p,h (q e p em graus; h distância assinada do plano).';
 
+// corte: classifies quadric sections exactly; other implicit surfaces are cut
+// (approximately) by the visible plano: lines, as superficie: does.
+const CUT_IMPLICIT='corte: classifica seções de quádricas (grau 2); para outra superfície use superficie: … com um plano visível (plano: …), que a Curva corta automaticamente';
 function surfaceOf(part,ctx){
   const text=part.trim();
   if(IDENT.test(text)){
     const ref=core.refFromRegistry(text,ctx);
     if(!ref) throw new Error('nome desconhecido: '+text);
     if(ref.kind!=='surface') throw new Error('corte: '+text+' não é uma superfície (use Q = superficie(…) ou quadrica(…))');
+    if(!ref.value.polynomial) throw new Error(CUT_IMPLICIT);
     return {polynomial:ref.value.polynomial, extent:ref.value.extent, label:text, named:true};
   }
   if(splitEquals(text).length!==2) throw new Error('corte: o primeiro argumento deve ser uma superfície (nome ou equação)');
-  const polynomial=generalQuadricFromEquation(text,ctx.params||{});
+  let polynomial;
+  try{ polynomial=generalQuadricFromEquation(text,ctx.params||{}); }
+  catch(error){
+    if(/grau máximo 2/.test(error.message)) throw new Error(CUT_IMPLICIT);
+    throw error;
+  }
   const mesh=meshImplicitQuadric(polynomial,{resolution:24});
   return {polynomial, extent:mesh.extent, mesh, label:text, named:false};
 }
@@ -439,6 +553,10 @@ function vectorCommand(body,ctx,definitionName){
 
 // Returns a 3D result, or null when the command has no ℝ³ version yet.
 export function parse3dCommand(command,body,ctx={},definitionName=''){
+  if(command==='vector-field')return vectorFieldCommand(body,ctx,2);
+  if(command==='vector-field-3d')return vectorFieldCommand(body,ctx,3);
+  if(command==='line-integral')return lineIntegralCommand(body,ctx);
+  if(command==='flux-disk')return fluxDiskCommand(body,ctx);
   if(command==='surface') return generalSurfaceCommand(body,ctx,false,definitionName);
   if(command==='scalar-surface')return generalSurfaceCommand(body,ctx,true);
   if(command==='section') return sectionCommand(body,ctx);
@@ -468,7 +586,8 @@ export function parse3dCommand(command,body,ctx={},definitionName=''){
 // equation (a "=") mentions the variable z (lines without z keep the 2D
 // analyzers, §7a.3). A registered object named z keeps its old meaning.
 const ALWAYS_3D=new Set(['plane','position','section','quadric','quadric-slice','tangent','surface','scalar-surface',
-  'sum','scale','cross','triple','parallelepiped','span']);
+  'sum','scale','cross','triple','parallelepiped','span',
+  'vector-field','vector-field-3d','line-integral','flux-disk']);
 const Z_EQUATION_COMMANDS=new Set(['line','intersect','distance','angle']);
 
 function equationWithZ(text,ctx){
@@ -536,7 +655,9 @@ export function matrix3Result(values,ctx={},definitionName=''){
 // Only lines with the variable z reach this recognizer (lines without z keep the
 // 2D analyzers). Degree 1 → plane (as plano:), two "=" → line (symmetric form),
 // degree 2 → superficie: (main's classification and automatic plane cuts),
-// explicit z = f(x,y) of another degree → superficie: (function lab), else error.
+// explicit z = f(x,y) of another degree → superficie: (function lab), any other
+// degree > 2 or non-polynomial F(x,y,z) = G(x,y,z) → superficie: (main's
+// approximate implicit-surface mesh, cut by the visible planes). Degree 0 is an error.
 
 // Degree of F = left − right along three generic lines (finite differences of
 // 9 samples detect degree ≤ 7); Infinity when F is not polynomial.
@@ -577,7 +698,7 @@ export function detect3dEquation(text,ctx={}){
   if(degree===2) return {kind:'quadric',degree};
   const hasZ=side=>/(^|[^A-Za-z0-9_])[zZ](?=$|[^A-Za-z0-9_])/.test(side);
   const explicit=(/^[zZ]$/.test(sides[0])&&!hasZ(sides[1]))||(/^[zZ]$/.test(sides[1])&&!hasZ(sides[0]));
-  return {kind:explicit ? 'function' : 'other',degree};
+  return {kind:explicit ? 'function' : 'implicit',degree};
 }
 
 // Result for a line without a command prefix, or null when it has no z.
@@ -587,12 +708,9 @@ export function parseUnprefixed3d(text,ctx={}){
   const src=String(text).trim();
   if(found.kind==='line3') return parse3dCommand('line',src,ctx);
   if(found.kind==='plane') return parse3dCommand('plane',src,ctx);
-  if(found.kind==='quadric'||found.kind==='function') return parse3dCommand('surface',src,ctx);
   if(found.degree===0)
-    throw new Error('equação sem variáveis: os termos em x, y, z se cancelam; a Curva desenha planos (grau 1) e quádricas (grau 2)');
-  if(Number.isFinite(found.degree))
-    throw new Error('equação em x, y, z de grau '+found.degree+': a Curva desenha planos (grau 1) e quádricas (grau 2)');
-  throw new Error('equação em x, y, z não é polinomial: a Curva desenha planos (grau 1) e quádricas (grau 2); para z = f(x,y) use funcao3d:');
+    throw new Error('equação sem variáveis: os termos em x, y, z se cancelam');
+  return parse3dCommand('surface',src,ctx);
 }
 
 // ── Vector helpers and tolerances ─────────────────────────────────────────

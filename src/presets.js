@@ -527,6 +527,28 @@ export const PRESETS=[
     ]
   },
   {
+    id:'implicit-nonlinear-3d',
+    label:'Superfícies implícitas não quadráticas (3D + 2D)',
+    view:{cx:0,cy:0,scale:52},
+    equations:[
+      {text:'superficie: x^3+y^3+z^3=1',name:'Cúbica implícita e seções'},
+      {text:'plano: z=0',name:'Plano secante'},
+      {text:'plano: x+y+z=1',name:'Segundo corte (opcional)',visible:false},
+      {text:'superficie: x^2+y^2+z^2+sin(x*y)=3',name:'Superfície perturbada',visible:false}
+    ]
+  },
+  {
+    id:'vector-fields-lab',
+    label:'Campos vetoriais, circulação e fluxo (3D)',
+    view:{cx:0,cy:0,scale:52},
+    equations:[
+      {text:'campo: -y,x',name:'Rotação planar F=(-y,x)'},
+      {text:'integrallinha: -y,x,1',name:'Circulação em círculo unitário',visible:false},
+      {text:'campo3d: -y,x,z',name:'Campo 3D com divergência',visible:false},
+      {text:'fluxo: 0,0,1,1',name:'Fluxo unitário pelo disco',visible:false}
+    ]
+  },
+  {
     id:'spatial-constructions-3d',
     label:'Construções de retas, planos e interseções',
     view:{cx:0,cy:0,scale:54},
@@ -877,6 +899,8 @@ const PRESET_DETAILS={
   'quadric-tangents-3d':['Cônicas e quádricas','Explore gradiente, normal e plano tangente a quádricas; altere u e v para mover o ponto sobre a superfície.'],
   'general-equation-surfaces-3d':['Cônicas e quádricas','Equação quadrática geral em x,y,z, inclusive termos mistos; autovalores, eixos principais, cortes por planos e recorte da malha.'],
   'multivariable-calculus-3d':['Cálculo visual','Funções arbitrárias z=f(x,y): derivadas, gradiente, Hessiana, plano tangente, pontos críticos e mapas 2D de curvas de nível.'],
+  'implicit-nonlinear-3d':['Cônicas e quádricas','Malhas e seções numéricas de superfícies implícitas não quadráticas, com classificação apenas aproximada.'],
+  'vector-fields-lab':['Cálculo visual','Campos 2D/3D, divergente, rotacional, circulação anti-horária e fluxo sobre disco XY.'],
   'spatial-constructions-3d':['Espaço','Reta furando plano: plano por três pontos, interseção com uma reta, distância e ângulo no espaço.'],
   'space-vectors-cross':['Espaço','Vetores em ℝ³, produto vetorial (paralelogramo e área), produto escalar e múltiplos.'],
   'space-sum':['Espaço','Soma u + v pela regra do paralelogramo e múltiplo k·u.'],

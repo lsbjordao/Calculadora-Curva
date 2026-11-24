@@ -106,6 +106,7 @@ export function sectionToWorld(st,analysis){
 export function sectionCurves(geometry){
   if(geometry?.section?.kind==='function-levels')return geometry.section.analysis||null;
   if(geometry?.section?.kind==='quadric-plane')return geometry.section.analysis||null;
+  if(geometry?.section?.kind==='implicit-plane')return geometry.section.analysis||null;
   const analysis=analyseConicSection(geometry?.section);
   if(!analysis)return null;
   const segments=(geometry.scene3d||[]).filter(p=>p.sectionCurve&&p.kind==='segment')

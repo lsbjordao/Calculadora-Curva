@@ -154,12 +154,20 @@ test('unprefixed quadrics accept implied products (2xy, yz) exactly like superfi
   assert.equal(ok(parseGeometryInput('2x + 3y - z = 1')).type,'plane');
 });
 
-test('unprefixed other degrees give the Portuguese error; lines without z are untouched', ()=>{
-  const r=parseGeometryInput('x^3 + z = 1');
-  assert.equal(r.type,'error');
-  assert.equal(r.error,'equação em x, y, z de grau 3: a Curva desenha planos (grau 1) e quádricas (grau 2)');
-  assert.match(parseGeometryInput('x^2*y^2 + z = 1').error,/grau 4/);
-  assert.match(parseGeometryInput('sin(x) + z = 1').error,/não é polinomial/);
+test('unprefixed degree > 2 (or non-polynomial) uses the implicit-surface path of superficie:; lines without z are untouched', ()=>{
+  for(const text of ['x^3 + y^3 + z^3 = 1','x^3 + z = 1','x^2*y^2 + z = 1','x^2 + y^2 + z^2 + sin(x*y) = 3']){
+    const r=ok(parseGeometryInput(text));
+    const s=ok(parseGeometryInput('superficie: '+text));
+    assert.equal(r.type,'surface',text);
+    assert.ok(r.implicitSurface?.mesh?.faces.length>0,'malha implícita: '+text);
+    assert.deepEqual(r.info,s.info,text);
+    assert.match(info(r),/Malha numérica/);
+  }
+  // A named implicit surface is known by name; corte: explains that it classifies quadrics only.
+  const {out}=run(['Q = superficie(x^3 + y^3 + z^3 = 1)','corte: Q, z = 0','corte: x^3 + y^3 + z^3 = 1, z = 0']);
+  ok(out[0]);
+  assert.match(out[1].error,/^corte: classifica seções de quádricas/);
+  assert.match(out[2].error,/^corte: classifica seções de quádricas/);
   for(const text of ['x^2 + y^2 = 4','y = 2x + 1','x + y = 3','x^2 + y^2 < 4','sin(x)','z'])
     assert.equal(parseGeometryInput(text),null,text);
   // A line with z but no equation, and inequalities, keep the old route.
@@ -174,7 +182,8 @@ test('detect3dEquation reports kind and degree', ()=>{
   assert.deepEqual(detect3dEquation('x + y + z = 3'),{kind:'plane',degree:1});
   assert.deepEqual(detect3dEquation('(x-1)/2 = (y+1)/3 = z'),{kind:'line3',degree:1});
   assert.deepEqual(detect3dEquation('x^2 + y^2 - z^2 = 0'),{kind:'quadric',degree:2});
-  assert.deepEqual(detect3dEquation('x^3 + z = 1'),{kind:'other',degree:3});
+  assert.deepEqual(detect3dEquation('x^3 + z = 1'),{kind:'implicit',degree:3});
+  assert.deepEqual(detect3dEquation('z = x^3'),{kind:'function',degree:3});
   assert.equal(detect3dEquation('x^2 + y^2 = 4'),null);
 });
 

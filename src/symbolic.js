@@ -20,6 +20,7 @@ const ALIASES={ sen:'sin', seno:'sin', tg:'tan', arcsin:'asin', arcsen:'asin',
 const CONST_NAMES=new Set(['pi','e','tau','phi']);
 const PARAM_NAMES=new Set(['a','b','c','d','i','j','k','m','n','p','q','r']);
 const VAR_NAMES=new Set(['x','t','theta']);
+const MULTIVARIATE_NAMES=new Set(['y','z']);
 
 const EVAL={ sin:Math.sin, cos:Math.cos, tan:Math.tan, asin:Math.asin, acos:Math.acos,
   atan:Math.atan, sec:v=>1/Math.cos(v), csc:v=>1/Math.sin(v), cot:v=>1/Math.tan(v),
@@ -40,7 +41,7 @@ const div=(a,b)=>bin('/',a,b);
 const powN=(u,n)=>bin('^',u,num(n));
 const mulN=fs=>fs.reduce((acc,f)=>acc===null?f:mul(acc,f), null);
 
-function tokenizeExpr(str){
+function tokenizeExpr(str,multivariate=false){
   const t=[]; let i=0;
   const NUM_RE=/^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/;
   while(i<str.length){
@@ -61,7 +62,7 @@ function tokenizeExpr(str){
       else if(name==='root') t.push({type:'root'});
       else if(name==='deriv') t.push({type:'deriv'});
       else if(CONST_NAMES.has(name)) t.push({type:'konst',name});
-      else if(VAR_NAMES.has(name)) t.push({type:'sym',name});
+      else if(VAR_NAMES.has(name)||(multivariate&&MULTIVARIATE_NAMES.has(name))) t.push({type:'sym',name});
       else if(PARAM_NAMES.has(name)) t.push({type:'param',name});
       else throw new Error("nome");
       continue;
@@ -81,9 +82,9 @@ function tokenizeExpr(str){
   return out;
 }
 
-export function parseExpr(text){
+export function parseExpr(text,{multivariate=false}={}){
   let tokens;
-  try{ tokens=tokenizeExpr(normalizeInput(String(text==null?'':text))); }
+  try{ tokens=tokenizeExpr(normalizeInput(String(text==null?'':text)),multivariate); }
   catch(_){ return null; }
   if(!tokens.length) return null;
   let p=0;
@@ -480,4 +481,32 @@ export function derivativeText(text){
   const d=differentiate(ast);
   if(!d) return null;
   return toText(simplify(d));
+}
+
+
+// Diferenciação parcial: reutiliza as regras e o simplificador existentes sem
+// mudar o contrato de differentiate() para curvas de uma variável.
+// Os símbolos diferentes do eixo escolhido tornam-se constantes formais.
+function freezeOtherAxes(node,axis){
+  if(node.t==='sym'&&node.name!==axis) return par(node.name);
+  if(node.t==='bin') return bin(node.op,freezeOtherAxes(node.l,axis),freezeOtherAxes(node.r,axis));
+  if(node.t==='neg') return neg(freezeOtherAxes(node.u,axis));
+  if(node.t==='call') return call(node.name,node.args.map(arg=>freezeOtherAxes(arg,axis)));
+  return node;
+}
+export function partialDerivativeText(expression,axis='x'){
+  if(!['x','y','z'].includes(axis)) throw new Error('Eixo de derivação inválido: '+axis);
+  const ast=parseExpr(expression,{multivariate:true});
+  if(!ast)return null;
+  const derivative=differentiate(freezeOtherAxes(ast,axis));
+  return derivative?toText(simplify(derivative)):null;
+}
+export function multivariateDerivativeTexts(expression){
+  const fx=partialDerivativeText(expression,'x');
+  const fy=partialDerivativeText(expression,'y');
+  if(fx===null||fy===null)return null;
+  const fxx=partialDerivativeText(fx,'x');
+  const fxy=partialDerivativeText(fx,'y');
+  const fyy=partialDerivativeText(fy,'y');
+  return [fxx,fxy,fyy].some(value=>value===null)?null:{fx,fy,fxx,fxy,fyy};
 }

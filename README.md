@@ -4,6 +4,8 @@ Calculadora científica e gráfica em JavaScript com geometria, estatística, c�
 
 Abra [a Curva](https://lsbjordao.github.io/Calculadora-Curva/) ou sirva este diretório localmente (`python3 -m http.server 8000`). Execute `npm test` para verificar a aplicação.
 
+**Guia de todas as funcionalidades novas:** [Inspetor matemático, derivadas parciais, superfícies implícitas e campos vetoriais](docs/GUIA-NOVIDADES.md), com comandos de exemplo, operações passo a passo e resultados esperados.
+
 ## Comandos pela URL (GET)
 
 Passe um parâmetro **`cmd` por comando** na query string para abrir a Curva com
@@ -543,14 +545,83 @@ reprodutíveis.
 ### Limitações atuais
 
 As equações implícitas **não quadráticas** de três variáveis
-(por exemplo, `x³+y³+z³=1`) ainda não têm um gerador
-tridimensional geral. Nesses casos, use `funcao3d:` quando
-a superfície puder ser escrita explicitamente como `z=f(x,y)`.
-A associação automática de planos aplica-se às quádricas
-gerais; a vista 2D mostra o primeiro corte, embora até
+(por exemplo, `x³+y³+z³=1`) são desenhadas como malhas
+aproximadas, sem classificação analítica (veja "Superfícies
+implícitas não quadráticas" abaixo). A associação automática
+de planos aplica-se às quádricas gerais e às superfícies
+implícitas; a vista 2D mostra o primeiro corte, embora até
 quatro curvas possam ser desenhadas em 3D.
 A seleção inversa no Plotly.js e tampas para superfícies
 recortadas continuam fora do escopo desta etapa.
+
+## Explorador matemático e cálculo vetorial (2026)
+
+O botão **inspecionar** abre um painel flutuante, redimensionável, com as
+propriedades da camada selecionada. Selecione camadas pelo painel lateral;
+use **Shift + clique** para comparar dois planos, incluindo ângulo agudo,
+paralelismo e distância (quando paralelos). Para funções (z=f(x,y)),
+o inspetor oferece **Adicionar plano tangente**, derivado do ponto e
+do gradiente em uso. Clicar na malha nas visualizações Canvas/Three.js
+atualiza esse ponto e o inspetor. A seleção não altera a equação original.
+
+### Derivadas parciais simbólicas
+
+No laboratório `funcao3d: z = f(x,y)`, quando a expressão pertence ao
+subconjunto simbólico suportado, a Curva apresenta expressões de
+`∂f/∂x`, `∂f/∂y` e as três entradas independentes da Hessiana.
+As avaliações dessas expressões alimentam o gradiente, plano tangente
+e classificação de pontos críticos. Funções não suportadas e domínios
+problemáticos continuam com o fallback numérico explicitamente identificado.
+A derivação não é um sistema algébrico computacional geral.
+
+### Superfícies implícitas não quadráticas
+
+```text
+superficie: x^3+y^3+z^3=1
+superficie: x^2+y^2+z^2 + sin(x*y)=3
+plano: z=0
+```
+
+Expressões não quadráticas com três variáveis são amostradas em uma caixa
+finita e trianguladas por *Marching Tetrahedra*. Até quatro planos
+visíveis geram cortes numéricos; o primeiro aparece no painel **3D + 2D**.
+O visor apresenta os cortes como **aproximados**: não tenta atribuir
+focos ou classificações exatas a resultados discretizados. A malha é
+limitada em resolução e número de faces; não garante captar componentes
+menores que a grade nem singularidades. Quádricas continuam usando
+a classificação analítica existente.
+O prefixo é opcional quando a equação tem a variável z:
+`x^3 + y^3 + z^3 = 1` sozinho segue o mesmo caminho (veja
+"Equações em z sem prefixo" em **Espaço (ℝ³)**). O comando `corte:`
+classifica apenas seções de quádricas; para as demais superfícies,
+use os planos visíveis.
+
+### Campos vetoriais e integrais orientadas
+
+```text
+campo: -y,x
+campo3d: -y,x,z
+integrallinha: -y,x,1
+fluxo: 0,0,1,1
+```
+
+- `campo: Fx,Fy`: campo plano representado no referencial XY;
+- `campo3d: Fx,Fy,Fz`: campo espacial;
+- `integrallinha: Fx,Fy,raio`: circulação de F no círculo de raio positivo
+  centrado na origem, no plano XY, orientado anti-horariamente;
+- `fluxo: Fx,Fy,Fz,raio`: fluxo pelo disco XY de raio positivo,
+  com normal orientada no sentido +z.
+
+Divergente e rotacional no ponto (0,0,0) são estimados com diferenças
+centrais. A circulação utiliza quadratura do ponto médio e o fluxo
+utiliza quadratura polar. Os valores são numéricos; a diferença entre
+duas resoluções é apenas um diagnóstico de convergência, **não** uma
+garantia de erro rigorosa. As setas desenhadas são normalizadas em
+comprimento visual para destacar direção/sentido, não a intensidade
+absoluta do vetor.
+
+A suíte de regressão dessas funções fica em
+`test/interactive-math.test.mjs` e roda com `npm test`.
 
 ## Espaço (ℝ³)
 
@@ -608,7 +679,10 @@ Uma linha **com a variável z** e sem prefixo vai para o reconhecedor 3D: grau 1
 um plano (igual a `plano:`), dois sinais de igual formam uma reta (forma simétrica),
 grau 2 é uma superfície quádrica (o mesmo caminho de `superficie:`, com classificação
 e cortes automáticos pelos planos visíveis) e `z = f(x,y)` não quadrática abre o
-laboratório de funções de duas variáveis. Outros graus dão erro em português.
+laboratório de funções de duas variáveis. Qualquer outra equação de grau maior que 2
+(ou não polinomial), como `x^3 + y^3 + z^3 = 1`, é a superfície implícita aproximada de
+`superficie:` (malha numérica, cortada pelos planos visíveis; veja "Superfícies implícitas
+não quadráticas" acima). Uma equação cujos termos em x, y, z se cancelam dá erro.
 Linhas **sem z** seguem exatamente os analisadores 2D.
 
 **Mudança de comportamento (decisão CR4):** na versão anterior, uma linha
@@ -633,7 +707,9 @@ corte: elipsoide,2,3,1,0,30,0,0.5      (forma paramétrica com inclinação e az
 (por nome ou equação) mostra a curva, o tipo da cônica (circunferência, elipse,
 parábola, hipérbole, par de retas, uma reta, um ponto, vazio) e o painel 3D + 2D;
 em plano coordenado (`x = k`, `y = k`, `z = k`) mostra também a equação da cônica
-nas outras duas variáveis e a análise de `conica:`.
+nas outras duas variáveis e a análise de `conica:`. `corte:` vale para quádricas
+(grau 2); uma superfície implícita de grau maior é cortada, de forma aproximada,
+pelos planos visíveis (`plano: z = 0`), como em `superficie:`.
 
 ### Matrizes 3×3 e sistemas 3×3
 
@@ -654,8 +730,8 @@ coincidem) ou nada ("sem solução").
 - Arrastar pontos na vista 3D não é possível; use os sliders para animar.
 - Cortes por plano não coordenado mostram o tipo da cônica e sua forma canônica no
   referencial do plano, não a equação em x, y, z.
-- Superfícies implícitas de grau maior que 2 não são desenhadas (use `funcao3d:`
-  quando a superfície for `z = f(x,y)`); superfícies paramétricas ficam fora.
+- Superfícies implícitas de grau maior que 2 são malhas aproximadas, sem
+  classificação analítica e fora de `corte:`; superfícies paramétricas ficam fora.
 - O motor Canvas 2D ordena por profundidade (algoritmo do pintor): linhas e pontos
   contidos num plano desenhado ficam sempre por cima dele, mas superfícies que se
   cruzam podem ter pequenos erros de ordem; Plotly.js e Three.js usam profundidade

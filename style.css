@@ -1993,3 +1993,43 @@
 #three-surface-lines[data-mode="detailed"]{border-color:var(--accent);color:var(--accent)}
 #three-surface-lines[data-mode="off"]{opacity:.72}
 #three-surface-lines[hidden]{display:none!important}
+
+
+/* Inspetor matemático flutuante: a altura e a largura podem ser ajustadas. */
+.math-inspector{
+  position:absolute;z-index:14;top:64px;right:16px;
+  width:min(340px,calc(100% - 32px));height:min(63dvh,580px);
+  min-width:230px;min-height:180px;max-width:85%;max-height:82%;
+  resize:both;overflow:auto;
+  background:var(--glass);color:var(--ink);border:1px solid var(--panel-edge);
+  border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.12);
+  backdrop-filter:blur(10px);
+}
+.math-inspector[hidden]{display:none!important}
+.math-inspector-head{
+  position:sticky;top:0;z-index:1;
+  background:var(--panel);border-bottom:1px solid var(--panel-edge);
+  min-height:42px;display:flex;align-items:center;justify-content:space-between;
+  padding:6px 12px;gap:12px;
+}
+.math-inspector-head strong{font-size:12px;font-weight:680}
+.math-inspector-head button{color:var(--muted);background:transparent;border:0;
+  font-size:21px;cursor:pointer;padding:1px 7px;border-radius:5px}
+.math-inspector-head button:hover{background:var(--hover);color:var(--ink)}
+#math-inspector-body{padding:12px 14px}
+#math-inspector-body p{overflow-wrap:anywhere;margin:0;padding:7px 0;border-bottom:1px solid var(--panel-edge);
+  font-family:var(--mono);font-size:11.5px;line-height:1.55}
+#math-inspector-body p.math-inspector-title{font-family:var(--sans);
+  font-weight:700;font-size:12.5px;padding-top:12px}
+#math-inspector-body p.math-inspector-hint{font-family:var(--sans);color:var(--muted)}
+.math-inspector-action{
+  display:block;width:100%;border:1px solid var(--field-edge);background:var(--field);
+  color:var(--accent);border-radius:7px;cursor:pointer;margin-top:10px;
+  padding:8px 10px;font-size:11.5px;font-weight:600;text-align:left;
+}
+.math-inspector-action:hover{background:var(--hover)}
+#math-inspector-toggle[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+@media(max-width:720px){
+  .math-inspector{right:8px;top:52px;width:min(310px,calc(100% - 16px));
+    max-width:calc(100% - 16px);height:min(48dvh,430px);}
+}

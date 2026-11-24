@@ -1,6 +1,6 @@
 "use strict";
 
-import { createCamera, orbit, zoomCamera, panCamera } from './camera.js';
+import { cameraBasis, createCamera, orbit, zoomCamera, panCamera } from './camera.js';
 import { defaultBox, clipLineToBox, clipSegmentToBox, guideLines } from './scene3d.js';
 import { toVec3 } from './geometry3d.js';
 
@@ -366,4 +366,21 @@ export function attachCameraControls(canvas, getCamera, setCamera, requestDraw, 
     set(next());
     commit();
   });
+}
+
+// A row hint when the main vector of a vetorial:/misto: row points (within
+// maxDeg) along the line of sight, where it would look like a dot: u×v for
+// vetorial, any of u, v, w for misto. '' otherwise. The camera is not moved.
+export function viewAlignmentHint(eq, camera, maxDeg = 10) {
+  const g = eq?.geometry;
+  if (!camera || !g || g.dim !== 3 || eq.visible === false || eq.error) return '';
+  const vecs = g.type === 'cross' ? (g.vectors || []).slice(2, 3) : g.type === 'triple' ? (g.vectors || []).slice(0, 3) : [];
+  if (!vecs.length) return '';
+  const {forward} = cameraBasis(camera), limit = Math.cos(maxDeg*Math.PI/180);
+  const hidden = vecs.filter(vec => {
+    const d = ['x','y','z'].map(k => (vec.to?.[k] ?? 0)-(vec.from?.[k] ?? 0));
+    const n = Math.hypot(...d);
+    return n > 0 && Math.abs(d[0]*forward[0]+d[1]*forward[1]+d[2]*forward[2])/n >= limit;
+  }).map(vec => vec.label);
+  return hidden.length ? 'gire a vista para ver '+hidden.join(', ') : '';
 }

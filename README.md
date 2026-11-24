@@ -606,7 +606,10 @@ coincidem) ou nada ("sem solução").
   referencial do plano, não a equação em x, y, z.
 - Superfícies implícitas de grau maior que 2 não são desenhadas (use `funcao3d:`
   quando a superfície for `z = f(x,y)`); superfícies paramétricas ficam fora.
-- No motor Canvas 2D, planos e retas se estendem até a borda da vista e a ordem de
-  desenho de uma reta contida num plano pode falhar fora do centro do plano; Plotly.js
-  e Three.js usam profundidade real.
+- O motor Canvas 2D ordena por profundidade (algoritmo do pintor): linhas e pontos
+  contidos num plano desenhado ficam sempre por cima dele, mas superfícies que se
+  cruzam podem ter pequenos erros de ordem; Plotly.js e Three.js usam profundidade
+  real. Nos três motores, planos e retas terminam na faixa dos eixos (±N).
+- Em `vetorial:`/`misto:`, quando um vetor aponta para a câmera a linha sugere
+  "gire a vista para ver …"; a câmera não é girada automaticamente.
 - Autovalores 3×3 só para matrizes simétricas.

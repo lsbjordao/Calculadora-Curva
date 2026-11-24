@@ -28,6 +28,9 @@ export function buildDrawList(primitives, camera, viewport, opts = {}) {
   const labelHalf = .8*Math.min(viewport.width, viewport.height)/(2*camera.scale);
   const labelBox = labelHalf > 0 ? {min:camera.target.map(c => c-labelHalf), max:camera.target.map(c => c+labelHalf)} : box;
   const basis = cameraBasis(camera), body = [], labels = [], {forward} = basis, t = camera.target;
+  // 3D geometry kept for the coplanarity pass: the plane of each surface and the
+  // points of each segment, arrow, line or point.
+  const onPlane = new Map(), along = new Map();
   // Keep a small margin inside the near plane so clipped vertices project finitely.
   const near = camera.projection === 'perspective' ? nearDepth(camera)+camera.distance*1e-6 : -Infinity;
   const depthOf = p => -((p[0]-t[0])*forward[0]+(p[1]-t[1])*forward[1]+(p[2]-t[2])*forward[2]);
@@ -82,10 +85,12 @@ export function buildDrawList(primitives, camera, viewport, opts = {}) {
     if (text == null || text === '') return;
     labels.push({...style(prim), kind:'label', x:q.x, y:q.y, depth:q.depth, text:String(text), ...extra});
   };
-  const surface = (prim, pts, extra) => {
+  const surface = (prim, pts, extra, coplanarCheck = true) => {
     const qs = projAll(clipPoly(pts));
     if (!qs || qs.length < 3) return;
-    body.push({...style(prim), kind:'polygon', points:qs.map(xy), depth:meanDepth(qs), surface:true, alpha:prim.alpha ?? .18, ...extra});
+    const item = {...style(prim), kind:'polygon', points:qs.map(xy), depth:meanDepth(qs), surface:true, alpha:prim.alpha ?? .18, ...extra};
+    if (coplanarCheck) { const pl = planeOf(pts); if (pl) onPlane.set(item, pl); }
+    body.push(item);
   };
 
   for (const prim of primitives) {
@@ -93,7 +98,9 @@ export function buildDrawList(primitives, camera, viewport, opts = {}) {
     switch (prim.kind) {
       case 'point': {
         const q = proj(prim.p); if (!q) break;
-        body.push({...style(prim), kind:'point', x:q.x, y:q.y, depth:q.depth});
+        const item = {...style(prim), kind:'point', x:q.x, y:q.y, depth:q.depth};
+        along.set(item, [prim.p]);
+        body.push(item);
         pushLabel(prim, q, prim.label, {anchor:'point'});
         break;
       }
@@ -105,6 +112,7 @@ export function buildDrawList(primitives, camera, viewport, opts = {}) {
         if (prim.dash) item.dash = true;
         if (prim.weight) item.weight = prim.weight;
         if (arrow && seg[2]) item.headless = true; // tip cut by the near plane
+        along.set(item, [seg[0], seg[1]]);
         body.push(item);
         if (arrow) pushLabel(prim, {x:(a.x+b.x)/2, y:(a.y+b.y)/2, depth:item.depth}, prim.label, {anchor:'mid', dx:b.x-a.x, dy:b.y-a.y});
         break;
@@ -117,6 +125,7 @@ export function buildDrawList(primitives, camera, viewport, opts = {}) {
         const item = {...style(prim), kind:'segment', a:xy(a), b:xy(b), depth:(a.depth+b.depth)/2};
         if (prim.dash) item.dash = true;
         if (prim.weight) item.weight = prim.weight;
+        along.set(item, [cut[0], cut[1]]);
         body.push(item);
         const at = clipLineToBox(prim.p, prim.v, labelBox)?.[1], q = at && proj(at);
         pushLabel(prim, q || b, prim.label);
@@ -136,7 +145,11 @@ export function buildDrawList(primitives, camera, viewport, opts = {}) {
           const q=proj(center);
           if(q) pushLabel(prim,q,prim.label,{anchor:'plane'});
         } else {
-          const at = clipPlaneToBox(prim.n, prim.d, labelBox)[0], q = (at && proj(at)) || proj(pts[0]);
+          // Label inside both the on-screen box and the clipping box, so it stays
+          // on the drawn patch when planes end at the axes (opts.box).
+          const both = {min:box.min.map((c, i) => Math.max(c, labelBox.min[i])), max:box.max.map((c, i) => Math.min(c, labelBox.max[i]))};
+          const inside = both.min.every((c, i) => c < both.max[i]) ? clipPlaneToBox(prim.n, prim.d, both)[0] : null;
+          const at = inside || clipPlaneToBox(prim.n, prim.d, labelBox)[0], q = (at && proj(at)) || proj(pts[0]);
           if (q) pushLabel(prim, q, prim.label);
         }
         break;
@@ -144,13 +157,60 @@ export function buildDrawList(primitives, camera, viewport, opts = {}) {
       case 'polygon': surface(prim, prim.points); break;
       case 'mesh': {
         const verts = Array.isArray(prim.vertices) ? prim.vertices : [];
-        for (const face of prim.faces || []) if (Array.isArray(face)) surface(prim, face.map(i => verts[i]), {mesh:true});
+        // Small meshes (a transformed cube) take part in the coplanarity pass, so
+        // their edges stay on top; large surface meshes do not (cost, curved).
+        const few = (prim.faces || []).length <= COPLANAR_MESH_FACES;
+        for (const face of prim.faces || []) if (Array.isArray(face)) surface(prim, face.map(i => verts[i]), {mesh:true}, few);
         break;
       }
       case 'label': { const q = proj(prim.p); if (q) pushLabel(prim, q, prim.text); break; }
     }
   }
-  return [...sortBackToFront(body), ...labels];
+  return [...liftCoplanar(sortBackToFront(body), onPlane, along), ...labels];
+}
+
+const COPLANAR_EPS = 1e-6, COPLANAR_MESH_FACES = 64;
+
+// Unit normal and offset of a planar polygon (Newell's method), with its size.
+function planeOf(pts) {
+  if (!Array.isArray(pts) || pts.length < 3 || !pts.every(finiteVec)) return null;
+  const n = [0,0,0], c = [0,0,0];
+  pts.forEach((p, i) => {
+    const q = pts[(i+1)%pts.length];
+    n[0] += (p[1]-q[1])*(p[2]+q[2]); n[1] += (p[2]-q[2])*(p[0]+q[0]); n[2] += (p[0]-q[0])*(p[1]+q[1]);
+    for (let k = 0; k < 3; k++) c[k] += p[k]/pts.length;
+  });
+  const len = Math.hypot(...n);
+  if (!(len > 0)) return null;
+  const u = n.map(x => x/len);
+  const size = Math.max(1, ...pts.map(p => Math.hypot(p[0]-c[0], p[1]-c[1], p[2]-c[2])), ...c.map(Math.abs));
+  return {n:u, d:u[0]*c[0]+u[1]*c[1]+u[2]*c[2], eps:COPLANAR_EPS*size};
+}
+
+// A segment, line, arrow or point lying in a drawn surface (every point within a
+// size-relative epsilon of its plane) is painted right after the last such surface,
+// whatever the camera: the mean-depth order alone can put an off-centroid line
+// lying in a plane behind it (the solution line of solveinfo, a corte: curve,
+// an axis on a floor plane, ger lines inside a ger plane).
+function liftCoplanar(order, onPlane, along) {
+  if (!onPlane.size || !along.size) return order;
+  const index = new Map(order.map((item, i) => [item, i]));
+  const surfaces = [...onPlane.entries()];
+  const key = order.map((_, i) => i);
+  let moved = false;
+  order.forEach((item, i) => {
+    const pts = along.get(item);
+    if (!pts) return;
+    let last = -1;
+    for (const [surf, pl] of surfaces) {
+      const j = index.get(surf);
+      if (j === undefined || j <= last || j < i) continue;
+      if (pts.every(p => Math.abs(p[0]*pl.n[0]+p[1]*pl.n[1]+p[2]*pl.n[2]-pl.d) <= pl.eps)) last = j;
+    }
+    if (last > i) { key[i] = last+.5+i/(2*order.length+2); moved = true; }
+  });
+  if (!moved) return order;
+  return order.map((item, i) => ({item, k:key[i]})).sort((a, b) => a.k-b.k).map(o => o.item);
 }
 
 // Depths are grouped into tie clusters (consecutive gaps <= tolerance relative to

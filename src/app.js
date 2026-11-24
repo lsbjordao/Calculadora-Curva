@@ -42,7 +42,7 @@ import {encodeSharedScene,decodeSharedScene} from './share-scene.js';
 import { createCamera, zoomCamera, presetView, fitCameraScale, projectPoint } from './space3d/camera.js';
 import { axesPrimitives } from './space3d/scene3d.js';
 import { buildDrawList, drawScene3d, colorsFromTheme } from './space3d/render3d.js';
-import { attachCameraControls, autoAxisLimit, CAMERA_HINT, decideViewMode, chips3d, hasGuidesChip, has3dObjects, normalizeView3d, scenePrimitives, serializeView3d, viewNotice } from './space3d/view3d.js';
+import { attachCameraControls, autoAxisLimit, CAMERA_HINT, decideViewMode, chips3d, hasGuidesChip, has3dObjects, normalizeView3d, scenePrimitives, serializeView3d, viewAlignmentHint, viewNotice } from './space3d/view3d.js';
 import { init3DLibrarySelector, getActive3DLibrary, render3DScene, show3DLibrarySelector, hide3DLibrarySelector, handle3DResize, onActive3DLibraryChange, updatePlotlyCamera } from './space3d/library-manager.js';
 import { initThree3DControls, initThreePlaneDragging } from './space3d/three-renderer.js';
 import { createTransform3DControls } from './space3d/transform3d.js';
@@ -87,6 +87,16 @@ let algebraSymbols=createAlgebraSymbols([]);
 const resultRefreshers=new Map();
 const transformControllers=new Map();
 const transform3dControllers=new Map();
+// Row hints "gire a vista para ver u×v" (vetorial:/misto:), refreshed per frame.
+const viewHintEls=new Map();
+function updateViewHints(){
+  for(const eq of equations){
+    const el=viewHintEls.get(eq.id);
+    if(!el) continue;
+    const text=view3d.mode==='3d' ? viewAlignmentHint(eq,view3d.camera) : '';
+    if(el.textContent!==text){ el.textContent=text; el.hidden=!text; }
+  }
+}
 let selectedEquationId=null;
 const view={cx:0, cy:0, scale:38};
 // 3D view (§5.1, §7a.10): mode, orbital camera and floor grid. view3dFit is the
@@ -1416,6 +1426,7 @@ function renderRows(){
   transform3dControllers.forEach(controller=>controller.dispose()); transform3dControllers.clear();
   resultRefreshers.clear();
   rowsEl.innerHTML='';
+  viewHintEls.clear();
   equations.forEach((eq,index)=>{
     const row=document.createElement('div');
     row.className='row';
@@ -2230,7 +2241,12 @@ function renderRows(){
     refreshSurfacePointControls();
     refreshOps();
     refreshDataTable();
-    body.append(wrap,contextActions,controls,info,stepsZone,paramControls,conicDemoZone,surfacePointZone,transformZone,transform3dZone,opTools,tableZone);
+    const viewHint=document.createElement('div');
+    viewHint.className='view-hint';
+    viewHint.hidden=true;
+    viewHint.setAttribute('aria-live','polite');
+    viewHintEls.set(eq.id,viewHint);
+    body.append(wrap,contextActions,controls,info,viewHint,stepsZone,paramControls,conicDemoZone,surfacePointZone,transformZone,transform3dZone,opTools,tableZone);
     row.append(head,summary,body);
     rowsEl.appendChild(row);
   });
@@ -5670,7 +5686,9 @@ function render3d(){
     ctx.fillStyle=colors.bg;
     ctx.fillRect(0,0,W,H);
     ctx.restore();
-    drawScene3d(ctx,buildDrawList(primitives,view3d.camera,{width:W,height:H},{systemPlaneBox:box}),colors);
+    // Planes and lines end where the axes end (auto or manual ±N), as in
+    // Three.js and Plotly.js; the zoom no longer stretches them past the axes.
+    drawScene3d(ctx,buildDrawList(primitives,view3d.camera,{width:W,height:H},{box,systemPlaneBox:box}),colors);
   }
   
   readout.style.display='none';
@@ -5686,6 +5704,7 @@ function render(){
   syncViewMode();
   if(syncSectionLayout())return;
   ctx.clearRect(0,0,W,H);
+  updateViewHints();
   if(view3d.mode==='3d'){ render3d(); return; }
   
   // Hide library selector when not in 3D mode

@@ -454,3 +454,18 @@ test('CR4: z = 3 é plano, z = x^2 é superfície (cilindro parabólico), z = 3 
   assert.equal(types[1],'Superfície · Cilindro parabólico');
   assert.equal(types[2],'explícita');
 });
+
+test('Canvas: planos terminam nos eixos (±N) mesmo afastando o zoom; dica "gire a vista" na linha',async()=>{
+  const extent=async zoom=>{
+    await boot({version:1,theme:'light',view3d:{mode:'3d',camera:{azimuth:-60,elevation:25,projection:'ortho',zoom}},
+      equations:[mk(0,'plano: z = 0'),mk(1,'vetorial: u=(1,2,3), v=(4,5,6)')]});
+    await wait(40);
+    const pts=calls.filter(c=>c[0]==='moveTo'||c[0]==='lineTo').map(c=>Math.hypot(c[1]-400,c[2]-300));
+    return {max:Math.max(...pts), hint:created.filter(el=>el.className==='view-hint').at(-1)};
+  };
+  const near=await extent(1), far=await extent(0.25);
+  // The ±N axes shrink with the zoom and so does the plane (before: ±46 units at 0.25).
+  assert.ok(far.max<near.max*0.4,`zoom 0.25: ${far.max} px; zoom 1: ${near.max} px`);
+  assert.equal(far.hint.textContent,'gire a vista para ver u×v');
+  assert.equal(far.hint.hidden,false);
+});

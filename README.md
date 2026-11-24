@@ -4,6 +4,8 @@ Calculadora científica e gráfica em JavaScript com geometria, estatística, c�
 
 Abra [a Curva](https://lsbjordao.github.io/Calculadora-Curva/) ou sirva este diretório localmente (`python3 -m http.server 8000`). Execute `npm test` para verificar a aplicação.
 
+**Novo visor de matrizes:** selecione uma camada com `calc: det(...)`, `calc: matmul(...)`, `calc: inv(...)`, `calc: rrefinfo(...)` ou uma matriz e escolha **▶ passo a passo**. Acompanhe as etapas no painel complementar, troque entre Sarrus/cofatores/Gauss (3×3), destaque as entradas e controle a revelação da resposta. Veja [o guia detalhado](docs/GUIA-MATRIZES-PASSO-A-PASSO.md).
+
 **Guia de todas as funcionalidades novas:** [Inspetor matemático, derivadas parciais, superfícies implícitas e campos vetoriais](docs/GUIA-NOVIDADES.md), com comandos de exemplo, operações passo a passo e resultados esperados.
 
 ## Comandos pela URL (GET)

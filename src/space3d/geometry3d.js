@@ -15,6 +15,7 @@ import { quadricPlaneSection } from './quadric-sections.js';
 import { tangentScene } from './surface-calculus.js';
 import { generalQuadricFromEquation,analyseGeneralQuadric,meshImplicitQuadric } from './implicit-quadric.js';
 import {scalarSurfaceScene} from './scalar-surfaces.js';
+import {compileImplicitSurface,meshImplicitFunction} from './implicit-surfaces.js';
 
 const EPS=1e-9;
 // Object names: identifiers, plus π, π1… for planes (§7).
@@ -118,9 +119,26 @@ function generalSurfaceCommand(body,ctx,forceScalar=false){
     polynomial=generalQuadricFromEquation(body,ctx.params||{});
   }
   catch(error){
-    if(!/^\s*z\s*=|=\s*z\s*$/i.test(String(body))||
-      !/quadrática|quadrática em|quadrática em x/i.test(error.message))
-      throw error;
+    const explicit=/^\s*z\s*=|=\s*z\s*$/i.test(String(body));
+    const nonQuadratic=/grau máximo 2|não quadrática|não quadrático/i.test(error.message);
+    if(!forceScalar&&!nonQuadratic)throw error;
+    if(!forceScalar&&!explicit){
+      const fn=compileImplicitSurface(body,ctx.params||{});
+      const mesh=meshImplicitFunction(fn,{extent:4,resolution:24});
+      const result=result3('surface','Superfície implícita aproximada');
+      result.implicitSurface={fn,mesh,extent:mesh.extent,expression:String(body).trim()};
+      result.scene3d=mesh.faces.length?[{
+        kind:'mesh',vertices:mesh.vertices,faces:mesh.faces,color:'#318fa8',
+        alpha:.62,generalSurface:true
+      }]:[];
+      result.info=['Equação: '+String(body).trim(),
+        'Malha numérica (Marching Tetrahedra): '+mesh.faces.length+' triângulos',
+        'Janela de amostragem: ±'+mesh.extent,
+        'A representação é aproximada; não são inferidos focos, eixos ou tipo analítico.'];
+      if(mesh.truncated)result.info.push('Limite de triângulos atingido; diminua a complexidade.');
+      return result;
+    }
+    if(!explicit)throw error;
     const scalar=scalarSurfaceScene(body,ctx.params||{},
       {x:ctx.surfacePoint?.[0],y:ctx.surfacePoint?.[1],direction:ctx.surfaceDirection||0});
     const result=result3('surface','Função de duas variáveis');
@@ -130,7 +148,16 @@ function generalSurfaceCommand(body,ctx,forceScalar=false){
     const c=scalar.calc;
     result.info=['z = '+scalar.expr,
       'P = ('+c.point.map(core.fmt).join(', ')+')',
-      '∂z/∂x = '+core.fmt(c.gradient[0])+' · ∂z/∂y = '+core.fmt(c.gradient[1]),
+      'Derivadas parciais: '+c.derivativeSource,
+      '∂z/∂x = '+core.fmt(c.gradient[0]),
+      '∂z/∂y = '+core.fmt(c.gradient[1]),
+      ...(c.derivativeExpressions?[
+        '∂f/∂x (expressão) = '+c.derivativeExpressions.fx,
+        '∂f/∂y (expressão) = '+c.derivativeExpressions.fy,
+        '∂²f/∂x² = '+c.derivativeExpressions.fxx,
+        '∂²f/∂x∂y = '+c.derivativeExpressions.fxy,
+        '∂²f/∂y² = '+c.derivativeExpressions.fyy
+      ]:[]),
       'Derivada direcional Dᵥf em θ = '+c.angle+'°: '+core.fmt(c.directionalDerivative),
       'Direção unitária v = '+fmtVec([c.direction[0],c.direction[1],0]),
       'Hessiana H = ['+c.hessian.map(row=>row.map(core.fmt).join(', ')).join(' ; ')+']',

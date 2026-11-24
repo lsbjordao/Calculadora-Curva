@@ -4,6 +4,8 @@ Calculadora científica e gráfica em JavaScript com geometria, estatística, c�
 
 Abra [a Curva](https://lsbjordao.github.io/Calculadora-Curva/) ou sirva este diretório localmente (`python3 -m http.server 8000`). Execute `npm test` para verificar a aplicação.
 
+**Guia de todas as funcionalidades novas:** [Inspetor matemático, derivadas parciais, superfícies implícitas e campos vetoriais](docs/GUIA-NOVIDADES.md), com comandos de exemplo, operações passo a passo e resultados esperados.
+
 ## Comandos pela URL (GET)
 
 Passe um parâmetro **`cmd` por comando** na query string para abrir a Curva com
@@ -549,3 +551,68 @@ gerais; a vista 2D mostra o primeiro corte, embora até
 quatro curvas possam ser desenhadas em 3D.
 A seleção inversa no Plotly.js e tampas para superfícies
 recortadas continuam fora do escopo desta etapa.
+
+
+## Explorador matemático e cálculo vetorial (2026)
+
+O botão **inspecionar** abre um painel flutuante, redimensionável, com as
+propriedades da camada selecionada. Selecione camadas pelo painel lateral;
+use **Shift + clique** para comparar dois planos, incluindo ângulo agudo,
+paralelismo e distância (quando paralelos). Para funções (z=f(x,y)),
+o inspetor oferece **Adicionar plano tangente**, derivado do ponto e
+do gradiente em uso. Clicar na malha nas visualizações Canvas/Three.js
+atualiza esse ponto e o inspetor. A seleção não altera a equação original.
+
+### Derivadas parciais simbólicas
+
+No laboratório `funcao3d: z = f(x,y)`, quando a expressão pertence ao
+subconjunto simbólico suportado, a Curva apresenta expressões de
+`∂f/∂x`, `∂f/∂y` e as três entradas independentes da Hessiana.
+As avaliações dessas expressões alimentam o gradiente, plano tangente
+e classificação de pontos críticos. Funções não suportadas e domínios
+problemáticos continuam com o fallback numérico explicitamente identificado.
+A derivação não é um sistema algébrico computacional geral.
+
+### Superfícies implícitas não quadráticas
+
+```text
+superficie: x^3+y^3+z^3=1
+superficie: x^2+y^2+z^2 + sin(x*y)=3
+plano: z=0
+```
+
+Expressões não quadráticas com três variáveis são amostradas em uma caixa
+finita e trianguladas por *Marching Tetrahedra*. Até quatro planos
+visíveis geram cortes numéricos; o primeiro aparece no painel **3D + 2D**.
+O visor apresenta os cortes como **aproximados**: não tenta atribuir
+focos ou classificações exatas a resultados discretizados. A malha é
+limitada em resolução e número de faces; não garante captar componentes
+menores que a grade nem singularidades. Quádricas continuam usando
+a classificação analítica existente.
+
+### Campos vetoriais e integrais orientadas
+
+```text
+campo: -y,x
+campo3d: -y,x,z
+integrallinha: -y,x,1
+fluxo: 0,0,1,1
+```
+
+- `campo: Fx,Fy`: campo plano representado no referencial XY;
+- `campo3d: Fx,Fy,Fz`: campo espacial;
+- `integrallinha: Fx,Fy,raio`: circulação de F no círculo de raio positivo
+  centrado na origem, no plano XY, orientado anti-horariamente;
+- `fluxo: Fx,Fy,Fz,raio`: fluxo pelo disco XY de raio positivo,
+  com normal orientada no sentido +z.
+
+Divergente e rotacional no ponto (0,0,0) são estimados com diferenças
+centrais. A circulação utiliza quadratura do ponto médio e o fluxo
+utiliza quadratura polar. Os valores são numéricos; a diferença entre
+duas resoluções é apenas um diagnóstico de convergência, **não** uma
+garantia de erro rigorosa. As setas desenhadas são normalizadas em
+comprimento visual para destacar direção/sentido, não a intensidade
+absoluta do vetor.
+
+A suíte de regressão dessas funções fica em
+`test/interactive-math.test.mjs` e roda com `npm test`.

@@ -32,6 +32,7 @@ import { addGeometryDefinitions, extractGeometryParams, parseGeometryInput } fro
 import { choosePointSourceIndex, constructionExpression, formatPointCommand, nextPointLabel, normalizePoint, updatePoint, usedGeometryNames } from './geometry-builder.js';
 import { describeCanvas, formatMathVisual } from './accessibility.js';
 import { splitInfoLines, infoLabelValue } from './info-format.js';
+import { createMathInspector } from './math-inspector.js';
 import { isStructuredResult, resultInfo, renderAlgebraResult } from './algebra-ui.js';
 import { matrixInfo } from './linear-algebra.js';
 import { algebraDeclaration, createAlgebraSymbols } from './algebra-symbols.js';
@@ -49,6 +50,7 @@ import { initThree3DControls, initThreePlaneDragging } from './space3d/three-ren
 import { createTransform3DControls } from './space3d/transform3d.js';
 import { createSectionPanel } from './space3d/section-panel.js';
 import {intersectGeneralQuadricPlane,clipTriangleMesh} from './space3d/implicit-quadric.js';
+import {sampleImplicitPlane} from './space3d/implicit-surfaces.js';
 import {nearestProjectedSection} from './space3d/section-sync.js';
 import { dragPlaneParameters, dragConeParameters } from './space3d/plane-interaction.js';
 import { finiteSceneBounds } from './space3d/camera-fit.js';
@@ -89,6 +91,7 @@ const resultRefreshers=new Map();
 const transformControllers=new Map();
 const transform3dControllers=new Map();
 let selectedEquationId=null;
+let mathInspector=null;
 const view={cx:0, cy:0, scale:38};
 // 3D view (§5.1, §7a.10): mode, orbital camera and floor grid. view3dFit is the
 // camera scale that fits the box in the current viewport (zoom is saved relative
@@ -1082,7 +1085,7 @@ function recompileAllEquations(){
     .flatMap(eq=>(eq.geometry.scene3d||[]).filter(p=>p.kind==='plane'&&p.role==='main'))
     .slice(0,4);
   for(const eq of equations){
-    const geometry=eq.geometry,poly=geometry?.generalQuadric?.polynomial;
+    const geometry=eq.geometry,poly=geometry?.generalQuadric?.polynomial,implicit=geometry?.implicitSurface;
     if(!geometry||eq.error)continue;
     if(poly&&planes.length){
       const extent=geometry.generalQuadric.extent;
@@ -1099,6 +1102,18 @@ function recompileAllEquations(){
           color:['#ee5288','#7f9afb','#18bd99','#dea347'][index],weight:2.8,sectionCurve:index===0,conicSection:true}))
       ]));
       geometry.info.push(...cuts.map(({cut},i)=>'Plano '+(i+1)+': seção '+cut.type+' · '+(cut.canonical||cut.equation)));
+    }
+    else if(implicit&&planes.length){
+      const cuts=planes.map(plane=>sampleImplicitPlane(implicit.fn,plane,{extent:implicit.extent*1.5}));
+      geometry.section={kind:'implicit-plane',analysis:cuts[0]};
+      geometry.scene3d.push(...cuts.flatMap((cut,index)=>[
+        {kind:'plane',n:planes[index].n,d:planes[index].d,alpha:.16,conicSection:true,color:'#daa94d'},
+        ...cut.worldSegments.map(({a,b})=>({kind:'segment',a,b,
+          color:['#ee5288','#7f9afb','#18bd99','#dea347'][index],weight:2.8,
+          sectionCurve:index===0,conicSection:true}))
+      ]));
+      geometry.info.push(...cuts.map((cut,index)=>
+        'Plano '+(index+1)+': seção implícita aproximada ('+cut.segments.length+' segmentos)'));
     }
     const side=eq.clipSide===1?1:eq.clipSide===-1?-1:0;
     if(side&&geometry.section){
@@ -1235,11 +1250,12 @@ function updateRowSelection(){
   });
 }
 
-function selectEquation(eq){
-  if(!eq) return;
+function selectEquation(eq,event=null){
+  if(!eq)return;
   selectedEquationId=eq.id;
   focusedEquation=eq;
   updateRowSelection();
+  mathInspector?.select(eq,!!event?.shiftKey);
 }
 
 function escapeRegExp(text){
@@ -1426,8 +1442,8 @@ function renderRows(){
     row.dataset.selected=selectedEquationId===eq.id?'1':'0';
     row.dataset.hasResultTable=hasResultTable(eq)?'1':'0';
     row.tabIndex=0;
-    row.addEventListener('pointerdown',()=>selectEquation(eq));
-    row.addEventListener('focusin',()=>selectEquation(eq));
+    row.addEventListener('pointerdown',event=>selectEquation(eq,event));
+    row.addEventListener('focusin',()=>{if(!mathInspector?.has(eq.id))selectEquation(eq);});
 
     const head=document.createElement('div');
     head.className='row-head';
@@ -1451,7 +1467,7 @@ function renderRows(){
       renderCurveSummary(summary,eq);
       // Automatic surface/plane intersections depend on the *visible* planes:
       // rebuilding is required when their eye toggle changes.
-      if(eq.geometry?.type==='plane'||equations.some(item=>item.geometry?.generalQuadric)){
+      if(eq.geometry?.type==='plane'||equations.some(item=>item.geometry?.generalQuadric||item.geometry?.implicitSurface)){
         recompileAllEquations();
         resultRefreshers.forEach(refresh=>refresh());
       }
@@ -2243,6 +2259,7 @@ function renderRows(){
   for(const [k,a] of animations){ if(!equations.includes(a.eq)) animations.delete(k); }
   refreshGeoBuilder();
   refreshLessonHighlight({scroll:false});
+  mathInspector?.render();
 }
 
 
@@ -3414,6 +3431,16 @@ function initGeoBuilder(){
 const cv=document.getElementById('cv');
 const ctx=cv.getContext('2d');
 const stage=document.getElementById('stage');
+mathInspector=createMathInspector({
+  panel:document.getElementById('math-inspector'),
+  toggle:document.getElementById('math-inspector-toggle'),
+  getEquations:()=>equations,
+  onInsert:command=>{
+    equations.push(makeEq(command));
+    recompileAllEquations();
+    renderRows();draw();scheduleSave();
+  }
+});
 const sectionElement=document.getElementById('section2d-panel');
 const sectionToggle=document.getElementById('section-toggle');
 const planeDragButton=document.getElementById('plane-drag-mode');
@@ -3511,7 +3538,7 @@ function pickTangentSurface(e){
     if(sheetCount>1)eq.params.r=face;
   }
   recompileAllEquations();resultRefreshers.forEach(refresh=>refresh());
-  renderRows();draw();scheduleSave();
+  renderRows();selectEquation(eq);draw();scheduleSave();
 }
 for(const id of ['cv','three-3d-container']){
   const target=document.getElementById(id);

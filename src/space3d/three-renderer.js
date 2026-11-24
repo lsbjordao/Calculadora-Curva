@@ -78,7 +78,16 @@ function message(text){
 }
 async function loadLibrary(){
   if(!threePromise){
-    threePromise=import(THREE_MODULE_URL).catch(error=>{
+    // Em alguns Chromium/headless o import do WebGL pode ficar pendente.
+    // Um erro recuperável é melhor que um visor eternamente "Carregando…".
+    threePromise=new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>reject(new Error('Tempo limite ao carregar Three.js')),25000);
+      import(THREE_MODULE_URL).then(module=>{
+        clearTimeout(timer);resolve(module);
+      },error=>{
+        clearTimeout(timer);reject(error);
+      });
+    }).catch(error=>{
       threePromise=null;
       throw error;
     });
@@ -330,10 +339,13 @@ export function renderThree3D(primitives,options={}){
   message('Carregando Three.js…');
   loadLibrary().then(T=>{
     const container=root();
-    if(!container||container.style.display==='none')return;
+    if(!container)return;
+    // O carregamento pode terminar durante uma troca de modo: o WebGL deve
+    // ser inicializado mesmo oculto para não ficar preso em "Carregando…".
     three=T;
     ensureEngine(T);
-    renderPending();
+    if(container.style.display!=='none')renderPending();
+    else message('');
   }).catch(error=>{
     lastError=error;
     if(root()?.style.display!=='none')message('Não foi possível iniciar Three.js (WebGL ou conexão indisponível). Use Plotly.js ou Canvas 2D.');

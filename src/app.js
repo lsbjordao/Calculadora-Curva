@@ -38,6 +38,8 @@ import { matrixInfo } from './linear-algebra.js';
 import { algebraDeclaration, createAlgebraSymbols } from './algebra-symbols.js';
 import { createTransformControls, buildSystemScene, buildSystemScene3D } from './linear-transform-view.js';
 import { initAlgebraWorkbench } from './algebra-workbench.js';
+import {isMatrixWalkthroughCandidate,matrixWalkthroughFromEquation} from './matrix-steps-adapter.js';
+import {createMatrixWalkthrough} from './matrix-step-view.js';
 import { initProjectControls } from './project-controls.js';
 import { exportGraphPng, exportCombinedPng } from './export-graphic.js';
 import {encodeSharedScene,decodeSharedScene} from './share-scene.js';
@@ -92,6 +94,7 @@ const transformControllers=new Map();
 const transform3dControllers=new Map();
 let selectedEquationId=null;
 let mathInspector=null;
+let matrixWalkthrough=null;
 const view={cx:0, cy:0, scale:38};
 // 3D view (§5.1, §7a.10): mode, orbital camera and floor grid. view3dFit is the
 // camera scale that fits the box in the current viewport (zoom is saved relative
@@ -1424,6 +1427,18 @@ function renderContextActions(eq, target){
     };
     target.appendChild(button);
   });
+  // Usado tanto na criação da camada quanto em alterações da expressão.
+  if(isMatrixWalkthroughCandidate(eq)){
+    const walk=document.createElement('button');
+    walk.type='button';walk.className='context-action matrix-step-open';
+    walk.textContent='▶ passo a passo';
+    walk.title='Visualizar a conta intermediária de matrizes e determinantes';
+    walk.onclick=event=>{
+      event.preventDefault();event.stopPropagation();
+      selectEquation(eq);matrixWalkthrough?.open(eq);
+    };
+    target.appendChild(walk);
+  }
 }
 
 function renderRows(){
@@ -1561,6 +1576,12 @@ function renderRows(){
       refreshSurfacePointControls();
       refreshOps();
       renderContextActions(eq, contextActions);
+      const globalMatrix=document.getElementById('matrix-step-global');
+      if(globalMatrix)globalMatrix.hidden=!equations.some(isMatrixWalkthroughCandidate);
+      if(matrixWalkthrough?.currentEquation()===eq){
+        if(!isMatrixWalkthroughCandidate(eq))matrixWalkthrough.close();
+        else matrixWalkthrough.refresh();
+      }
       draw();
       scheduleSave();
       resultRefreshers.forEach((refresh,id)=>{if(id!==eq.id)refresh();});
@@ -1848,7 +1869,7 @@ function renderRows(){
       refreshTransform();
       refreshTransform3d();
     };
-    resultRefreshers.set(eq.id,()=>{row.dataset.err=eq.error?'1':'0';row.dataset.kind=eq.kind;refreshMathInfo();renderCurveSummary(summary,eq);});
+    resultRefreshers.set(eq.id,()=>{row.dataset.err=eq.error?'1':'0';row.dataset.kind=eq.kind;refreshMathInfo();renderCurveSummary(summary,eq);if(matrixWalkthrough?.currentEquation()===eq)matrixWalkthrough.refresh();});
     const refreshOps=()=>opControls.render(eq, opTools, ()=>{
       refreshMathInfo();
       renderCurveSummary(summary,eq);
@@ -2260,6 +2281,13 @@ function renderRows(){
   refreshGeoBuilder();
   refreshLessonHighlight({scroll:false});
   mathInspector?.render();
+  const matrixButton=document.getElementById('matrix-step-global');
+  if(matrixButton)matrixButton.hidden=!equations.some(isMatrixWalkthroughCandidate);
+  if(matrixWalkthrough?.isOpen()){
+    const current=matrixWalkthrough.currentEquation();
+    if(!equations.includes(current)||!isMatrixWalkthroughCandidate(current))matrixWalkthrough.close();
+    else matrixWalkthrough.refresh();
+  }
 }
 
 
@@ -3431,6 +3459,22 @@ function initGeoBuilder(){
 const cv=document.getElementById('cv');
 const ctx=cv.getContext('2d');
 const stage=document.getElementById('stage');
+matrixWalkthrough=createMatrixWalkthrough({
+  panel:document.getElementById('matrix-walkthrough'),
+  getModel:(eq,method)=>matrixWalkthroughFromEquation(eq,{
+    resolve:algebraSymbols.resolve,method
+  }),
+  onVisibility:(show,eq)=>{
+    const row=rowsEl?.querySelector('.row[data-eq-id="'+eq.id+'"]');
+    if(row)row.dataset.matrixLearning=show?'0':'1';
+  }
+});
+const matrixGlobalButton=document.getElementById('matrix-step-global');
+matrixGlobalButton?.addEventListener('click',()=>{
+  const selected=equations.find(eq=>eq.id===selectedEquationId&&isMatrixWalkthroughCandidate(eq));
+  const eq=selected||equations.find(isMatrixWalkthroughCandidate);
+  if(eq){selectEquation(eq);matrixWalkthrough.open(eq);}
+});
 mathInspector=createMathInspector({
   panel:document.getElementById('math-inspector'),
   toggle:document.getElementById('math-inspector-toggle'),

@@ -219,6 +219,10 @@
         <button class="fn" data-algebra="1" data-ins="calc: proj([3,4],[1,0])" title="Sintaxe: calc: proj([3,4],[1,0])">projeção</button>
         <button class="fn" data-algebra="1" data-ins="calc: cross([1,0,0],[0,1,0])" title="Sintaxe: calc: cross([1,0,0],[0,1,0])">u×v</button>
         <span class="algebra-group">Matrizes</span>
+        <button class="fn" data-algebra="1" data-ins="calc: det([[1,2,3],[0,1,4],[5,6,0]])" title="Sintaxe: calc: det([[1,2,3],[0,1,4],[5,6,0]]) — use matrizes · passos para Sarrus, Laplace e eliminação">det 3×3</button>
+        <button class="fn" data-algebra="1" data-ins="calc: matmul([[1,2],[3,4]],[[2,0],[1,2]])" title="Sintaxe: calc: matmul(A,B) — acompanhe linha × coluna">AB passo a passo</button>
+        <button class="fn" data-algebra="1" data-ins="calc: inv([[2,1],[1,3]])" title="Sintaxe: calc: inv(A) — acompanhe Gauss–Jordan em [A|I]">A⁻¹ etapas</button>
+
         <button class="fn" data-algebra="1" data-ins="calc: matadd([[1,2],[3,4]],eye(2))" title="Sintaxe: calc: matadd([[1,2],[3,4]],eye(2))">A+B</button>
         <button class="fn" data-algebra="1" data-ins="calc: matsub([[1,2],[3,4]],eye(2))" title="Sintaxe: calc: matsub([[1,2],[3,4]],eye(2))">A−B</button>
         <button class="fn" data-algebra="1" data-ins="calc: matmul([[1,2],[3,4]],[[2,0],[1,2]])" title="Sintaxe: calc: matmul([[1,2],[3,4]],[[2,0],[1,2]])">A B</button>
@@ -463,6 +467,7 @@
     </section>
     <div id="view3d-bar" role="toolbar" aria-label="Vista 2D | 3D" title="Vista 3D: arraste para girar · Shift+arraste para mover · roda para zoom · duplo clique volta">
       <button id="math-inspector-toggle" class="small" type="button" aria-pressed="false" title="Inspecionar propriedades matemáticas da camada selecionada; Shift+clique compara dois planos">inspecionar</button>
+      <button id="matrix-step-global" class="small" type="button" hidden title="Mostrar a conta matricial da camada selecionada, passo por passo">matrizes · passos</button>
       <button id="view-mode" class="small" hidden aria-pressed="false" title="Abrir a vista 3D" aria-label="Alternar vista 2D | 3D"><span data-m="2d">2D</span><span data-m="3d">3D</span></button>
       <button id="section-toggle" class="small" hidden type="button" aria-pressed="true" title="Mostrar ou ocultar a seção cônica em 2D">3D + 2D</button>
       <button id="view3d-focus" class="small" hidden type="button" aria-pressed="false" title="Maximizar temporariamente o visor 3D">⛶ 3D</button>
@@ -495,6 +500,36 @@
         <button id="math-inspector-close" type="button" title="Fechar inspetor" aria-label="Fechar inspetor">×</button>
       </header>
       <div id="math-inspector-body" aria-live="polite"></div>
+    </section>
+    <section id="matrix-walkthrough" class="matrix-walkthrough" role="region" hidden aria-label="Visor de resolução de matrizes passo a passo" tabindex="0">
+      <header class="matrix-step-head">
+        <div class="matrix-step-headings">
+          <small>Laboratório de álgebra linear · resolução guiada</small>
+          <strong id="matrix-step-title">Matrizes, passo a passo</strong>
+        </div>
+        <button id="matrix-step-close" type="button" aria-label="Fechar resolução de matrizes" title="Fechar resolução">×</button>
+      </header>
+      <div class="matrix-step-panel-body">
+        <div class="matrix-step-config">
+          <label>Método <select id="matrix-step-method" aria-label="Método de cálculo do determinante" hidden></select></label>
+          <output id="matrix-step-count" class="matrix-step-count"></output>
+        </div>
+        <div class="matrix-step-explanation" aria-live="polite" aria-atomic="true">
+          <h3 id="matrix-step-caption"></h3>
+          <p id="matrix-step-text"></p>
+          <div id="matrix-step-formula" class="matrix-step-formula"></div>
+        </div>
+        <div id="matrix-step-cards" class="matrix-step-cards" aria-label="Matrizes e componentes destacados"></div>
+        <div class="matrix-step-navigation">
+          <button id="matrix-step-first" type="button" title="Primeira etapa">|◀</button>
+          <button id="matrix-step-prev" type="button" title="Etapa anterior">◀</button>
+          <button id="matrix-step-play" type="button" aria-pressed="false" title="Reproduzir ou pausar a resolução">▶ Reproduzir</button>
+          <button id="matrix-step-next" type="button" title="Próxima etapa">▶</button>
+          <button id="matrix-step-last" type="button" title="Revelar última etapa">▶|</button>
+        </div>
+        <label class="matrix-step-scrubber">Percorrer etapas <input id="matrix-step-progress" type="range" min="0" max="1" step="1" value="0" aria-label="Escolher etapa da resolução"></label>
+        <p id="matrix-step-status" class="matrix-step-status" role="status"></p>
+      </div>
     </section>
     <div id="tools">
       <button id="theme" title="Ativar tema escuro" aria-label="Alternar tema">◐</button>

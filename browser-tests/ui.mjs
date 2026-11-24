@@ -92,6 +92,44 @@ try{
     nodeAssert.equal(mode,'3d');
   }
   await wireContext.close();
+
+  // Novo visor de matrizes: interação real no Chromium e resultado oculto até
+  // a última etapa, sem impedir o gráfico 3D da mesma cena.
+  const {context:matrixContext,page:matrixPage}=await createPage({width:1440,height:900});
+  await matrixPage.locator('#preset-toggle').click();
+  await matrixPage.selectOption('#preset-list','matrix-step-lab');
+  await matrixPage.click('#preset-load');
+  const matrixGlobal=matrixPage.locator('#matrix-step-global');
+  await matrixGlobal.waitFor({state:'visible'});
+  await matrixGlobal.click();
+  const walkthrough=matrixPage.locator('#matrix-walkthrough');
+  nodeAssert.equal(await walkthrough.isVisible(),true);
+  nodeAssert.match(await matrixPage.locator('#matrix-step-title').innerText(),/Determinante 3×3/);
+  nodeAssert.equal(await matrixPage.locator('#matrix-step-method').inputValue(),'Sarrus');
+  nodeAssert.equal(await matrixPage.locator('.row').first().getAttribute('data-matrix-learning'),'1');
+  await matrixPage.locator('#matrix-step-next').click();
+  nodeAssert.match(await matrixPage.locator('#matrix-step-count').innerText(),/Etapa 2/);
+  nodeAssert.ok(await matrixPage.locator('.matrix-step-table td[data-focus="pivot"]').count()>=3);
+  await matrixPage.selectOption('#matrix-step-method','Cofatores');
+  nodeAssert.match(await matrixPage.locator('#matrix-step-count').innerText(),/Etapa 1/);
+  await matrixPage.locator('#matrix-step-last').click();
+  nodeAssert.equal(await matrixPage.locator('.row').first().getAttribute('data-matrix-learning'),'0');
+  await matrixPage.screenshot({path:resolve(screenshots,'matrizes-determinante-passos.png')});
+  await matrixPage.locator('#matrix-step-close').click();
+  nodeAssert.equal(await walkthrough.isVisible(),false);
+  await matrixPage.locator('.row').nth(1).click();
+  await matrixPage.locator('.row').nth(1).locator('.matrix-step-open').click();
+  nodeAssert.match(await matrixPage.locator('#matrix-step-title').innerText(),/Multiplicação/);
+  await matrixPage.locator('#matrix-step-next').click();
+  nodeAssert.equal(await matrixPage.locator('.matrix-step-card').count(),3);
+  nodeAssert.match(await matrixPage.locator('#matrix-step-formula').innerText(),/1 × 2/);
+  await matrixPage.screenshot({path:resolve(screenshots,'matrizes-produto-linha-coluna.png')});
+  await matrixPage.setViewportSize({width:390,height:844});
+  const bounds=await matrixPage.locator('#matrix-walkthrough').boundingBox();
+  nodeAssert.ok(bounds.x>=0&&bounds.x+bounds.width<=391,'visor de matrizes precisa caber no celular');
+  await matrixPage.screenshot({path:resolve(screenshots,'matrizes-passo-a-passo-mobile.png')});
+  await matrixContext.close();
+
   const {context,page}=await createPage({width:1440,height:900});
   // The offline Three.js package must execute in the browser without CDN access.
   const vendoredThreeRevision=await page.evaluate(async()=>{

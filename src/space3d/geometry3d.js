@@ -8,13 +8,16 @@
 // Absence of `dim` (or dim 2) means a 2D object.
 
 import { _geometryCore as core } from '../geometry.js';
-import { compile, setImplicitY } from '../parser.js';
+import { compile } from '../parser.js';
+import { coeffParts } from '../symbolic.js';
 import { makeConicSectionScene, makeAngledConicSectionScene } from './conic-sections.js';
 import { quadricScene } from './quadrics.js';
 import { quadricPlaneSection } from './quadric-sections.js';
 import { tangentScene } from './surface-calculus.js';
-import { generalQuadricFromEquation,analyseGeneralQuadric,meshImplicitQuadric } from './implicit-quadric.js';
+import { compileXyz,canonical as canonicalXyz,generalQuadricFromEquation,analyseGeneralQuadric,meshImplicitQuadric,intersectGeneralQuadricPlane } from './implicit-quadric.js';
 import {scalarSurfaceScene} from './scalar-surfaces.js';
+import { rank as matrixRank, det as matrixDet3, trace as matrixTrace3 } from '../linear-algebra.js';
+import { buildTransform3DScene, symmetricEigen3 } from './transform3d.js';
 import {compileImplicitSurface,meshImplicitFunction} from './implicit-surfaces.js';
 import {compileVectorField,fieldDifferentials,vectorFieldScene,lineIntegralCircle,fluxThroughDisk} from './vector-fields.js';
 
@@ -188,7 +191,7 @@ function fluxDiskCommand(body,ctx){
   return r;
 }
 
-function generalSurfaceCommand(body,ctx,forceScalar=false){
+function generalSurfaceCommand(body,ctx,forceScalar=false,definitionName=''){
   let polynomial=null;
   try{if(forceScalar)throw new Error('expressão de função explicitamente selecionada, não quadrática');
     polynomial=generalQuadricFromEquation(body,ctx.params||{});
@@ -211,6 +214,9 @@ function generalSurfaceCommand(body,ctx,forceScalar=false){
         'Janela de amostragem: ±'+mesh.extent,
         'A representação é aproximada; não são inferidos focos, eixos ou tipo analítico.'];
       if(mesh.truncated)result.info.push('Limite de triângulos atingido; diminua a complexidade.');
+      // A name keeps the surface known, so corte: Q, … can explain that it is not a quadric.
+      if(definitionName) core.define(result,definitionName,'surface',
+        {implicit:true,extent:mesh.extent,expression:String(body).trim(),dim:3});
       return result;
     }
     if(!explicit)throw error;
@@ -260,10 +266,16 @@ function generalSurfaceCommand(body,ctx,forceScalar=false){
     'Autovalores: '+classification.eigen.map(x=>core.fmt(x.value)).join(', '),
     'Autovetores (eixos principais): '+classification.eigen.map(e=>fmtVec(e.vector)).join(' · '),
     'Malha finita: ±'+core.fmt(mesh.extent)+' em x, y, z; análise independente da malha.'];
+  // Q = superficie(…) / Q = quadrica(…): usable by name in corte: Q, plano.
+  if(definitionName) core.define(result,definitionName,'surface',
+    {polynomial,extent:mesh.extent,expression:String(body).trim(),type:classification.type,dim:3});
   return result;
 }
 
-function quadricCommand(body,ctx){
+function quadricCommand(body,ctx,definitionName=''){
+  // quadrica: <equação> (book syntax, §5.2) is the superficie: path; without "="
+  // it is main's catalogue form quadrica: tipo[,a,b,c,d].
+  if(splitEquals(String(body)).length>1) return generalSurfaceCommand(body,ctx,false,definitionName);
   const parts=core.splitTopAny(String(body),',').map(x=>x.trim());
   if(parts.length<1||parts.length>5)throw new Error('Quádrica: use quadrica: tipo[,a,b,c,d].');
   const type=parts[0].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -305,9 +317,124 @@ function tangentCommand(body,ctx){
   return result;
 }
 
+const SECTION_TYPES={circle:'circunferência',ellipse:'elipse',hyperbola:'hipérbole',parabola:'parábola',
+  'two-lines':'duas retas concorrentes','parallel-lines':'duas retas paralelas',
+  'one-line':'reta','vertex-point':'ponto tangente',empty:'sem interseção real','all-plane':'plano contido na superfície'};
+// Book names (§5.2) for corte: <superfície>, <plano>.
+const BOOK_SECTION_TYPES={...SECTION_TYPES,'two-lines':'par de retas (concorrentes)','parallel-lines':'par de retas (paralelas)',
+  'one-line':'uma reta','vertex-point':'um ponto',empty:'vazio (sem pontos reais)'};
+const CUT_USAGE='Corte: use corte: Q, z = 1 (superfície e plano, por nome ou equação) ou corte: tipo,a,b,c,d,q,p,h (q e p em graus; h distância assinada do plano).';
+
+// corte: classifies quadric sections exactly; other implicit surfaces are cut
+// (approximately) by the visible plano: lines, as superficie: does.
+const CUT_IMPLICIT='corte: classifica seções de quádricas (grau 2); para outra superfície use superficie: … com um plano visível (plano: …), que a Curva corta automaticamente';
+function surfaceOf(part,ctx){
+  const text=part.trim();
+  if(IDENT.test(text)){
+    const ref=core.refFromRegistry(text,ctx);
+    if(!ref) throw new Error('nome desconhecido: '+text);
+    if(ref.kind!=='surface') throw new Error('corte: '+text+' não é uma superfície (use Q = superficie(…) ou quadrica(…))');
+    if(!ref.value.polynomial) throw new Error(CUT_IMPLICIT);
+    return {polynomial:ref.value.polynomial, extent:ref.value.extent, label:text, named:true};
+  }
+  if(splitEquals(text).length!==2) throw new Error('corte: o primeiro argumento deve ser uma superfície (nome ou equação)');
+  let polynomial;
+  try{ polynomial=generalQuadricFromEquation(text,ctx.params||{}); }
+  catch(error){
+    if(/grau máximo 2/.test(error.message)) throw new Error(CUT_IMPLICIT);
+    throw error;
+  }
+  const mesh=meshImplicitQuadric(polynomial,{resolution:24});
+  return {polynomial, extent:mesh.extent, mesh, label:text, named:false};
+}
+
+// Coordinate plane (x = k, y = k or z = k): the conic in the other two variables.
+function coordinateConic(poly,plane){
+  const nz=plane.n.map((c,i)=>Math.abs(c)>NULL_TOL*len(plane.n) ? i : -1).filter(i=>i>=0);
+  if(nz.length!==1) return null;
+  const f=nz[0], c=noNegZero(plane.d/plane.n[f]);
+  const [i,j]=[0,1,2].filter(a=>a!==f), names=['x','y','z'];
+  const {matrix:m,linear:l,constant:k}=poly;
+  const clean=v=>Math.abs(v)<1e-12*Math.max(1,...m.flat().map(Math.abs),...l.map(Math.abs),Math.abs(k)) ? 0 : v;
+  return {vars:[names[i],names[j]], fixed:names[f], value:c,
+    A:clean(m[i][i]), B:clean(2*m[i][j]), C:clean(m[j][j]),
+    D:clean(2*m[i][f]*c+l[i]), E:clean(2*m[j][f]*c+l[j]), F:clean(m[f][f]*c*c+l[f]*c+k)};
+}
+
+function conicText(q,[u,v],exact=false){
+  const num=x=>exact ? String(Number(x.toPrecision(12))) : core.fmt(x);
+  if(exact){
+    const terms=[[q.A,u+'^2'],[q.B,u+'*'+v],[q.C,v+'^2'],[q.D,u],[q.E,v],[q.F,'']].filter(([c])=>c!==0);
+    if(!terms.length) return '0 = 0';
+    return terms.map(([c,t],idx)=>{
+      const sign=c<0 ? (idx ? ' - ' : '-') : (idx ? ' + ' : '');
+      const a=Math.abs(c);
+      return sign+(t ? (a===1 ? '' : num(a)+'*')+t : num(a));
+    }).join('')+' = 0';
+  }
+  // Display: small rationals as fractions (x^2/4 + y^2/9 = 1), like symbolic.js;
+  // the constant goes to the right-hand side.
+  const frac=(a,t)=>{
+    const {top,bottom}=coeffParts(a);
+    const exactFrac=Number.isInteger(top)&&Number.isInteger(bottom);
+    if(!exactFrac) return t ? num(a)+t : num(a);
+    if(!t) return bottom===1 ? String(top) : top+'/'+bottom;
+    return (top===1 ? '' : String(top))+t+(bottom===1 ? '' : '/'+bottom);
+  };
+  const terms=[[q.A,u+'^2'],[q.B,u+v],[q.C,v+'^2'],[q.D,u],[q.E,v]].filter(([c])=>c!==0);
+  const rhs=-q.F;
+  const left=terms.length ? terms.map(([c,t],idx)=>{
+    const sign=c<0 ? (idx ? ' - ' : '-') : (idx ? ' + ' : '');
+    return sign+frac(Math.abs(c),t);
+  }).join('') : '0';
+  return left+' = '+(rhs<0 ? '-' : '')+frac(Math.abs(rhs),'');
+}
+
+function bookSliceCommand(parts,ctx){
+  const surface=surfaceOf(parts[0],ctx);
+  const state={promoted:[]};
+  const spec=objectSpec(parts[1],ctx,state);
+  if(spec.kind!=='plane') throw new Error('corte: o segundo argumento deve ser um plano (nome ou equação, como z = 1)');
+  const plane={n:spec.plane.n, d:spec.plane.d};
+  const cut=intersectGeneralQuadricPlane(surface.polynomial,plane,{extent:surface.extent*1.6});
+  const label=surface.named ? surface.label : 'a superfície';
+  const r=result3('section','corte de '+label);
+  r.section={kind:'quadric-plane',analysis:cut,quadricType:'general'};
+  r.scene3d=[
+    ...(surface.mesh?.faces.length ? [{kind:'mesh',vertices:surface.mesh.vertices,faces:surface.mesh.faces,
+      color:'#318fa8',alpha:.45,quadric:true,generalSurface:true}] : []),
+    {kind:'plane',n:plane.n,d:plane.d,alpha:.2,color:'#e4a53a',conicSection:true},
+    ...cut.worldSegments.map(({a,b})=>({kind:'segment',a,b,color:'#ed3d8b',weight:2.8,conicSection:true,sectionCurve:true}))
+  ];
+  if(cut.type==='vertex-point'&&cut.vertex)
+    r.scene3d.push({kind:'point',p:cut.toWorld(cut.vertex),label:'P',color:'#ed3d8b',conicSection:true});
+  r.info=['Superfície: '+surface.label,
+    'Plano: '+(spec.label&&IDENT.test(parts[1].trim()) ? spec.label+': ' : '')+fmtPlane(plane),
+    'Seção: '+(BOOK_SECTION_TYPES[cut.type]||cut.type)];
+  const conic=coordinateConic(surface.polynomial,plane);
+  if(conic){
+    r.conicEquation=conic;
+    r.info.push('no plano '+conic.fixed+' = '+core.fmt(conic.value)+': '+conicText(conic,conic.vars));
+    if(['circle','ellipse','hyperbola','parabola'].includes(cut.type)){
+      // The conica: classifier works in x, y: rename the two free variables.
+      let res=null;
+      try{ res=core.parseConic(conicText(conic,['x','y'],true),{params:ctx.params}); }catch(_){}
+      if(res&&!res.error){
+        const note=conic.vars.join('')!=='xy' ? ' (com '+conic.vars[0]+' → x, '+conic.vars[1]+' → y)' : '';
+        r.info.push('conica'+note+': '+res.info.join(' · '));
+      }
+    }
+  } else if(cut.canonical) r.info.push('forma canônica no plano (u, v): '+cut.canonical);
+  r.info.push(...promotionWarning(state.promoted));
+  r.info.push('Curva ideal classificada analiticamente; desenho em janela finita.');
+  return r;
+}
+
 function quadricSliceCommand(body,ctx){
+  const book=splitList(String(body));
+  if(book.length===2) return bookSliceCommand(book,ctx);
   const parts=core.splitTopAny(String(body),',').map(x=>x.trim());
-  if(parts.length!==8)throw new Error('Corte: use corte: tipo,a,b,c,d,q,p,h (q e p em graus; h distância assinada do plano).');
+  if(parts.length!==8)throw new Error(CUT_USAGE);
   const type=parts[0].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   const sliceScalar=value=>{
     if(value==='h'){
@@ -330,9 +457,7 @@ function quadricSliceCommand(body,ctx){
   ];
   if(cut.type==='vertex-point'&&cut.center)
     r.scene3d.push({kind:'point',p:cut.toWorld(cut.center),label:'P',color:'#ed3d8b',conicSection:true});
-  const types={circle:'circunferência',ellipse:'elipse',hyperbola:'hipérbole',parabola:'parábola',
-    'two-lines':'duas retas concorrentes','parallel-lines':'duas retas paralelas',
-    'one-line':'reta','vertex-point':'ponto tangente',empty:'sem interseção real','all-plane':'plano contido na superfície'};
+  const types=SECTION_TYPES;
   r.info=[
     surface.equations,'Plano: inclinação '+q+'° · azimute '+p+'° · distância '+h,
     'Seção: '+(types[cut.type]||cut.type),cut.canonical||cut.equation,
@@ -391,6 +516,12 @@ function pointCommand(body,ctx,definitionName){
 
 function vectorCommand(body,ctx,definitionName){
   const parts=core.splitTopAny(String(body||''),',').map(p=>p.trim()).filter(Boolean);
+  // vetor: 2*u / vetor: w = k*u → the same drawing as escala: k, u.
+  if(parts.length===1){
+    const {label,text}=partLabel(parts[0]);
+    const scaled=scaledVector(text,ctx);
+    if(scaled) return scaleCommand(scaled,ctx,definitionName||label,'vetor',!!(definitionName||label));
+  }
   const named=parts.length===1 ? parts[0].match(/^([A-Za-z][A-Za-z0-9_]*)\s*=/) : null;
   const {points,promoted}=pointList3(body,ctx,['','']);
   let from={x:0,y:0,z:0,label:'O',dim:3}, to, label='v';
@@ -426,12 +557,12 @@ export function parse3dCommand(command,body,ctx={},definitionName=''){
   if(command==='vector-field-3d')return vectorFieldCommand(body,ctx,3);
   if(command==='line-integral')return lineIntegralCommand(body,ctx);
   if(command==='flux-disk')return fluxDiskCommand(body,ctx);
-  if(command==='surface') return generalSurfaceCommand(body,ctx);
+  if(command==='surface') return generalSurfaceCommand(body,ctx,false,definitionName);
   if(command==='scalar-surface')return generalSurfaceCommand(body,ctx,true);
   if(command==='section') return sectionCommand(body,ctx);
   if(command==='quadric-slice') return quadricSliceCommand(body,ctx);
   if(command==='tangent') return tangentCommand(body,ctx);
-  if(command==='quadric') return quadricCommand(body,ctx);
+  if(command==='quadric') return quadricCommand(body,ctx,definitionName);
   if(command==='point') return pointCommand(body,ctx,definitionName);
   if(command==='vector') return vectorCommand(body,ctx,definitionName);
   if(command==='plane') return planeCommand(body,ctx,definitionName);
@@ -440,6 +571,13 @@ export function parse3dCommand(command,body,ctx={},definitionName=''){
   if(command==='distance') return distanceCommand(body,ctx,definitionName);
   if(command==='angle') return angleCommand(body,ctx,definitionName);
   if(command==='position') return positionCommand(body,ctx,definitionName);
+  if(command==='sum') return sumCommand(body,ctx,definitionName);
+  if(command==='scale') return scaleArgsCommand(body,ctx,definitionName);
+  if(command==='dot') return dotCommand(body,ctx,definitionName);
+  if(command==='projection') return projectionCommand(body,ctx,definitionName);
+  if(command==='cross') return crossCommand(body,ctx,definitionName);
+  if(command==='triple'||command==='parallelepiped') return tripleCommand(body,ctx,definitionName,command);
+  if(command==='span') return spanCommand(body,ctx,definitionName);
   return null;
 }
 
@@ -447,13 +585,15 @@ export function parse3dCommand(command,body,ctx={},definitionName=''){
 // intersecao, distancia and angulo go to ℝ³ when an object is 3D or when an
 // equation (a "=") mentions the variable z (lines without z keep the 2D
 // analyzers, §7a.3). A registered object named z keeps its old meaning.
-const ALWAYS_3D=new Set(['plane','position','section','quadric','quadric-slice','tangent','surface','scalar-surface','vector-field','vector-field-3d','line-integral','flux-disk']);
+const ALWAYS_3D=new Set(['plane','position','section','quadric','quadric-slice','tangent','surface','scalar-surface',
+  'sum','scale','cross','triple','parallelepiped','span',
+  'vector-field','vector-field-3d','line-integral','flux-disk']);
 const Z_EQUATION_COMMANDS=new Set(['line','intersect','distance','angle']);
 
 function equationWithZ(text,ctx){
   const src=String(text||'');
   if(!src.includes('=')||core.refFromRegistry('z',ctx)) return false;
-  for(const m of src.matchAll(/[A-Za-z\u03c0][A-Za-z0-9_\u03c0]*/g)){
+  for(const m of canonicalXyz(src).matchAll(/[A-Za-z\u03c0][A-Za-z0-9_\u03c0]*/g)){
     if(m[0]==='z'||m[0]==='Z') return true;
   }
   return false;
@@ -462,7 +602,115 @@ function equationWithZ(text,ctx){
 export function wants3d(command,body,ctx={}){
   if(ALWAYS_3D.has(command)) return true;
   if(involves3d(body,ctx)) return true;
+  // vetor: k*u is ℝ³ when u is (2D u keeps the old 2D analyzer).
+  if(command==='vector'){
+    const scaled=scaledVector(partLabel(String(body??'')).text,ctx);
+    if(scaled&&involves3d(scaled.vec,ctx)) return true;
+  }
   return Z_EQUATION_COMMANDS.has(command) && equationWithZ(body,ctx);
+}
+
+// ── matriz: 3×3 (§5.2 Transformações) ───────────────────────────────────────
+// The unit cube (dashed) and its image, e1..e3 and their images, the
+// eigen-directions of a symmetric A, det as the volume factor. The app animates
+// A(t) = (1−t)I + tA with the "transformação 3D" controls (transform3d.js).
+// A value known to be nonzero (det of a rank-3 matrix): core.fmt rounds anything
+// below 1e-10 to "0", so tiny or huge values use 4 significant digits instead.
+function fmtNonzero(value){
+  const abs=Math.abs(value);
+  if(!Number.isFinite(value)||value===0||(abs>=1e-4&&abs<1e5)) return core.fmt(value);
+  return value.toExponential(3).replace(/\.?0+e/,'e');
+}
+
+export function matrix3Result(values,ctx={},definitionName=''){
+  const A=values.map(row=>row.map(noNegZero));
+  const det=noNegZero(matrixDet3(A)), tr=noNegZero(matrixTrace3(A));
+  // Singular ⇔ rank < 3 (main's scale-aware rank), so diag(1e6,1e6,1e-6) keeps
+  // det = 1e6 and diag(1e-9,1e-9,1e-9) is invertible (det = 1e-27).
+  const rank=A.flat().some(x=>x!==0) ? matrixRank(A) : 0;
+  const singular=rank<3;
+  const r=result3('matrix','matriz 3x3');
+  r.matrix={values:A, det:singular?0:det, trace:tr, eigen:null, size:3, rank};
+  r.scene3d=buildTransform3DScene(A,{t:1,showUnitBasis:true,showEigen:true}).scene;
+  r.info=['A = ['+A.map(row=>row.map(core.fmt).join(' ')).join('; ')+']'];
+  if(singular){
+    const where=rank===2 ? 'num plano' : rank===1 ? 'numa reta' : 'num ponto';
+    r.info.push('det = 0 (fator de volume): o cubo colapsa '+where+' (posto '+rank+')');
+  } else {
+    r.info.push('det = '+fmtNonzero(det)+' (fator de volume)');
+    if(det<0) r.info.push('det < 0: orientação invertida (o volume é multiplicado por |det| = '+fmtNonzero(-det)+')');
+  }
+  r.info.push('traço = '+core.fmt(tr));
+  const pairs=symmetricEigen3(A);
+  if(pairs){
+    r.matrix.eigen=pairs;
+    r.info.push('autovalores = '+pairs.map(p=>core.fmt(p.value)).join(', ')+' (direções próprias tracejadas)');
+  } else r.info.push('autovalores: só para matrizes 3×3 simétricas');
+  r.info.push('A(t) = (1−t)I + tA: use "transformação 3D" para animar');
+  if(definitionName) core.define(r,definitionName,'matrix',r.matrix);
+  return r;
+}
+
+// ── Unprefixed equations in z (§7a.3) ─────────────────────────────────────
+// Only lines with the variable z reach this recognizer (lines without z keep the
+// 2D analyzers). Degree 1 → plane (as plano:), two "=" → line (symmetric form),
+// degree 2 → superficie: (main's classification and automatic plane cuts),
+// explicit z = f(x,y) of another degree → superficie: (function lab), any other
+// degree > 2 or non-polynomial F(x,y,z) = G(x,y,z) → superficie: (main's
+// approximate implicit-surface mesh, cut by the visible planes). Degree 0 is an error.
+
+// Degree of F = left − right along three generic lines (finite differences of
+// 9 samples detect degree ≤ 7); Infinity when F is not polynomial.
+function equationDegree(left,right,ctx){
+  const L=xyzSide(left,ctx), R=xyzSide(right,ctx);
+  const lines=[[[0.31,-0.47,0.23],[0.83,0.41,-0.62]],[[-0.52,0.18,0.71],[0.27,-0.91,0.36]],[[0.11,0.64,-0.38],[-0.58,0.22,0.79]]];
+  let degree=0;
+  for(const [p,d] of lines){
+    const g=[];
+    for(let k=0;k<9;k++){
+      const s=(k-4)*0.5, X=[0,1,2].map(i=>p[i]+s*d[i]);
+      const v=L(...X)-R(...X);
+      if(typeof v!=='number'||!Number.isFinite(v)) return Infinity;
+      g.push(v);
+    }
+    const scale=Math.max(1,...g.map(Math.abs));
+    let diff=g, found=Infinity;
+    for(let m=0;m<=8&&diff.length;m++){
+      if(diff.every(v=>Math.abs(v)<=1e-9*scale*2**m)){ found=Math.max(0,m-1); break; }
+      diff=diff.slice(1).map((v,i)=>v-diff[i]);
+    }
+    degree=Math.max(degree,found);
+  }
+  return degree;
+}
+
+const FUNCTION_DEFINITION=/^\s*[A-Za-z][A-Za-z0-9_]*\s*\([^()]*\)\s*=/;
+
+export function detect3dEquation(text,ctx={}){
+  const src=String(text??'').trim();
+  if(!src||/[<>{}:]|≤|≥/.test(src)||FUNCTION_DEFINITION.test(src)||!equationWithZ(src,ctx)) return null;
+  const sides=splitEquals(src);
+  if(sides.some(side=>!side)) return null;
+  if(sides.length===3) return {kind:'line3',degree:1};
+  if(sides.length!==2) return null;
+  const degree=equationDegree(sides[0],sides[1],ctx);
+  if(degree===1) return {kind:'plane',degree};
+  if(degree===2) return {kind:'quadric',degree};
+  const hasZ=side=>/(^|[^A-Za-z0-9_])[zZ](?=$|[^A-Za-z0-9_])/.test(side);
+  const explicit=(/^[zZ]$/.test(sides[0])&&!hasZ(sides[1]))||(/^[zZ]$/.test(sides[1])&&!hasZ(sides[0]));
+  return {kind:explicit ? 'function' : 'implicit',degree};
+}
+
+// Result for a line without a command prefix, or null when it has no z.
+export function parseUnprefixed3d(text,ctx={}){
+  const found=detect3dEquation(text,ctx);
+  if(!found) return null;
+  const src=String(text).trim();
+  if(found.kind==='line3') return parse3dCommand('line',src,ctx);
+  if(found.kind==='plane') return parse3dCommand('plane',src,ctx);
+  if(found.degree===0)
+    throw new Error('equação sem variáveis: os termos em x, y, z se cancelam');
+  return parse3dCommand('surface',src,ctx);
 }
 
 // ── Vector helpers and tolerances ─────────────────────────────────────────
@@ -555,10 +803,9 @@ export function planeFromPointDirs(P,u,v){
 }
 
 // ── Equations in x, y, z ──────────────────────────────────────────────────
-// The parser knows x and y (implicit relations) but not z: z is rewritten as
-// the symbol @z and fed through the symbols callback.
-
-let zValue=0;
+// Each side goes through main's compileXyz (z as the symbol @z, implied
+// products 2xy, yz exactly like superficie:); non-finite values are returned.
+const xyzSide=(expr,ctx)=>compileXyz(expr,ctx.params||{},{symbols:ctx.symbols,finite:false});
 
 function splitEquals(text){
   const out=[];
@@ -578,20 +825,9 @@ function splitEquals(text){
   return out.map(part=>part.trim());
 }
 
-function xyzFunction(expr,ctx){
-  const src=String(expr).replace(/[A-Za-z\u03c0][A-Za-z0-9\u03c0]*/g,name=>name==='z'||name==='Z' ? '@z' : name);
-  const fn=compile(src,ctx.params||{},{},name=>{
-    if(name==='z') return zValue;
-    if(typeof ctx.symbols==='function') return ctx.symbols(name);
-    throw new Error('nome desconhecido: @'+name);
-  });
-  if(typeof fn!=='function') throw new Error('equação incompleta');
-  return (x,y,z)=>{ setImplicitY(y); zValue=z; return fn(x); };
-}
-
 // Affine function of one side: c·(x,y,z) + k.
 function affineSide(expr,ctx){
-  const fn=xyzFunction(expr,ctx);
+  const fn=xyzSide(expr,ctx);
   const at=(x,y,z)=>{
     const value=fn(x,y,z);
     if(typeof value!=='number'||!Number.isFinite(value)) throw new Error('equação indefinida: '+String(expr).trim());
@@ -837,7 +1073,7 @@ function planeSpec(body,ctx,state){
       ]};
     }
     const pts=parts.map(part=>pointOf(part,ctx,state));
-    const plane=planeFromPoints(pts[0].p,pts[1].p,pts[2].p);
+    const plane=reducedPlane(planeFromPoints(pts[0].p,pts[1].p,pts[2].p),pts[0].p);
     return {plane, extras:pts.map(P=>scenePoint({...vecPoint(P.p),label:P.label}))};
   }
   throw new Error(PLANE_FORMS);
@@ -1225,6 +1461,7 @@ function distanceCommand(body,ctx,definitionName){
     }
   }
   r.info=['d('+objs[0].label+', '+objs[1].label+') = '+core.fmt(value),...notes,...promotionWarning(state.promoted)];
+  r.measure={distance:value};
   if(definitionName) core.define(r,definitionName,'scalar',value);
   return r;
 }
@@ -1300,5 +1537,353 @@ function positionCommand(body,ctx){
     }
   }
   r.info=[names+': '+text,...notes,...promotionWarning(state.promoted)];
+  return r;
+}
+
+// ── Vector operations (soma, escala, escalar, projeção, vetorial, misto) and ger
+
+const ORIGIN=[0,0,0];
+const VECTOR_FALLBACKS=['u','v','w','v4','v5','v6','v7','v8'];
+
+// "k*u", "k*(1,2,3)", "2u", "-u", "u*2", "u/2": the scalar text and the vector
+// text, or null. The scalar is always read as a number (sliders, π…), never as an
+// object name. With ctx, "u*k" (u a vector, k not) is read as k·u.
+function scaledVector(text,ctx=null){
+  const t=String(text||'').trim();
+  let depth=0, star=-1, slash=-1;
+  for(let i=0;i<t.length;i++){
+    const c=t[i];
+    if(c==='('||c==='['||c==='{') depth++;
+    else if(c===')'||c===']'||c==='}') depth--;
+    else if(c==='*'&&depth===0) star=i;
+    else if(c==='/'&&depth===0) slash=i;
+  }
+  const isVec=v=>IDENT.test(v)||isTuple(v);
+  const isObj=v=>isVec(v)&&(isTuple(v)||['vector','point'].includes(core.refFromRegistry(v,ctx||{})?.kind));
+  if(star>0){
+    const k=t.slice(0,star).trim(), vec=t.slice(star+1).trim();
+    if(!k||!vec) return null;
+    // u*2 / (1,2,3)*k: the vector on the left.
+    if(isVec(k)&&(!isVec(vec)||(ctx&&isObj(k)&&!isObj(vec)))) return {k:vec, vec:k, post:true};
+    return isVec(vec) ? {k, vec} : null;
+  }
+  if(slash>0){
+    let vec=t.slice(0,slash).trim(); const d=t.slice(slash+1).trim();
+    const neg=/^-/.test(vec); if(neg) vec=vec.slice(1).trim();
+    if(d&&isVec(vec)&&!(ctx&&isObj(d))) return {k:(neg?'-':'')+'1/('+d+')', vec, div:(neg?'-':'')+'/'+d};
+    return null;
+  }
+  const implicit=t.match(/^(\d+(?:\.\d+)?)\s*((?:[A-Za-z]|π)[A-Za-z0-9_]*|\([\s\S]*\))$/);
+  if(implicit&&isVec(implicit[2])) return {k:implicit[1], vec:implicit[2]};
+  const neg=t.match(/^-\s*([\s\S]+)$/);
+  if(neg&&isVec(neg[1].trim())) return {k:'-1', vec:neg[1].trim(), neg:true};
+  return null;
+}
+
+function scalarOf(text,what,ctx){
+  let value;
+  try{ value=core.evalScalar(text,ctx); }
+  catch(_){ throw new Error(what+': '+text+' não é um número'); }
+  return noNegZero(value);
+}
+
+// The scale of k·u, u/d: division by zero is reported in plain words.
+function scaleFactor(scaled,what,ctx){
+  if(scaled.div){
+    const d=scalarOf(scaled.div.replace(/^-?\//,''),what,ctx);
+    if(d===0||!Number.isFinite(d)) throw new Error('escala: divisão por zero ('+scaled.vec+scaled.div.replace(/^-/,'')+')');
+    return noNegZero((scaled.div[0]==='-' ? -1 : 1)/d);
+  }
+  return scalarOf(scaled.k,what,ctx);
+}
+
+function scaledLabel(scaled,base){
+  const k=scaled.k.trim();
+  if(scaled.neg) return '-'+base;
+  if(scaled.div) return (scaled.div[0]==='-'?'-':'')+base+scaled.div.replace(/^-/,'');
+  return (/^-?\d+(?:\.\d+)?$/.test(k)||IDENT.test(k) ? k : '('+k+')')+base;
+}
+
+// One vector argument: u=(…), (…), a vector or point name, or a scaled one (2*u).
+function vecArg(part,ctx,state,fallback){
+  const {label,text}=partLabel(part);
+  const scaled=scaledVector(text,ctx);
+  if(scaled){
+    const k=scaleFactor(scaled,'escala',ctx);
+    const base=vectorOf(scaled.vec,ctx,state);
+    return {v:mul(base.v,k).map(noNegZero), label:label||scaledLabel(scaled,base.label||fallback)};
+  }
+  const res=vectorOf(part,ctx,state);
+  return {v:res.v, label:res.label||fallback};
+}
+
+function vecArgs(body,ctx,state,count,usage){
+  const parts=splitList(body);
+  if(count&&(parts.length<count[0]||parts.length>count[1])) throw new Error(usage);
+  const used=new Set();
+  const out=parts.map((part,i)=>{
+    const fallback=VECTOR_FALLBACKS.slice(i).find(n=>!used.has(n))||'v'+(i+1);
+    const arg=vecArg(part,ctx,state,fallback);
+    used.add(arg.label);
+    return arg;
+  });
+  return out;
+}
+
+const isNull=v=>nullVector(v)||!v.every(Number.isFinite);
+
+function arrowPrim(from,to,label,role='main'){
+  if(!from.every(Number.isFinite)||!to.every(Number.isFinite)) return [];
+  if(len(sub(to,from))<=NULL_TOL*sizeOf(from,to)) return [];
+  const prim={kind:'arrow', from:[...from], to:[...to], role};
+  if(label) prim.label=label;
+  return [prim];
+}
+
+function vectorValue(comp,label,from=ORIGIN){
+  return {from:point3(from,'O'), to:point3(add(from,comp),label), label, dim:3};
+}
+
+function lengthLine(label,v){
+  return '|'+label+'| = '+core.fmt(len(v));
+}
+
+// Corners a·u + b·v + c·w (a, b, c ∈ {0,1}) from O: 6 faces and 12 edges.
+function parallelepipedScene(O,u,v,w,alpha,edgeRole){
+  const P=(a,b,c)=>add(add(add(O,mul(u,a)),mul(v,b)),mul(w,c)).map(noNegZero);
+  const at=(i,s,j,k)=>{ const c=[0,0,0]; c[i]=s; c[(i+1)%3]=j; c[(i+2)%3]=k; return P(...c); };
+  const out=[];
+  for(let i=0;i<3;i++) for(const side of [0,1]){
+    out.push({kind:'polygon', points:[at(i,side,0,0),at(i,side,1,0),at(i,side,1,1),at(i,side,0,1)], alpha, role:'main'});
+  }
+  if(edgeRole) for(let i=0;i<3;i++) for(const j of [0,1]) for(const k of [0,1]){
+    out.push({kind:'segment', a:at(i,0,j,k), b:at(i,1,j,k), role:edgeRole});
+  }
+  return out;
+}
+
+function sumCommand(body,ctx,definitionName){
+  const state={promoted:[]};
+  const args=vecArgs(body,ctx,state,[2,8],'soma: use dois ou mais vetores (soma: u, v)');
+  const total=args.reduce((acc,a)=>add(acc,a.v),[0,0,0]).map(noNegZero);
+  const label=definitionName||args.map(a=>a.label).join('+');
+  const r=result3('sum','soma');
+  r.scene3d=args.flatMap(a=>arrowPrim(ORIGIN,a.v,a.label));
+  if(args.length===2){
+    const [u,v]=args;
+    if(!parallelVectors(u.v,v.v)||isNull(u.v)||isNull(v.v)){
+      if(!isNull(u.v)&&!isNull(v.v)) r.scene3d.push({kind:'polygon', points:[[...ORIGIN],u.v,total,v.v], alpha:0.12, role:'aux'});
+    }
+    r.scene3d.push(
+      ...(isNull(v.v)?[]:[{kind:'segment', a:u.v, b:total, role:'aux'}]),
+      ...(isNull(u.v)?[]:[{kind:'segment', a:v.v, b:total, role:'aux'}]));
+  } else {
+    // Head-to-tail chain.
+    let at=args[0].v;
+    for(const a of args.slice(1)){ const next=add(at,a.v); r.scene3d.push(...arrowPrim(at,next,'','aux')); at=next; }
+  }
+  const sumArrow=arrowPrim(ORIGIN,total,label);
+  r.scene3d.push(...sumArrow);
+  const expr=args.map(a=>a.label).join(' + ');
+  r.vectors=[...args.map(a=>vectorValue(a.v,a.label)),vectorValue(total,label)];
+  r.info=[expr+' = '+fmtVec(total),'|'+expr+'| = '+core.fmt(len(total))];
+  if(!sumArrow.length) r.info.push('aviso: a soma é o vetor nulo (não desenhado)');
+  r.info.push(...promotionWarning(state.promoted));
+  if(definitionName) core.define(r,definitionName,'vector',r.vectors.at(-1));
+  return r;
+}
+
+function scaleArgsCommand(body,ctx,definitionName){
+  const parts=splitList(body);
+  if(parts.length!==2) throw new Error('escala: use um número e um vetor (escala: k, u)');
+  return scaleCommand({k:parts[0], vec:parts[1]},ctx,definitionName,'escala',!!definitionName);
+}
+
+function scaleCommand(scaled,ctx,name,title,register){
+  const state={promoted:[]};
+  let k;
+  try{ k=scaleFactor(scaled,'escala',ctx); }
+  catch(e){
+    if(title==='escala'&&/não é um número$/.test(e.message)) throw new Error(e.message+' (use escala: k, u)');
+    throw e;
+  }
+  const base=vecArg(scaled.vec,ctx,state,'u');
+  const ku=mul(base.v,k).map(noNegZero);
+  const label=name||scaledLabel(scaled,base.label);
+  const r=result3('scale',title);
+  r.scene3d=[...arrowPrim(ORIGIN,base.v,base.label,'aux')];
+  const main=arrowPrim(ORIGIN,ku,label);
+  r.scene3d.push(...main);
+  r.vectors=[vectorValue(base.v,base.label),vectorValue(ku,label)];
+  r.info=[];
+  if(!/^-?\d+(?:\.\d+)?$/.test(scaled.k.trim())&&!scaled.neg&&!scaled.div) r.info.push(scaled.k.trim()+' = '+core.fmt(k));
+  r.info.push(label+' = '+core.fmt(k)+'·'+fmtVec(base.v)+' = '+fmtVec(ku));
+  r.info.push('|'+label+'| = |'+core.fmt(k)+'|·|'+base.label+'| = '+core.fmt(len(ku)));
+  if(!main.length) r.info.push('aviso: vetor nulo (não desenhado)');
+  else r.info.push(k>0 ? 'mesmo sentido de '+base.label : 'sentido oposto ao de '+base.label);
+  r.info.push(...promotionWarning(state.promoted));
+  if(register) core.define(r,name,'vector',r.vectors[1]);
+  return r;
+}
+
+function dotCommand(body,ctx,definitionName){
+  const state={promoted:[]};
+  const [u,v]=vecArgs(body,ctx,state,[2,2],'produto escalar: use dois vetores (escalar: u, v)');
+  const d=noNegZero(dot3(u.v,v.v));
+  const r=result3('dot','produto escalar');
+  r.scene3d=[...arrowPrim(ORIGIN,u.v,u.label),...arrowPrim(ORIGIN,v.v,v.label)];
+  r.vectors=[vectorValue(u.v,u.label),vectorValue(v.v,v.label)];
+  r.info=[u.label+' · '+v.label+' = '+core.fmt(d),lengthLine(u.label,u.v),lengthLine(v.label,v.v)];
+  if(isNull(u.v)||isNull(v.v)){
+    r.info.push('aviso: vetor nulo: ângulo'+(isNull(v.v)?' e projeção indefinidos':' indefinido'));
+  } else {
+    const deg=toDeg(Math.acos(Math.max(-1,Math.min(1,d/(len(u.v)*len(v.v))))));
+    r.info.push('ângulo('+u.label+', '+v.label+') = '+core.fmt(deg)+'°');
+    if(Math.abs(d)<=TOL*len(u.v)*len(v.v)) r.info.push(u.label+' e '+v.label+' são ortogonais');
+  }
+  if(!isNull(v.v)){
+    const p=mul(v.v,d/dot3(v.v,v.v)).map(noNegZero);
+    r.info.push('proj_'+v.label+'('+u.label+') = '+fmtVec(p));
+    r.scene3d.push(...arrowPrim(ORIGIN,p,'proj','aux'));
+    if(len(sub(u.v,p))>NULL_TOL*sizeOf(u.v)&&!isNull(p)) r.scene3d.push({kind:'segment', a:u.v, b:p, role:'aux'});
+  }
+  r.info.push(...promotionWarning(state.promoted));
+  if(definitionName) core.define(r,definitionName,'scalar',d);
+  return r;
+}
+
+function projectionCommand(body,ctx,definitionName){
+  const state={promoted:[]};
+  const [u,v]=vecArgs(body,ctx,state,[2,2],'projeção: use dois vetores (projecao: u, v)');
+  if(isNull(v.v)) throw new Error('projeção: não é possível projetar sobre o vetor nulo');
+  const d=dot3(u.v,v.v), coef=noNegZero(d/dot3(v.v,v.v)), p=mul(v.v,coef).map(noNegZero);
+  const label=definitionName||'proj';
+  const r=result3('projection','projecao');
+  r.scene3d=[...arrowPrim(ORIGIN,u.v,u.label),...arrowPrim(ORIGIN,v.v,v.label),...arrowPrim(ORIGIN,p,label)];
+  if(len(sub(u.v,p))>NULL_TOL*sizeOf(u.v)&&!isNull(p)) r.scene3d.push({kind:'segment', a:u.v, b:p, role:'aux'});
+  r.vectors=[vectorValue(u.v,u.label),vectorValue(v.v,v.label),vectorValue(p,label)];
+  r.info=['proj_v(u) = '+fmtVec(p),'coeficiente = '+core.fmt(coef),'u · v = '+core.fmt(noNegZero(d)),...promotionWarning(state.promoted)];
+  if(u.label!=='u'||v.label!=='v') r.info[0]='proj_'+v.label+'('+u.label+') = '+fmtVec(p);
+  if(definitionName) core.define(r,definitionName,'vector',r.vectors[2]);
+  return r;
+}
+
+function crossCommand(body,ctx,definitionName){
+  const state={promoted:[]};
+  const [u,v]=vecArgs(body,ctx,state,[2,2],'vetorial: use dois vetores (vetorial: u, v)');
+  const c=cross3(u.v,v.v).map(noNegZero);
+  const area=len(c);
+  const name=u.label+'×'+v.label, label=definitionName||name;
+  const r=result3('cross','produto vetorial');
+  r.scene3d=[...arrowPrim(ORIGIN,u.v,u.label),...arrowPrim(ORIGIN,v.v,v.label)];
+  r.info=[u.label+' × '+v.label+' = '+fmtVec(c)];
+  const parallel=isNull(u.v)||isNull(v.v)||area<=TOL*len(u.v)*len(v.v);
+  if(parallel){
+    r.info.push('área = 0','aviso: '+u.label+' e '+v.label+' são paralelos (ou um deles é nulo): '+u.label+' × '+v.label+' = 0, nada a desenhar');
+  } else {
+    const s=add(u.v,v.v);
+    r.scene3d.push(
+      {kind:'polygon', points:[[...ORIGIN],u.v,s,v.v], alpha:0.2, role:'main'},
+      {kind:'segment', a:u.v, b:s, role:'aux'},
+      {kind:'segment', a:v.v, b:s, role:'aux'},
+      ...arrowPrim(ORIGIN,c,label));
+    r.info.push('|'+u.label+' × '+v.label+'| = '+core.fmt(area),
+      'área = '+core.fmt(area)+' (paralelogramo de '+u.label+' e '+v.label+')',
+      u.label+' × '+v.label+' é ortogonal a '+u.label+' e a '+v.label);
+  }
+  r.vectors=[vectorValue(u.v,u.label),vectorValue(v.v,v.label),vectorValue(c,label)];
+  r.info.push(...promotionWarning(state.promoted));
+  r.measure={area:parallel ? 0 : area, cross:c};
+  if(definitionName) core.define(r,definitionName,'vector',r.vectors[2]);
+  return r;
+}
+
+function tripleCommand(body,ctx,definitionName,command){
+  const state={promoted:[]};
+  const title=command==='parallelepiped' ? 'paralelepipedo' : 'misto';
+  const [u,v,w]=vecArgs(body,ctx,state,[3,3],title+': use três vetores ('+title+': u, v, w)');
+  const t=noNegZero(dot3(u.v,cross3(v.v,w.v)));
+  const names='['+[u,v,w].map(a=>a.label).join(',')+']';
+  const r=result3('triple',title==='misto' ? 'produto misto' : 'paralelepipedo');
+  r.scene3d=[u,v,w].flatMap(a=>arrowPrim(ORIGIN,a.v,a.label));
+  r.vectors=[u,v,w].map(a=>vectorValue(a.v,a.label));
+  const coplanar=[u,v,w].some(a=>isNull(a.v))||Math.abs(t)<=TOL*len(u.v)*len(v.v)*len(w.v);
+  if(coplanar){
+    r.info=[names+' = 0','vetores coplanares: volume 0'];
+  } else {
+    r.info=[names+' = '+core.fmt(t),'volume = '+core.fmt(Math.abs(t)),
+      t>0 ? 'base positiva (orientação dextrógira)' : 'base negativa (orientação levógira)'];
+    r.scene3d.unshift(...parallelepipedScene(ORIGIN,u.v,v.v,w.v,0.2,'main'));
+  }
+  r.info.push(...promotionWarning(state.promoted));
+  // Numbers read by lesson checkpoints (computed-field geometry.measure.*).
+  r.measure={triple:coplanar ? 0 : t, volume:coplanar ? 0 : Math.abs(t)};
+  if(definitionName) core.define(r,definitionName,'scalar',coplanar ? 0 : t);
+  return r;
+}
+
+// A plane through three points with an integer normal: -6x - 6y + 3z = -9 is
+// shown as 2x + 2y - z = 3 (niceNormal); other normals are kept as computed.
+function reducedPlane(pl,P){
+  if(!pl.n.every(c=>Math.abs(c-Math.round(c))<=1e-9*Math.max(1,Math.abs(c)))) return pl;
+  const n=niceNormal(pl.n);
+  return {n, d:noNegZero(dot3(n,P))};
+}
+
+// Integer normals are divided by their gcd; the first non-zero entry is positive.
+function niceNormal(n){
+  const scale=Math.max(...n.map(Math.abs));
+  let out=n.map(c=>Math.abs(c)<=NULL_TOL*scale ? 0 : c/scale);
+  const ints=n.map(c=>Math.round(c));
+  if(n.every((c,i)=>Math.abs(c-ints[i])<=1e-9*Math.max(1,Math.abs(c)))){
+    const gcd=(a,b)=>b ? gcd(b,a%b) : a;
+    const g=ints.reduce((a,c)=>gcd(a,Math.abs(c)),0);
+    if(g>0) out=ints.map(c=>c/g);
+  }
+  if(out.find(c=>c!==0)<0) out=out.map(c=>-c);
+  return out.map(noNegZero);
+}
+
+function spanCommand(body,ctx,definitionName){
+  const state={promoted:[]};
+  const args=vecArgs(body,ctx,state,[1,3],'ger: use de um a três vetores (ger: u, v, w)');
+  const names=args.map(a=>a.label).join(', ');
+  const r=result3('span','ger');
+  r.scene3d=args.flatMap(a=>arrowPrim(ORIGIN,a.v,a.label));
+  r.vectors=args.filter(a=>!isNull(a.v)).map(a=>vectorValue(a.v,a.label));
+  const live=args.filter(a=>!isNull(a.v));
+  const rank=live.length ? matrixRank(live.map(a=>a.v)) : 0;
+  const head='ger{'+names+'}';
+  const tag=definitionName||'ger{'+args.map(a=>a.label).join(',')+'}';
+  const ld=args.length>rank ? ['aviso: vetores linearmente dependentes (LD): posto '+rank+' < '+args.length+' vetores'] : [];
+  if(rank===0){
+    r.info=['ger{0} = {0}: só o vetor nulo','posto 0'];
+    r.scene3d.push({kind:'point', p:[0,0,0], label:'O', role:'main'});
+    r.points=[pointValue([0,0,0],'O')];
+    if(definitionName) core.define(r,definitionName,'point',pointValue([0,0,0],definitionName));
+  } else if(rank===1){
+    const d=live.reduce((best,a)=>len(a.v)>len(best.v) ? a : best).v;
+    r.info=[head+' = reta pela origem: X = t·'+fmtVec(d),'posto 1'];
+    r.scene3d.unshift(...lineScene({p:[0,0,0],v:d},tag,'main'));
+    if(definitionName) core.define(r,definitionName,'line3',{p:[0,0,0], v:d, label:definitionName, dim:3});
+  } else if(rank===2){
+    let n=[0,0,0];
+    for(let i=0;i<live.length;i++) for(let j=i+1;j<live.length;j++){
+      const c=cross3(live[i].v,live[j].v);
+      if(len(c)>len(n)) n=c;
+    }
+    n=niceNormal(n);
+    const pl={n, d:0};
+    r.info=[head+' = plano pela origem: '+fmtPlane(pl),'posto 2','normal n = '+fmtVec(n)];
+    r.scene3d.unshift(...planeScene(pl,tag,'main'));
+    if(definitionName) core.define(r,definitionName,'plane',{n, d:0, label:definitionName, dim:3});
+  } else {
+    r.info=[head+' = ℝ³ (todo o espaço)','posto 3'];
+    // Light shaded box (aux: lighter fill): a symbol for "all of space". The
+    // ±5 faces are flagged spaceBox; scenePrimitives stretches them to the axis
+    // range (±N) that every renderer clips to.
+    r.scene3d.unshift(...parallelepipedScene([-5,-5,-5],[10,0,0],[0,10,0],[0,0,10],0.08,'').map(f=>({...f, role:'aux', spaceBox:true})));
+  }
+  r.info.push(...ld,...promotionWarning(state.promoted));
   return r;
 }

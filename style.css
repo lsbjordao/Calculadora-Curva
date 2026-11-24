@@ -387,6 +387,11 @@
     gap:6px;
   }
   .row-tools:empty{display:none}
+  .row-tools .system-toggle{grid-column:span 3}
+  .view-hint{font-size:12px;color:var(--muted);font-style:italic;margin-top:2px}
+  .view-hint[hidden]{display:none}
+  .row-tools .system-summary{grid-column:1/-1;font-size:12px;line-height:1.35;color:var(--muted);overflow-wrap:anywhere}
+  .row-tools .system-summary:empty{display:none}
   .calc{
     min-width:0;
     height:26px;padding:0 6px;

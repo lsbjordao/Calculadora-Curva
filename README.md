@@ -138,8 +138,10 @@ de −100 a 100) e `rrefinfo([[1,2],[2,4]])` (forma reduzida e painel de etapas
 de Gauss–Jordan com pivotamento parcial, escalado para estabilidade numérica).
 
 Para sistemas `solveinfo(A,b)` de ordem 3×3, acione **ver planos 3D** no resultado.
-Os planos são desenhados no renderizador nativo ou Plotly da Curva, com o ponto
-de solução somente quando a classificação for de solução única.
+Os três planos são desenhados (Canvas, Three.js ou Plotly) junto com o conjunto
+solução: o ponto, quando a solução é única; a reta ou o plano, quando há infinitas
+soluções. Um resumo ao lado do botão diz o caso e acompanha os sliders. Veja
+também a seção **Espaço (ℝ³)**.
 
 A Curva agora possui um manifesto PWA com ícone próprio e botão de tela cheia.
 Em Chrome/Edge, use a opção **Instalar aplicativo** para abrir em janela própria.
@@ -543,15 +545,14 @@ reprodutíveis.
 ### Limitações atuais
 
 As equações implícitas **não quadráticas** de três variáveis
-(por exemplo, `x³+y³+z³=1`) ainda não têm um gerador
-tridimensional geral. Nesses casos, use `funcao3d:` quando
-a superfície puder ser escrita explicitamente como `z=f(x,y)`.
-A associação automática de planos aplica-se às quádricas
-gerais; a vista 2D mostra o primeiro corte, embora até
+(por exemplo, `x³+y³+z³=1`) são desenhadas como malhas
+aproximadas, sem classificação analítica (veja "Superfícies
+implícitas não quadráticas" abaixo). A associação automática
+de planos aplica-se às quádricas gerais e às superfícies
+implícitas; a vista 2D mostra o primeiro corte, embora até
 quatro curvas possam ser desenhadas em 3D.
 A seleção inversa no Plotly.js e tampas para superfícies
 recortadas continuam fora do escopo desta etapa.
-
 
 ## Explorador matemático e cálculo vetorial (2026)
 
@@ -589,6 +590,11 @@ focos ou classificações exatas a resultados discretizados. A malha é
 limitada em resolução e número de faces; não garante captar componentes
 menores que a grade nem singularidades. Quádricas continuam usando
 a classificação analítica existente.
+O prefixo é opcional quando a equação tem a variável z:
+`x^3 + y^3 + z^3 = 1` sozinho segue o mesmo caminho (veja
+"Equações em z sem prefixo" em **Espaço (ℝ³)**). O comando `corte:`
+classifica apenas seções de quádricas; para as demais superfícies,
+use os planos visíveis.
 
 ### Campos vetoriais e integrais orientadas
 
@@ -616,3 +622,120 @@ absoluta do vetor.
 
 A suíte de regressão dessas funções fica em
 `test/interactive-math.test.mjs` e roda com `npm test`.
+
+## Espaço (ℝ³)
+
+A Curva desenha no espaço com a mesma sintaxe do livro de Geometria Analítica e
+Álgebra Linear. Um objeto é 3D quando tem três coordenadas (ou é 3D por natureza:
+plano, quádrica, `ger` de vetores 3D, matriz 3×3); a vista muda para 3D quando o
+primeiro objeto 3D aparece, e o botão **2D | 3D** alterna manualmente. Todos os
+números aceitam os parâmetros com slider (`a, b, c, d, h, k, m, n, p, q, r, u, v`)
+e nomes definidos em outras linhas. Os presets do grupo **Espaço** e a aula
+**Espaço (ℝ³)** percorrem os exemplos abaixo.
+
+### Pontos, vetores e operações
+
+```text
+ponto: A=(1,2,3), B=(0,1,-1)
+vetor: u=(1,2,3)                 vetor: A, B          vetor: (0,0,0),(1,2,3)
+soma: u, v                       (u, v, u + v e o paralelogramo)
+vetor: 2*u    vetor: u*2    vetor: -u    vetor: u/2    escala: k, u
+escalar: u, v                    (u·v, ângulo e projeção de u sobre v)
+vetorial: u, v                   (u × v, paralelogramo e área)
+misto: u, v, w                   (paralelepipedo: u, v, w; [u,v,w] e volume)
+projecao: u, v
+ger: u   ger: u, v   ger: u, v, w   (reta, plano ou ℝ³ pela origem, com o posto e aviso de LD)
+```
+
+Rótulos dentro dos argumentos (`u=`, `v=`, `w=`, `n=`, `P=`, `Q=`) são palavras do
+comando, não sliders; um escalar livre no valor (`n=(2,-1,k)`) continua sendo slider.
+Um rótulo vale só na própria linha como nome do argumento: para usar `u` em outro
+valor, defina-o numa linha própria (`vetor: u=(1,2,3)` e depois `vetor: v = u*k`).
+`w = vetorial(u,v)`, `V = misto(u,v,w)` e `S = ger(u,v)` definem objetos reutilizáveis.
+
+### Retas e planos
+
+```text
+reta: A, B                 r = reta(A, B)
+reta: P=(1,2,3), v=(1,0,-1)
+reta: (1,2,3) + t*(1,0,-1)
+reta: x = 1 + 2t, y = 3, z = t
+reta: (x-1)/2 = (y+1)/3 = z
+plano: 2x - y + z = 3      plano: A, B, C
+plano: P=(1,0,0), n=(2,-1,1)
+plano: P=(0,0,0), u=(1,0,0), v=(0,1,0)
+π1 = plano(x + y + z = 1)
+```
+
+`intersecao`, `distancia`, `angulo` e `posicao` aceitam pontos, retas e planos 3D
+(reta–reta, reta–plano, plano–plano, três planos). `posicao` responde
+"concorrentes / paralelas / coincidentes / reversas", "fura / paralela / contida" e
+"concorrentes / paralelos / coincidentes"; `distancia: r, s` desenha a perpendicular
+comum de retas reversas.
+
+### Equações em z sem prefixo
+
+Uma linha **com a variável z** e sem prefixo vai para o reconhecedor 3D: grau 1 é
+um plano (igual a `plano:`), dois sinais de igual formam uma reta (forma simétrica),
+grau 2 é uma superfície quádrica (o mesmo caminho de `superficie:`, com classificação
+e cortes automáticos pelos planos visíveis) e `z = f(x,y)` não quadrática abre o
+laboratório de funções de duas variáveis. Qualquer outra equação de grau maior que 2
+(ou não polinomial), como `x^3 + y^3 + z^3 = 1`, é a superfície implícita aproximada de
+`superficie:` (malha numérica, cortada pelos planos visíveis; veja "Superfícies implícitas
+não quadráticas" acima). Uma equação cujos termos em x, y, z se cancelam dá erro.
+Linhas **sem z** seguem exatamente os analisadores 2D.
+
+**Mudança de comportamento (decisão CR4):** na versão anterior, uma linha
+`z = expressão` era desenhada como o gráfico 2D de y = expressão. Agora ela é lida
+como plano ou superfície no espaço (`z = 3` é o plano horizontal; `z = x^2` é um
+cilindro parabólico). Com domínio entre chaves, como `z = 3 {x>0}`, a linha
+continua 2D como antes.
+
+### Quádricas e cortes
+
+```text
+quadrica: x^2/4 + y^2/9 - z^2 = 1      (equação, como no livro)
+quadrica: hiperboloide1,1.2,1,1,0      (família paramétrica: tipo,a,b,c,d)
+Q = superficie(x^2 + y^2 - z^2 = 0)
+corte: Q, z = 1                        corte: Q, π1
+corte: x^2/4 + y^2/9 + z^2 = 1, z = 0
+corte: elipsoide,2,3,1,0,30,0,0.5      (forma paramétrica com inclinação e azimute)
+```
+
+`quadrica:` com sinal de igual usa a classificação por autovalores de `superficie:`
+(termos cruzados `x*y`, `x*z`, `y*z` permitidos). `corte:` com superfície e plano
+(por nome ou equação) mostra a curva, o tipo da cônica (circunferência, elipse,
+parábola, hipérbole, par de retas, uma reta, um ponto, vazio) e o painel 3D + 2D;
+em plano coordenado (`x = k`, `y = k`, `z = k`) mostra também a equação da cônica
+nas outras duas variáveis e a análise de `conica:`. `corte:` vale para quádricas
+(grau 2); uma superfície implícita de grau maior é cortada, de forma aproximada,
+pelos planos visíveis (`plano: z = 0`), como em `superficie:`.
+
+### Matrizes 3×3 e sistemas 3×3
+
+`matriz: [2,1,0; 1,2,0; 0,0,3]` desenha o cubo unitário (tracejado) e sua imagem,
+e1, e2, e3 e suas imagens, informa "det = … (fator de volume)", avisa orientação
+invertida (det < 0) ou colapso num plano, numa reta ou num ponto (det = 0, pelo
+posto) e, se a matriz é simétrica, desenha as três direções próprias com
+"λ = …". A transformação 3D anima A(t) = (1−t)I + tA (ou as etapas da SVD).
+No Three.js, as linhas de referência das superfícies (botão **linhas**) também
+cobrem a imagem do cubo; **linhas: sem** a deixa lisa.
+
+`calc: solveinfo(A,b)` com A 3×3, em **ver planos 3D**, desenha os três planos e a
+solução: o ponto (única), a reta (infinitas, posto 2), o plano destacado (os três
+coincidem) ou nada ("sem solução").
+
+### Limites
+
+- Arrastar pontos na vista 3D não é possível; use os sliders para animar.
+- Cortes por plano não coordenado mostram o tipo da cônica e sua forma canônica no
+  referencial do plano, não a equação em x, y, z.
+- Superfícies implícitas de grau maior que 2 são malhas aproximadas, sem
+  classificação analítica e fora de `corte:`; superfícies paramétricas ficam fora.
+- O motor Canvas 2D ordena por profundidade (algoritmo do pintor): linhas e pontos
+  contidos num plano desenhado ficam sempre por cima dele, mas superfícies que se
+  cruzam podem ter pequenos erros de ordem; Plotly.js e Three.js usam profundidade
+  real. Nos três motores, planos e retas terminam na faixa dos eixos (±N).
+- Em `vetorial:`/`misto:`, quando um vetor aponta para a câmera a linha sugere
+  "gire a vista para ver …"; a câmera não é girada automaticamente.
+- Autovalores 3×3 só para matrizes simétricas.

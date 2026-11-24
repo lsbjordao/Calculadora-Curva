@@ -2,7 +2,7 @@
 
 import { compile, setImplicitY, splitTop } from './parser.js';
 import { det as matrixDet, trace as matrixTrace, eiginfo, dot as algebraDot, norm as algebraNorm, angle as algebraAngle, proj as algebraProjection, validateMatrix } from './linear-algebra.js';
-import { wants3d, parse3dCommand } from './space3d/geometry3d.js';
+import { wants3d, parse3dCommand, parseUnprefixed3d, matrix3Result } from './space3d/geometry3d.js';
 import { analysePlaneQuadratic } from './space3d/quadric-sections.js';
 
 const EPS=1e-9;
@@ -36,6 +36,12 @@ const COMMAND_ALIASES={
   tangente:'tangent', tangent:'tangent', gradient:'tangent', gradiente:'tangent',
   plane:'plane', plano:'plane',
   position:'position', posicao:'position',
+  sum:'sum', soma:'sum',
+  scale:'scale', escala:'scale',
+  cross:'cross', vetorial:'cross', produtovetorial:'cross',
+  triple:'triple', misto:'triple', produtomisto:'triple',
+  parallelepiped:'parallelepiped', paralelepipedo:'parallelepiped',
+  span:'span', ger:'span',
   matrix:'matrix', matriz:'matrix',
   transform:'matrix', transformacao:'matrix'
 };
@@ -125,7 +131,10 @@ export function addGeometryDefinitions(registry,geometry){
   geometry.definitions.forEach(def=>{
     if(!def?.name) return;
     registry.set(def.name,def);
-    registry.set(String(def.name).toLowerCase(),def);
+    // The lowercase alias never overrides a name defined exactly in lowercase
+    // (vetor: v=(4,5,6) followed by V = misto(u,v,w) keeps v the vector).
+    const lower=String(def.name).toLowerCase();
+    if(lower!==def.name&&registry.get(lower)?.name!==lower) registry.set(lower,def);
   });
   return registry;
 }
@@ -798,12 +807,14 @@ function parseMatrixText(body,ctx={}){
   if(!text.startsWith('[')&&!text.startsWith('@')) text='['+text+']';
   const values=compile(text,ctx.params||{},{},ctx.symbols)(0);
   validateMatrix(values);
-  if(values.length!==2||values[0].length!==2) throw new Error('matriz 2x2 esperada');
+  const n=values.length;
+  if((n!==2&&n!==3)||values.some(row=>row.length!==n)) throw new Error('matriz 2x2 ou 3x3 esperada');
   return values;
 }
 
 function parseMatrixCommand(body,ctx={},definitionName=''){
   const m=parseMatrixText(body,ctx);
+  if(m.length===3) return matrix3Result(m,ctx,definitionName);
   const [[a,b],[c,d]]=m;
   const det=matrixDet(m);
   const tr=matrixTrace(m);
@@ -1110,7 +1121,9 @@ const COMMAND_NAMES_PT={
   angle:'angulo', dot:'produto escalar', projection:'projecao', triangle:'triangulo',
   quadrilateral:'quadrilatero', polygon:'poligono', convexHull:'poligono convexo',
   distance:'distancia', midpoint:'ponto medio', line:'reta', intersect:'intersecao',
-  conic:'conica', section:'seção do cone', quadric:'quádrica 3D', surface:'superfície 3D geral', 'quadric-slice':'seção de quádrica', tangent:'plano tangente 3D', matrix:'matriz', plane:'plano', position:'posicao'
+  conic:'conica', section:'seção do cone', quadric:'quádrica 3D', surface:'superfície 3D geral', 'quadric-slice':'seção de quádrica', tangent:'plano tangente 3D', matrix:'matriz', plane:'plano', position:'posicao',
+  sum:'soma', scale:'escala', cross:'vetorial', triple:'misto',
+  parallelepiped:'paralelepipedo', span:'ger', equation3d:'equação em x, y, z'
 };
 
 function runCommand(command,body,ctx,definitionName=''){
@@ -1137,19 +1150,72 @@ function runCommand(command,body,ctx,definitionName=''){
   return null;
 }
 
-export function extractGeometryParams(raw){
+// "u=(…)", "n=(2,-1,k)", "P=A", "v=u": inside an argument list the name before "="
+// is a keyword of the command (§7a.2), not a slider; its value is still scanned
+// (k above stays a slider). An argument whose value mentions x, y or z, or holds
+// another "=", is an equation (a = x + y keeps a as a slider).
+function stripArgumentLabels(text,labels=new Set()){
+  const src=String(text);
+  let out='', i=0;
+  const argEnd=from=>{
+    let depth=0;
+    for(let j=from;j<src.length;j++){
+      const c=src[j];
+      if(c==='('||c==='['||c==='{') depth++;
+      else if(c===')'||c===']'||c==='}'){ if(depth===0) return j; depth--; }
+      else if((c===','||c===';')&&depth===0) return j;
+    }
+    return src.length;
+  };
+  while(i<src.length){
+    const atStart=i===0||/[,;(\[]/.test(src[i-1]);
+    if(atStart){
+      const m=src.slice(i).match(/^(\s*)([A-Za-z\u03c0][A-Za-z0-9_\u03c0]*)\s*=(?![=])/);
+      if(m){
+        const valueStart=i+m[0].length, value=src.slice(valueStart,argEnd(valueStart));
+        if(!/=/.test(value)&&!/(^|[^A-Za-z0-9_])[xyzXYZ](?=$|[^A-Za-z0-9_])/.test(value)){
+          labels.add(m[2]);
+          out+=m[1];
+          i=valueStart;
+          continue;
+        }
+      }
+    }
+    out+=src[i++];
+  }
+  return out;
+}
+
+// Commands whose positional scalars are sliders even when an object has that name.
+const POSITIONAL_SCALAR_COMMANDS=new Set(['tangent','section','quadric','quadric-slice','scalar-surface']);
+
+// ctx.registry (optional): a name defined as an object in another line
+// (vetor: u=…, A = (…)) is that object, not a slider.
+export function extractGeometryParams(raw,ctx={}){
   let text=String(raw==null?'':raw).trim();
+  let command='';
   const def=definitionInput(text);
-  if(def) text=def.body;
+  if(def){ text=def.body; command=def.command; }
   else {
     const match=text.match(/^([a-zA-Z\u00c0-\u017f][a-zA-Z0-9\u00c0-\u017f]*)\s*:\s*(.+)$/);
-    if(match) text=match[2];
+    if(match){ text=match[2]; command=COMMAND_ALIASES[asciiCommand(match[1])]||''; }
   }
+  // Names labelled in this same line (vetor: u=(1,2,3), v=u*k) are objects too.
+  const labels=new Set();
+  text=stripArgumentLabels(text,labels);
   const names=new Set();
   const re=/(^|[^A-Za-z0-9_])([abcdhkmnpqruv])(?=$|[^A-Za-z0-9_])/g;
   let m;
   while((m=re.exec(text))){
     if(GEOMETRY_PARAM_NAMES.has(m[2])) names.add(m[2]);
+  }
+  if(!POSITIONAL_SCALAR_COMMANDS.has(command)) labels.forEach(name=>names.delete(name));
+  const registry=ctx?.registry;
+  if(registry&&!POSITIONAL_SCALAR_COMMANDS.has(command)){
+    for(const name of [...names]){
+      const ref=registry.get(name);
+      if(ref&&ref.name===name&&ref.kind!=='scalar') names.delete(name);
+    }
   }
   return [...names];
 }
@@ -1167,7 +1233,14 @@ export function parseGeometryInput(raw,ctx={}){
     }
   }
   const match=text.match(/^([a-zA-Z\u00c0-\u017f][a-zA-Z0-9\u00c0-\u017f]*)\s*:\s*(.+)$/);
-  if(!match) return null;
+  if(!match){
+    // Equations in x, y, z without a prefix (§7a.3); lines without z return null.
+    try{
+      return parseUnprefixed3d(text,ctx);
+    }catch(err){
+      return errorResult('equation3d', err?.message || 'entrada invalida');
+    }
+  }
   const command=COMMAND_ALIASES[asciiCommand(match[1])];
   if(!command) return null;
   const body=match[2].trim();
@@ -1186,7 +1259,8 @@ export const _geometryCore={
   evalScalar,
   splitTopAny,
   refFromRegistry,
-  parsePoint
+  parsePoint,
+  parseConic:(body,ctx)=>parseConicCommand(body,ctx)
 };
 
 export const _geometryTest={

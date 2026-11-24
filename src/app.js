@@ -36,7 +36,7 @@ import { createMathInspector } from './math-inspector.js';
 import { isStructuredResult, resultInfo, renderAlgebraResult } from './algebra-ui.js';
 import { matrixInfo } from './linear-algebra.js';
 import { algebraDeclaration, createAlgebraSymbols } from './algebra-symbols.js';
-import { createTransformControls, buildSystemScene, buildSystemScene3D } from './linear-transform-view.js';
+import { createTransformControls, buildSystemScene, buildSystemScene3D, systemSceneSummary } from './linear-transform-view.js';
 import { initAlgebraWorkbench } from './algebra-workbench.js';
 import { initProjectControls } from './project-controls.js';
 import { exportGraphPng, exportCombinedPng } from './export-graphic.js';
@@ -44,7 +44,7 @@ import {encodeSharedScene,decodeSharedScene} from './share-scene.js';
 import { createCamera, zoomCamera, presetView, fitCameraScale, projectPoint } from './space3d/camera.js';
 import { axesPrimitives } from './space3d/scene3d.js';
 import { buildDrawList, drawScene3d, colorsFromTheme } from './space3d/render3d.js';
-import { attachCameraControls, autoAxisLimit, CAMERA_HINT, decideViewMode, hasGuidesChip, has3dObjects, normalizeView3d, scenePrimitives, serializeView3d, viewNotice } from './space3d/view3d.js';
+import { attachCameraControls, autoAxisLimit, CAMERA_HINT, decideViewMode, chips3d, hasGuidesChip, has3dObjects, normalizeView3d, scenePrimitives, serializeView3d, viewAlignmentHint, viewNotice } from './space3d/view3d.js';
 import { init3DLibrarySelector, getActive3DLibrary, render3DScene, show3DLibrarySelector, hide3DLibrarySelector, handle3DResize, onActive3DLibraryChange, updatePlotlyCamera } from './space3d/library-manager.js';
 import { initThree3DControls, initThreePlaneDragging } from './space3d/three-renderer.js';
 import { createTransform3DControls } from './space3d/transform3d.js';
@@ -90,6 +90,16 @@ let algebraSymbols=createAlgebraSymbols([]);
 const resultRefreshers=new Map();
 const transformControllers=new Map();
 const transform3dControllers=new Map();
+// Row hints "gire a vista para ver u×v" (vetorial:/misto:), refreshed per frame.
+const viewHintEls=new Map();
+function updateViewHints(){
+  for(const eq of equations){
+    const el=viewHintEls.get(eq.id);
+    if(!el) continue;
+    const text=view3d.mode==='3d' ? viewAlignmentHint(eq,view3d.camera) : '';
+    if(el.textContent!==text){ el.textContent=text; el.hidden=!text; }
+  }
+}
 let selectedEquationId=null;
 let mathInspector=null;
 const view={cx:0, cy:0, scale:38};
@@ -816,7 +826,7 @@ function eqDeriv2Fn(eq){
 function recompileEq(eq, geometryRegistry=null){
   eq.analysisCache=null;
   eq.intCache=null;
-  eq.algebraResult=null; eq.algebraInput=null; eq.errorMessage=null; eq.systemScene=null; eq.systemScene3d=null; eq.transformScene3d=null;
+  eq.algebraResult=null; eq.algebraInput=null; eq.errorMessage=null; eq.systemScene=null; eq.systemScene3d=null; eq.systemSummary3d=""; eq.transformScene3d=null;
   eq.kind='function'; eq.ineqOp=null; eq.domain=null;
   eq.fn=null; eq.xFn=null; eq.yFn=null; eq.rFn=null; eq.points=null; eq.pointSource=null; eq.pointLabel=null; eq.histSource=null; eq.valueFn=null; eq.fitInfo=null; eq.fitSpec=null; eq.fitSource=null; eq.regInfo=null; eq.defName=null; eq.geometry=null;
   eq.deriv1=null; eq.deriv2=null; eq.antider=null;
@@ -841,7 +851,7 @@ function recompileEq(eq, geometryRegistry=null){
     // Data points / regression: points:/fit:/fitN:/fitexp:/fitpow:/fitlog:/fitsig:/histogram:/hist:/seq:/intersec:
     const fm=raw.match(DATA_COMMAND_RE);
     if(!fm){
-      const geometryNames=extractGeometryParams(raw);
+      const geometryNames=extractGeometryParams(raw,{registry:geometryRegistry});
       if(geometryNames.length) setupParams(eq, geometryNames);
       const geometry=parseGeometryInput(raw,{params:eq.params,registry:geometryRegistry,symbols:algebraSymbols.resolve,surfacePoint:eq.surfacePoint,surfaceDirection:eq.surfaceDirection});
       if(geometry){
@@ -1061,7 +1071,8 @@ function setComputedResult(eq,value,fn){
   if(eq.algebraResult.kind==='solveinfo' && fn?.inputValues?.length===2){
     const [A,b]=fn.inputValues;
     eq.systemScene=buildSystemScene(A,b,eq.algebraResult.metadata.classification==='unique'?eq.algebraResult.value:null);
-    eq.systemScene3d=buildSystemScene3D(A,b,eq.algebraResult.metadata.classification==='unique'?eq.algebraResult.value:null);
+    eq.systemScene3d=buildSystemScene3D(A,b,eq.algebraResult.metadata.classification==='unique'?eq.algebraResult.value:null,eq.algebraResult);
+    eq.systemSummary3d=eq.systemScene3d ? systemSceneSummary(eq.algebraResult,A) : '';
   }
   eq.regInfo={label:'resultado = '+formatCalcValue(isStructuredResult(value)?value.value:value),r2:null};
   eq.error=false;
@@ -1214,9 +1225,10 @@ function curveSummaryBadges(eq){
   if(eq.showA) badges.push('análise');
   if(eq.kind==='geometry'&&eq.showGeoTriangleClass&&eq.geometry?.triangleClass) badges.push('tipo');
   if(eq.kind==='geometry'&&eq.showGeoAngles!==false&&eq.geometry?.angles?.length) badges.push('âng');
-  if(eq.kind==='geometry'&&eq.showGeoSideLengths) badges.push('lados');
+  const geo2d=eq.kind==='geometry'&&eq.geometry?.dim!==3;
+  if(geo2d&&eq.showGeoSideLengths) badges.push('lados');
   if(eq.kind==='geometry'&&eq.showGeoVectorLengths) badges.push('vetores');
-  if(eq.kind==='geometry'&&eq.showGeoXAxisAngles) badges.push('ang x');
+  if(geo2d&&eq.showGeoXAxisAngles) badges.push('ang x');
   if(eq.kind==='geometry'&&eq.showGeoLabels!==false&&(eq.geometry?.points?.length||eq.geometry?.segments?.length||eq.geometry?.vectors?.length||eq.geometry?.angles?.length||eq.geometry?.polygons?.length||eq.geometry?.lines?.length)) badges.push('rótulo');
   return badges;
 }
@@ -1431,6 +1443,7 @@ function renderRows(){
   transform3dControllers.forEach(controller=>controller.dispose()); transform3dControllers.clear();
   resultRefreshers.clear();
   rowsEl.innerHTML='';
+  viewHintEls.clear();
   equations.forEach((eq,index)=>{
     const row=document.createElement('div');
     row.className='row';
@@ -1537,6 +1550,8 @@ function renderRows(){
     const wrap=document.createElement('div'); wrap.className='field-wrap';
     const input=document.createElement('input');
     let refreshControls=()=>{};
+    // Set by refreshControls on a 3×3 system row; sliders re-sync the summary.
+    let syncSystemSummary=()=>{};
     input.className='field'; input.value=eq.text;
     input.dataset.lessonField='text';
     input.spellcheck=false; input.autocomplete='off';
@@ -1747,15 +1762,19 @@ function renderRows(){
     transform3dZone.append(transform3dSummary,transform3dHost);
     let matrix3dSignature='';
     const getTransformMatrix3d=()=>{
-      const value=eq.algebraResult?.kind==='svd' ? eq.algebraInput : eq.algebraResult?.value;
+      const value=eq.geometry?.matrix?.size===3 ? eq.geometry.matrix.values
+        : eq.algebraResult?.kind==='svd' ? eq.algebraInput : eq.algebraResult?.value;
       return Array.isArray(value)&&value.length===3&&value.every(row=>
         Array.isArray(row)&&row.length===3&&row.every(Number.isFinite)) ? value : null;
     };
     const refreshTransform3d=()=>{
       const matrix=!eq.error&&getTransformMatrix3d();
       transform3dZone.hidden=!matrix;
-      const active=!!matrix&&!!eq.showAlgebraTransform3d;
-      transform3dZone.open=active;
+      // matriz: 3×3 rows always run their controls, like matriz: 2×2; the zone
+      // opens by itself only the first time, then follows the user's toggle.
+      const active=!!matrix&&(eq.kind==='geometry'||!!eq.showAlgebraTransform3d);
+      const open=active&&(eq.kind!=='geometry'||eq.transform3dOpen!==false);
+      if(transform3dZone.open!==open) transform3dZone.open=open;
       if(!active){
         transform3dControllers.get(eq.id)?.dispose();
         transform3dControllers.delete(eq.id);
@@ -1775,7 +1794,13 @@ function renderRows(){
       }
       matrix3dSignature=signature;
     };
+    // The summary click is synchronous (the toggle event is not), so a refresh
+    // right after the click cannot reopen a zone the user has just closed.
+    transform3dSummary.addEventListener('click',()=>{
+      if(eq.kind==='geometry')eq.transform3dOpen=!transform3dZone.open;
+    });
     transform3dZone.addEventListener('toggle',()=>{
+      if(eq.kind==='geometry'){eq.transform3dOpen=transform3dZone.open;return;}
       if(!getTransformMatrix3d())return;
       eq.showAlgebraTransform3d=transform3dZone.open;
       refreshTransform3d();
@@ -1848,7 +1873,7 @@ function renderRows(){
       refreshTransform();
       refreshTransform3d();
     };
-    resultRefreshers.set(eq.id,()=>{row.dataset.err=eq.error?'1':'0';row.dataset.kind=eq.kind;refreshMathInfo();renderCurveSummary(summary,eq);});
+    resultRefreshers.set(eq.id,()=>{row.dataset.err=eq.error?'1':'0';row.dataset.kind=eq.kind;refreshMathInfo();renderCurveSummary(summary,eq);syncSystemSummary();});
     const refreshOps=()=>opControls.render(eq, opTools, ()=>{
       refreshMathInfo();
       renderCurveSummary(summary,eq);
@@ -2185,7 +2210,12 @@ function renderRows(){
         scheduleSave();
       };
 
-      controls.append(typeBtn,angleBtn,angleExtBtn,angleCompBtn,sidesBtn,vectorsBtn,labelsBtn);
+      // 3D rows keep only the chips that act on them (vetor, rótulo, guias).
+      const only3d=chips3d(eq);
+      if(only3d){
+        if(only3d.vectors) controls.append(vectorsBtn);
+        if(only3d.labels) controls.append(labelsBtn);
+      } else controls.append(typeBtn,angleBtn,angleExtBtn,angleCompBtn,sidesBtn,vectorsBtn,labelsBtn);
       // 3D point rows: dashed guides to the xy plane and the x, y axes (on by default).
       if(hasGuidesChip(eq)){
         const guidesBtn=document.createElement('button');
@@ -2201,7 +2231,7 @@ function renderRows(){
         };
         controls.append(guidesBtn);
       }
-      controls.append(xAxisAngleBtn);
+      if(!only3d) controls.append(xAxisAngleBtn);
       if(eq.geometry?.section&&eq.geometry?.scene3d?.some(p=>p.kind==='mesh')){
         const clipBtn=document.createElement('button');
         clipBtn.className='calc';
@@ -2222,12 +2252,18 @@ function renderRows(){
     };
     refreshControls=()=>{
       controls.innerHTML='';
+      syncSystemSummary=()=>{};
       if(eq.kind==='result'){
         if(eq.systemScene||eq.systemScene3d){
-          const show=document.createElement('button');show.type='button';show.className='calc';show.textContent=eq.systemScene3d?'ver planos 3D':'ver retas';
+          const show=document.createElement('button');show.type='button';show.className='calc system-toggle';show.textContent=eq.systemScene3d?'ver planos 3D':'ver retas';
           show.dataset.on=eq.showAlgebraSystem?'1':'0';
-          show.onclick=()=>{eq.showAlgebraSystem=!eq.showAlgebraSystem;show.dataset.on=eq.showAlgebraSystem?'1':'0';draw();scheduleSave();};
+          const summary=document.createElement('span');summary.className='system-summary';
+          const syncSummary=()=>{summary.textContent=eq.showAlgebraSystem&&eq.systemSummary3d?eq.systemSummary3d:'';};
+          syncSummary();
+          syncSystemSummary=syncSummary;
+          show.onclick=()=>{eq.showAlgebraSystem=!eq.showAlgebraSystem;show.dataset.on=eq.showAlgebraSystem?'1':'0';syncSummary();draw();scheduleSave();};
           controls.appendChild(show);
+          if(eq.systemScene3d) controls.appendChild(summary);
         }
         return;
       }
@@ -2251,7 +2287,12 @@ function renderRows(){
     refreshSurfacePointControls();
     refreshOps();
     refreshDataTable();
-    body.append(wrap,contextActions,controls,info,stepsZone,paramControls,conicDemoZone,surfacePointZone,transformZone,transform3dZone,opTools,tableZone);
+    const viewHint=document.createElement('div');
+    viewHint.className='view-hint';
+    viewHint.hidden=true;
+    viewHint.setAttribute('aria-live','polite');
+    viewHintEls.set(eq.id,viewHint);
+    body.append(wrap,contextActions,controls,info,viewHint,stepsZone,paramControls,conicDemoZone,surfacePointZone,transformZone,transform3dZone,opTools,tableZone);
     row.append(head,summary,body);
     rowsEl.appendChild(row);
   });
@@ -2610,7 +2651,7 @@ function pointName(point,fallback=''){
 }
 
 function geometryDistance(a,b){
-  return Math.hypot((b?.x??0)-(a?.x??0),(b?.y??0)-(a?.y??0));
+  return Math.hypot((b?.x??0)-(a?.x??0),(b?.y??0)-(a?.y??0),(b?.z??0)-(a?.z??0));
 }
 
 function segmentMeasureName(seg,index=0){
@@ -2635,6 +2676,11 @@ function geometryInfo(eq){
   const g=eq.geometry;
   if(!g) return '';
   const parts=[...(g.info || [])];
+  if(g.dim===3){
+    // Only |v| applies in ℝ³ (the 2D chips are hidden on 3D rows).
+    if(eq.showGeoVectorLengths&&g.vectors?.length) parts.push('vetores: '+g.vectors.map(vectorMeasureText).join(' · '));
+    return parts.join(' · ');
+  }
   if(eq.showGeoSideLengths&&g.segments?.length){
     parts.push('lados: '+g.segments.map(segmentMeasureText).join(' · '));
   }
@@ -5755,7 +5801,9 @@ function render3d(){
     ctx.fillStyle=colors.bg;
     ctx.fillRect(0,0,W,H);
     ctx.restore();
-    drawScene3d(ctx,buildDrawList(primitives,view3d.camera,{width:W,height:H},{systemPlaneBox:box}),colors);
+    // Planes and lines end where the axes end (auto or manual ±N), as in
+    // Three.js and Plotly.js; the zoom no longer stretches them past the axes.
+    drawScene3d(ctx,buildDrawList(primitives,view3d.camera,{width:W,height:H},{box}),colors);
   }
   
   readout.style.display='none';
@@ -5771,6 +5819,7 @@ function render(){
   syncViewMode();
   if(syncSectionLayout())return;
   ctx.clearRect(0,0,W,H);
+  updateViewHints();
   if(view3d.mode==='3d'){ render3d(); return; }
   
   // Hide library selector when not in 3D mode

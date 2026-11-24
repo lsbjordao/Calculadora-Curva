@@ -1,4 +1,4 @@
-import { validateMatrix, eye, matmul, det, trace, eiginfo, svd } from './linear-algebra.js';
+import { validateMatrix, eye, matmul, det, trace, eiginfo, svd, cross } from './linear-algebra.js';
 
 const mix = (A,B,t) => A.map((row,i) => row.map((x,j) => (1-t)*x+t*B[i][j]));
 export function transformationMatrix(A, t = 1, decomposition = null) {
@@ -44,15 +44,71 @@ export const decomposeTransform = A => svd(A);
 // Cores individuais dos planos: a mesma linha de resultado reúne três equações,
 // mas cada superfície precisa manter sua identidade nas duas renderizações.
 const SYSTEM_PLANE_COLORS=['#2878b8','#c46636','#24966b'];
-export function buildSystemScene3D(A,b,solution){
+const SYSTEM_SOLUTION_COLOR='#ba3f77';
+// result (optional): the solveinfo result. With it, "ver planos" also draws the
+// solution set: the line for rank 2 (infinite), one highlighted plane when the
+// three planes coincide (rank 1), and nothing extra when inconsistent.
+export function buildSystemScene3D(A,b,solution,result=null){
   if(!Array.isArray(A)||A.length!==3||A.some(r=>!Array.isArray(r)||r.length!==3)||!Array.isArray(b)||b.length!==3)return null;
   b=b.map(x=>Array.isArray(x)?x[0]:x);
   if(A.some(r=>r.some(x=>!Number.isFinite(x)))||b.some(x=>!Number.isFinite(x)))return null;
-  const scene=A.flatMap((row,i)=>Math.hypot(...row)>1e-12?
-    [{kind:'plane',n:[...row],d:b[i],label:'Equação '+(i+1),alpha:.22,color:SYSTEM_PLANE_COLORS[i],systemPlane:true}]:[]);
+  const meta=result?.metadata||{};
+  const rows=A.map((row,i)=>({row,i})).filter(({row})=>Math.hypot(...row)>1e-12);
+  if(meta.classification==='infinite'&&meta.rank===1&&rows.length){
+    const {row,i}=rows[0];
+    return [{kind:'plane',n:[...row],d:b[i],label:'Equações 1–3: o mesmo plano',alpha:.34,
+      color:SYSTEM_SOLUTION_COLOR,systemPlane:true,systemSolution:true}];
+  }
+  const scene=rows.map(({row,i})=>({kind:'plane',n:[...row],d:b[i],label:'Equação '+(i+1),alpha:.22,color:SYSTEM_PLANE_COLORS[i],systemPlane:true}));
   if(Array.isArray(solution)&&solution.length===3&&solution.every(Number.isFinite))
-    scene.push({kind:'point',p:[...solution],label:'Solução',color:'#ba3f77',systemSolution:true});
+    scene.push({kind:'point',p:[...solution],label:'Solução',color:SYSTEM_SOLUTION_COLOR,systemSolution:true});
+  else if(meta.classification==='infinite'&&meta.rank===2&&Array.isArray(result.value)&&result.value.every(Number.isFinite)){
+    const v=nullDirection(A);
+    if(v)scene.push({kind:'line',p:[...result.value],v,label:'Solução (reta)',color:SYSTEM_SOLUTION_COLOR,weight:3,systemSolution:true});
+  }
   return scene;
+}
+
+// Direction of the null space of a rank-2 3×3 matrix: the largest cross product
+// of two rows.
+function nullDirection(A){
+  let best=null,size=0;
+  for(const [i,j] of [[0,1],[0,2],[1,2]]){
+    const c=cross(A[i],A[j]),n=Math.hypot(...c);
+    if(n>size){size=n;best=c.map(x=>x/n);}
+  }
+  return size>1e-12 ? best : null;
+}
+
+const fmtNum=x=>{const r=Number(Number(x).toPrecision(6));return String(Object.is(r,-0)?0:r);};
+const fmtVec3=v=>'('+v.map(fmtNum).join(', ')+')';
+// A direction shown with small integers when possible: (1, 1, -2), not (0.41, 0.41, -0.82).
+function niceDirection(v){
+  const nz=v.filter(x=>Math.abs(x)>1e-9);
+  const m=Math.min(...nz.map(Math.abs));
+  for(const k of [1,2,3,4,5,6]){
+    const w=v.map(x=>x/m*k);
+    if(w.every(x=>Math.abs(x-Math.round(x))<1e-7)){
+      const r=w.map(x=>Math.round(x)+0);
+      const first=r.find(x=>x!==0);
+      return first<0 ? r.map(x=>-x+0) : r;
+    }
+  }
+  return v;
+}
+// One sentence for "ver planos 3D".
+export function systemSceneSummary(result,A=null){
+  const meta=result?.metadata||{};
+  if(meta.classification==='inconsistent')return 'sem solução: os três planos não têm ponto comum';
+  if(meta.classification==='infinite'){
+    if(meta.rank===1)return 'infinitas soluções: os três planos coincidem';
+    const v=Array.isArray(A)&&A.length===3?nullDirection(A):null;
+    if(meta.rank===2&&Array.isArray(result.value))
+      return 'infinitas soluções: reta X = '+fmtVec3(result.value)+(v?' + t·'+fmtVec3(niceDirection(v)):'');
+    return 'infinitas soluções';
+  }
+  if(Array.isArray(result?.value))return 'solução única: P = '+fmtVec3(result.value);
+  return '';
 }
 export function buildSystemScene(A,b,solution) {
   if(A.length!==2 || A[0].length!==2 || b.length!==2) return null;

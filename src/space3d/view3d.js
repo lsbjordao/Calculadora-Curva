@@ -1,6 +1,6 @@
 "use strict";
 
-import { createCamera, orbit, zoomCamera, panCamera } from './camera.js';
+import { cameraBasis, createCamera, orbit, zoomCamera, panCamera } from './camera.js';
 import { defaultBox, clipLineToBox, clipSegmentToBox, guideLines } from './scene3d.js';
 import { toVec3 } from './geometry3d.js';
 
@@ -26,6 +26,19 @@ export function showsGuides(eq) {
   return hasGuidesChip(eq) && eq.showGeoGuides !== false;
 }
 
+// Row chips that act on a 3D row (null for any other row, which keeps the 2D
+// chips): rótulo when the scene has labels, vetor (|u| in the row info) when
+// the row has vectors, guias on point rows. tipo, âng, lado and ang x are 2D only.
+export function chips3d(eq) {
+  if (!is3dEquation(eq)) return null;
+  const scene = Array.isArray(eq.geometry.scene3d) ? eq.geometry.scene3d : [];
+  return {
+    labels: scene.some(p => p && (p.label || (p.kind === 'label' && p.text))),
+    vectors: !!eq.geometry.vectors?.length,
+    guides: hasGuidesChip(eq),
+  };
+}
+
 export const CAMERA_HINT = 'arraste para girar · Shift+arraste para mover · roda para zoom · duplo clique volta';
 
 export function has3dObjects(equations = []) {
@@ -49,7 +62,7 @@ export function autoAxisLimit(equations = [], minimum = 5) {
     if (primitive.kind === 'point' || primitive.kind === 'label') include(primitive.p);
     else if (primitive.kind === 'segment') { include(primitive.a); include(primitive.b); }
     else if (primitive.kind === 'arrow') { include(primitive.from); include(primitive.to); }
-    else if (primitive.kind === 'polygon') (primitive.points || []).forEach(include);
+    else if (primitive.kind === 'polygon' && !primitive.spaceBox) (primitive.points || []).forEach(include);
     else if (primitive.kind === 'mesh') (primitive.vertices || []).forEach(include);
     else if (primitive.kind === 'line') include(primitive.p);
     else if (primitive.kind === 'plane' && Array.isArray(primitive.n)) {
@@ -226,17 +239,25 @@ function styled(prim, eq, color) {
   return out;
 }
 
+// ger{…} = ℝ³ draws a box symbol: its faces follow the current axis range.
+function toSpaceBox(prim, box) {
+  const points = (prim.points || []).map(p => p.map((c, i) => c > 0 ? box.max[i] : c < 0 ? box.min[i] : 0));
+  return {...prim, points};
+}
+
 export function scenePrimitives(equations = [], {colorOf = () => '', box = defaultBox()} = {}) {
   const prims = [];
   for (const eq of equations) {
     if (!eq || eq.visible === false || eq.error) continue;
-    const source = eq.showAlgebraTransform3d && eq.transformScene3d ? eq.transformScene3d
+    // A matriz: 3×3 row animates like the calc: view: its controls fill transformScene3d.
+    const animated = eq.transformScene3d && (eq.showAlgebraTransform3d || eq.kind === 'geometry');
+    const source = animated ? eq.transformScene3d
       : eq.showAlgebraSystem && eq.systemScene3d ? eq.systemScene3d
       : is3dEquation(eq) ? eq.geometry.scene3d : promote2d(scene2dOf(eq), box);
     if (!Array.isArray(source) || !source.length) continue;
     const color = colorOf(eq), guides = showsGuides(eq);
     for (const prim of source) {
-      const s = prim && styled(prim, eq, color);
+      const s = prim && styled(prim.spaceBox ? toSpaceBox(prim, box) : prim, eq, color);
       if (!s) continue;
       prims.push(s);
       // Depth cue for 3D points (not for vector tips: only point rows).
@@ -351,4 +372,21 @@ export function attachCameraControls(canvas, getCamera, setCamera, requestDraw, 
     set(next());
     commit();
   });
+}
+
+// A row hint when the main vector of a vetorial:/misto: row points (within
+// maxDeg) along the line of sight, where it would look like a dot: u×v for
+// vetorial, any of u, v, w for misto. '' otherwise. The camera is not moved.
+export function viewAlignmentHint(eq, camera, maxDeg = 10) {
+  const g = eq?.geometry;
+  if (!camera || !g || g.dim !== 3 || eq.visible === false || eq.error) return '';
+  const vecs = g.type === 'cross' ? (g.vectors || []).slice(2, 3) : g.type === 'triple' ? (g.vectors || []).slice(0, 3) : [];
+  if (!vecs.length) return '';
+  const {forward} = cameraBasis(camera), limit = Math.cos(maxDeg*Math.PI/180);
+  const hidden = vecs.filter(vec => {
+    const d = ['x','y','z'].map(k => (vec.to?.[k] ?? 0)-(vec.from?.[k] ?? 0));
+    const n = Math.hypot(...d);
+    return n > 0 && Math.abs(d[0]*forward[0]+d[1]*forward[1]+d[2]*forward[2])/n >= limit;
+  }).map(vec => vec.label);
+  return hidden.length ? 'gire a vista para ver '+hidden.join(', ') : '';
 }

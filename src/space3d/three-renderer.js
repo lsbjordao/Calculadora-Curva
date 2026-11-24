@@ -23,9 +23,9 @@ export function threeTickVisible(prim,camera){
   if(!camera || !Number.isFinite(camera.scale))return true;
   const basis=cameraBasis(camera),axis=prim.axis;
   const pxPerUnit=camera.scale*Math.hypot(basis.right[axis],basis.up[axis]);
-  if(pxPerUnit<6)return false;
-  if(prim.kind!=='label')return true;
   const step=prim.step>0?prim.step:1,px=pxPerUnit*step;
+  if(px<6)return false; // marks closer than 6 px: axis seen end-on
+  if(prim.kind!=='label')return true;
   const every=THIN.find(v=>px*v>=28)??Infinity;
   return Math.round(prim.value/step)%every===0;
 }

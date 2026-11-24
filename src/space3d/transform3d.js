@@ -1,6 +1,6 @@
 "use strict";
 
-import {validateMatrix,eye,matmul,svd,det} from '../linear-algebra.js';
+import {validateMatrix,eye,matmul,svd,det,eiginfo} from '../linear-algebra.js';
 
 // Pure 3D transform geometry shared by Canvas, Plotly.js and Three.js.
 // The source matrix is never modified; the animation is A(t)=(1-t)I+tA,
@@ -8,6 +8,7 @@ import {validateMatrix,eye,matmul,svd,det} from '../linear-algebra.js';
 const BASIS=[[1,0,0],[0,1,0],[0,0,1]];
 const ORIGINAL='#93a0ae',EDGE_COLOR='#247ca6',FACE_COLOR='#3297d2';
 const COLORS=['#d96043','#26a57b','#8b62c5'];
+const EIGEN_COLOR='#b0791c';
 const UNIT_VERTICES=Array.from({length:8},(_,i)=>[i&1,(i>>1)&1,(i>>2)&1]);
 const EDGES=Array.from({length:8},(_,i)=>[0,1,2].map(bit=>[i,i^(1<<bit)]))
   .flat().filter(([a,b])=>a<b);
@@ -53,13 +54,41 @@ export function buildTransform3DScene(A,options={}){
       color:COLORS[i],transform3d:true
     }));
   }
+  if(options.showUnitBasis&&options.showBasis!==false){
+    BASIS.forEach((v,i)=>scene.push({
+      kind:'arrow',from:[0,0,0],to:[...v],label:'e'+(i+1),role:'aux',color:ORIGINAL,transform3d:true
+    }));
+  }
+  if(options.showEigen)scene.push(...eigenDirections(A));
   return {scene,matrix:current,det:det(current)};
+}
+
+// Eigen-directions of a symmetric 3×3 A (eiginfo pairs), dashed through the
+// origin and labelled "λ = …". A(t) = (1−t)I + tA has the same eigenvectors, so
+// they stay put during the animation. Non-symmetric A: none (eiginfo only
+// handles symmetric 3×3).
+export function symmetricEigen3(A){
+  try{ return eiginfo(A).pairs; }
+  catch(error){ if(error?.code==='UNSUPPORTED')return null; throw error; }
+}
+const fmtLambda=x=>{const r=Number(x.toPrecision(10));return String(Object.is(r,-0)?0:r);};
+export function eigenDirections(A){
+  const pairs=symmetricEigen3(A);
+  if(!pairs)return [];
+  const out=[];
+  for(const {value,vector} of pairs){
+    const L=Math.max(1.6,Math.min(6,Math.abs(value)+.6));
+    const a=vector.map(x=>-L*x),b=vector.map(x=>L*x);
+    out.push({kind:'segment',a,b,role:'aux',dash:true,color:EIGEN_COLOR,eigen:true,transform3d:true});
+    out.push({kind:'label',p:vector.map(x=>(L+.35)*x),text:'λ = '+fmtLambda(value),role:'aux',color:EIGEN_COLOR,eigen:true,transform3d:true});
+  }
+  return out;
 }
 
 // Dedicated controller keeps DOM and animation out of the mathematical core.
 export function createTransform3DControls(host,{getMatrix,onScene,onChange=()=>{}}){
   let t=1,mode='linear',factor=null,previous=null,frame=null,running=false;
-  const opts={showOriginal:true,showCube:true,showBasis:true};
+  const opts={showOriginal:true,showCube:true,showBasis:true,showUnitBasis:true,showEigen:true};
   host.className='transform3d-controls';
   const add=(tag,text)=>{const node=document.createElement(tag);if(text)node.textContent=text;host.appendChild(node);return node;};
   const play=add('button','iniciar'),reset=add('button','reiniciar');
@@ -83,7 +112,7 @@ export function createTransform3DControls(host,{getMatrix,onScene,onChange=()=>{
     try{
       if(mode==='svd'&&!factor)factor=svd(A);
       const result=buildTransform3DScene(A,{...opts,t,decomposition:mode==='svd'?factor:null});
-      status.textContent='t = '+t.toFixed(2)+' · det A(t) = '+Number(result.det.toPrecision(6));
+      status.textContent='t = '+t.toFixed(2)+' · det A(t) = '+Number(result.det.toPrecision(6))+' (fator de volume)';
       note.textContent=mode==='svd'
         ? 'Decomposição A = UΣVᵀ · Vᵀ, escalas principais, U. A interpolação pode passar por matrizes singulares.'
         : 'A(t) = (1−t)I + tA · os três vetores da base transformam o cubo unitário.';
@@ -101,7 +130,7 @@ export function createTransform3DControls(host,{getMatrix,onScene,onChange=()=>{
   reset.onclick=()=>{stop();t=0;update();};
   slider.oninput=()=>{stop();t=Number(slider.value);update();};
   selector.onchange=()=>{stop();mode=selector.value;t=0;factor=null;update();};
-  for(const [key,text] of [['showOriginal','cubo original'],['showCube','cubo transformado'],['showBasis','vetores da base']]){
+  for(const [key,text] of [['showOriginal','cubo original'],['showCube','cubo transformado'],['showBasis','vetores da base'],['showEigen','direções próprias']]){
     const toggle=add('label',text+' ');
     const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=true;
     checkbox.onchange=()=>{opts[key]=checkbox.checked;update();};

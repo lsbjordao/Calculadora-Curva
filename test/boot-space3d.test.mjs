@@ -417,3 +417,112 @@ test('controle 3D continua disponível mesmo sem objeto espacial',async()=>{
   assert.equal(button.dataset.mode,'2d');
   assert.equal(button.hidden,false);
 });
+
+test('linhas 3D mostram só os chips que agem nelas (vetor, rótulo, guias); 2D intactas',async()=>{
+  await boot({version:1,theme:'light',view:{cx:0,cy:0,scale:60},view3d:{mode:'3d'},
+    equations:[mk(0,'vetor: u=(1,2,3)'),mk(1,'ponto: A=(1,2,3)'),mk(2,'plano: z = 0'),mk(3,'vetor: v=(1,2)'),mk(4,'vetorial: (1,0,0),(0,1,0)')]});
+  // Each row's controls element holds its chips (in row order); the list is
+  // rebuilt on every render, so the last five are the current rows.
+  const CHIPS=['tipo','âng','âng ext','âng reflex','lado','vetor','rótulo','guias','ang x'];
+  const all=created.filter(el=>el.className==='row-tools');
+  assert.equal(all.length%5,0);
+  const controls=all.slice(-5);
+  const rows=controls.map(el=>[...new Set(el.children.map(c=>c.textContent).filter(t=>CHIPS.includes(t)))]);
+  assert.deepEqual(rows[0],['vetor','rótulo']);
+  assert.deepEqual(rows[1],['rótulo','guias']);
+  assert.deepEqual(rows[2],['rótulo']);
+  assert.deepEqual(rows[3],['tipo','âng','âng ext','âng reflex','lado','vetor','rótulo','ang x']);
+  assert.deepEqual(rows[4],['vetor','rótulo']);
+  // The vetor chip on a 3D row lists |u| with the z component.
+  const vetor=controls[0].children.find(c=>c.textContent==='vetor');
+  vetor.onclick();
+  assert.ok(created.some(el=>/vetores: \|u\| = 3\.74166/.test(String(el.textContent||''))));
+});
+
+test('sintaxe do livro: rótulos não viram sliders; equações em z e corte: por nome entram em 3D',async()=>{
+  const lines=['vetor: u=(1,2,3)','vetor: v=(4,5,6)','vetorial: u, v','vetorial: u=(1,2,3), v=(4,5,6)',
+    'x + y + z = 3','x^2/4 + y^2/9 - z^2 = 1','Q = superficie(x^2 + y^2 - z^2 = 0)','corte: Q, z = 1',
+    'plano: P=(1,0,0), n=(2,-1,k)','x^2 + y^2 = 4'];
+  await boot({version:1,theme:'light',view3d:{mode:'3d'},equations:lines.map((text,i)=>mk(i%8,text))});
+  byId('theme').onclick(); // any change saves the state
+  await settle();
+  assert.deepEqual(saved.equations.map(e=>e.text),lines);
+  const params=saved.equations.map(eq=>Object.keys(eq.params||{}).sort());
+  assert.deepEqual(params,[[],[],[],[],[],[],[],[],['k'],[]]);
+  assert.equal(saved.view3d.mode,'3d');
+});
+
+test('matriz: 3×3 abre a transformação 3D e desenha as direções próprias; sistema 3×3 resume a solução',async()=>{
+  await boot({version:1,theme:'light',view3d:{mode:'3d'},equations:[mk(0,'matriz: [2,1,0; 1,2,0; 0,0,3]')]});
+  const zone=created.find(el=>el.children?.some(c=>c.textContent==='transformação 3D'));
+  assert.ok(zone,'zona transformação 3D');
+  assert.equal(zone.hidden,false);
+  assert.equal(zone.open,true);
+  const shown=texts();
+  assert.ok(shown.includes('λ = 1')&&shown.includes('λ = 3'),shown.join(' '));
+  assert.ok(shown.includes('e1')&&shown.includes('A(t)e1'));
+  await boot({version:1,theme:'light',view3d:{mode:'3d'},equations:[{...mk(0,'calc: solveinfo([[1,1,1],[2,2,2],[1,-1,0]],[1,2,0])'),showAlgebraSystem:true}]});
+  const summary=created.find(el=>el.className==='system-summary');
+  assert.match(summary.textContent,/infinitas soluções: reta X = /);
+  assert.ok(texts().includes('Solução (reta)'));
+});
+
+test('CR4: z = 3 é plano, z = x^2 é superfície (cilindro parabólico), z = 3 {x>0} continua 2D',async()=>{
+  await boot({version:1,theme:'light',view3d:{mode:'3d'},equations:[mk(0,'z = 3'),mk(1,'z = x^2'),mk(2,'z = 3 {x>0}')]});
+  const types=created.filter(el=>el.className==='row-type').slice(-3).map(el=>el.textContent);
+  assert.equal(types[0],'plano');
+  assert.equal(types[1],'Superfície · Cilindro parabólico');
+  assert.equal(types[2],'explícita');
+});
+
+test('Canvas: planos terminam nos eixos (±N) mesmo afastando o zoom; dica "gire a vista" na linha',async()=>{
+  const extent=async zoom=>{
+    await boot({version:1,theme:'light',view3d:{mode:'3d',camera:{azimuth:-60,elevation:25,projection:'ortho',zoom}},
+      equations:[mk(0,'plano: z = 0'),mk(1,'vetorial: u=(1,2,3), v=(4,5,6)')]});
+    await wait(40);
+    const pts=calls.filter(c=>c[0]==='moveTo'||c[0]==='lineTo').map(c=>Math.hypot(c[1]-400,c[2]-300));
+    return {max:Math.max(...pts), hint:created.filter(el=>el.className==='view-hint').at(-1)};
+  };
+  const near=await extent(1), far=await extent(0.25);
+  // The ±N axes shrink with the zoom and so does the plane (before: ±46 units at 0.25).
+  assert.ok(far.max<near.max*0.4,`zoom 0.25: ${far.max} px; zoom 1: ${near.max} px`);
+  assert.equal(far.hint.textContent,'gire a vista para ver u×v');
+  assert.equal(far.hint.hidden,false);
+});
+
+test('v vetor, depois V = misto(u,v,w): vetorial: u, v usa o vetor v, sem slider v',async()=>{
+  const lines=['vetor: u=(1,2,3)','vetor: v=(4,5,6)','vetor: w=(0,0,1)','V = misto(u,v,w)','vetorial: u, v'];
+  await boot({version:1,theme:'light',view3d:{mode:'3d'},equations:lines.map((text,i)=>mk(i,text))});
+  const rows=created.filter(el=>el.className==='row').slice(-lines.length);
+  assert.deepEqual(rows.map(el=>el.dataset.err),['0','0','0','0','0']);
+  byId('theme').onclick();
+  await settle();
+  assert.deepEqual(saved.equations.map(eq=>Object.keys(eq.params||{})),[[],[],[],[],[]]);
+});
+
+test('ver planos 3D: o resumo acompanha o slider (a = 0 → sem solução)',async()=>{
+  await boot({version:1,theme:'light',view3d:{mode:'3d'},equations:[{...mk(0,'calc: solveinfo([[1,1,1],[1,-1,0],[0,0,a]],[6,0,2])'),params:{a:1},showAlgebraSystem:true}]});
+  const summary=()=>created.filter(el=>el.className==='system-summary').at(-1);
+  assert.match(summary().textContent,/^solução única/);
+  const range=created.filter(el=>el.type==='range').at(-1);
+  assert.ok(range,'slider a');
+  range.value=0;
+  range.oninput();
+  assert.match(summary().textContent,/^sem solução/);
+});
+
+test('matriz: 3×3 abre a transformação 3D só na primeira vez; fechar é lembrado',async()=>{
+  await boot({version:1,theme:'light',view3d:{mode:'3d'},equations:[mk(0,'matriz: [2,1,0; 1,2,0; 0,0,3]')]});
+  // The zone is the <details> (the summary itself also holds the text).
+  const zone=()=>created.filter(el=>typeof el.open==='boolean'&&el.children?.some(c=>c.textContent==='transformação 3D')).at(-1);
+  const z=zone();
+  assert.equal(z.open,true);
+  const summary=z.children.find(c=>c.textContent==='transformação 3D');
+  summary.fire('click');
+  z.open=false;
+  z.fire('toggle');
+  const input=fields().at(-1);
+  input.value='matriz: [2,1,0; 1,2,0; 0,0,4]';
+  input.oninput();
+  assert.equal(zone().open,false,'o usuário fechou: continua fechado');
+});

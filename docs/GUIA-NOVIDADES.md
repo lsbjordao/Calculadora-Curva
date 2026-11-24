@@ -97,6 +97,12 @@ superficie: x^2+y^2+z^2+sin(x*y)=3
 plano: z=0
 ```
 
+Como a equação tem a variável z, o prefixo é opcional: a linha
+`x^3+y^3+z^3=1` sozinha cria a mesma superfície (seção "Espaço (ℝ³)"
+do README). Os cortes desta seção vêm dos planos visíveis; o comando
+`corte: superfície, plano` (por exemplo `corte: x^2+y^2-z^2=0, z=1`)
+classifica exatamente apenas seções de **quádricas**.
+
 ## 5. Campo vetorial 2D: direção, divergente e rotacional
 
 ```text

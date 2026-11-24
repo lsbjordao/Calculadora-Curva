@@ -138,6 +138,22 @@ function circleSegments(radius){
       b:[radius*Math.cos(b),radius*Math.sin(b),0],color:'#e85d8b',weight:2};
   });
 }
+function orientedDisk(radius){
+  const count=96,vertices=[[0,0,0]];
+  for(let i=0;i<count;i++){
+    const theta=2*Math.PI*i/count;
+    vertices.push([radius*Math.cos(theta),radius*Math.sin(theta),0]);
+  }
+  const faces=Array.from({length:count},(_,i)=>[0,i+1,((i+1)%count)+1]);
+  return {kind:'mesh',vertices,faces,alpha:.22,color:'#8d7bd7',
+    role:'aux',label:'Disco XY orientado com normal +z'};
+}
+function orientationArrow(radius){
+  // Tangente à circunferência orientada anti-horariamente.
+  const scale=Math.min(.6,Math.max(.16,.32*radius));
+  return {kind:'arrow',from:[radius,0,0],to:[radius,scale,0],
+    color:'#e85d8b',weight:2.8,label:'anti-horário'};
+}
 function lineIntegralCommand(body,ctx){
   const parts=core.splitTopAny(String(body),',').map(x=>x.trim());
   if(parts.length!==3)throw new Error('Integral de linha: use integrallinha: Fx,Fy,raio.');
@@ -145,7 +161,8 @@ function lineIntegralCommand(body,ctx){
   const radius=core.evalScalar(parts[2],ctx);
   const calc=lineIntegralCircle(field,{radius});
   const r=result3('vector-field','Integral de linha · circunferência');
-  r.scene3d=[...vectorFieldScene(field,{count:5,extent:radius*1.3}),...circleSegments(radius)];
+  r.scene3d=[...vectorFieldScene(field,{count:5,extent:radius*1.3}),
+    ...circleSegments(radius),orientationArrow(radius)];
   r.info=['Campo F = ('+parts.slice(0,2).join(', ')+')',
     'C: x = '+core.fmt(radius)+' cos(t), y = '+core.fmt(radius)+' sin(t), 0 ≤ t ≤ 2π',
     '∮ F · dr ≈ '+core.fmt(calc.value),
@@ -160,7 +177,9 @@ function fluxDiskCommand(body,ctx){
   const radius=core.evalScalar(parts[3],ctx);
   const calc=fluxThroughDisk(field,{radius});
   const r=result3('vector-field','Fluxo pelo disco XY');
-  r.scene3d=[...vectorFieldScene(field,{count:3,extent:radius*1.2}),...circleSegments(radius)];
+  r.scene3d=[orientedDisk(radius),...vectorFieldScene(field,{count:3,extent:radius*1.2}),
+    ...circleSegments(radius),{kind:'arrow',from:[0,0,0],to:[0,0,Math.min(radius,1.2)],
+      color:'#8d7bd7',weight:3,label:'n = +z'}];
   r.info=['Campo F = ('+parts.slice(0,3).join(', ')+')',
     'Disco: x²+y² ≤ '+core.fmt(radius*radius)+', z=0',
     '∬ F · n dS ≈ '+core.fmt(calc.value),

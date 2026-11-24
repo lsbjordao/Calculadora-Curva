@@ -221,11 +221,27 @@ test('COMMAND_NAMES_PT has no gaps for the new forms (errors name the command in
 
 // ── GC minors ─────────────────────────────────────────────────────────────
 
-test('a name labelled in the same line is an object, not a slider', ()=>{
+// Slider extraction only. No command resolves a reference to a name labelled in
+// the same line (u in "v=u*k" below is not a vector there, so the line itself is
+// an error, "ponto esperado"); define u in a line of its own to use it. The rule
+// only keeps such a line from also offering a spurious slider u while it is typed.
+test('slider extraction only: a name labelled in the same line is not offered as a slider', ()=>{
   assert.deepEqual(params('vetor: u=(1,2,3), v=u*k'),['k']);
+  assert.deepEqual(params('vetorial: u=(1,2,3), v=u*k'),['k']);
+  assert.deepEqual(params('plano: P=(1,0,0), u=(1,0,0), v=u*k'),['k']);
   assert.deepEqual(params('soma: u=(1,0,0), v=(0,1,0), 2*u'),[]);
+  // The same name unlabelled in the line is still a slider.
+  assert.deepEqual(params('vetor: w=(u,0,1)'),['u']);
   // main's positional commands keep their u, v.
   assert.deepEqual(params('tangente: elipsoide,a,b,c,d,u,v'),['a','b','c','d','u','v']);
+});
+
+test('the parseable form of a same-line reference: u in its own line, then v = u*k', ()=>{
+  const {registry}=run(['vetor: u=(1,2,3)']);
+  assert.deepEqual(params('vetor: v = u*k',registry),['k']);
+  const {out}=run(['vetor: u=(1,2,3)','vetor: v = u*k'],{k:2});
+  const v=ok(out[1]).definitions.find(d=>d.name==='v').value.to;
+  assert.deepEqual([v.x,v.y,v.z],[2,4,6]);
 });
 
 test('vetor: u/0 says "divisão por zero"; trivial equations say "sem variáveis"', ()=>{

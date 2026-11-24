@@ -495,11 +495,19 @@ export function wants3d(command,body,ctx={}){
 // The unit cube (dashed) and its image, e1..e3 and their images, the
 // eigen-directions of a symmetric A, det as the volume factor. The app animates
 // A(t) = (1−t)I + tA with the "transformação 3D" controls (transform3d.js).
+// A value known to be nonzero (det of a rank-3 matrix): core.fmt rounds anything
+// below 1e-10 to "0", so tiny or huge values use 4 significant digits instead.
+function fmtNonzero(value){
+  const abs=Math.abs(value);
+  if(!Number.isFinite(value)||value===0||(abs>=1e-4&&abs<1e5)) return core.fmt(value);
+  return value.toExponential(3).replace(/\.?0+e/,'e');
+}
+
 export function matrix3Result(values,ctx={},definitionName=''){
   const A=values.map(row=>row.map(noNegZero));
   const det=noNegZero(matrixDet3(A)), tr=noNegZero(matrixTrace3(A));
   // Singular ⇔ rank < 3 (main's scale-aware rank), so diag(1e6,1e6,1e-6) keeps
-  // det = 1 and diag(1e-9,1e-9,1e-9) is invertible (det = 1e-27).
+  // det = 1e6 and diag(1e-9,1e-9,1e-9) is invertible (det = 1e-27).
   const rank=A.flat().some(x=>x!==0) ? matrixRank(A) : 0;
   const singular=rank<3;
   const r=result3('matrix','matriz 3x3');
@@ -510,8 +518,8 @@ export function matrix3Result(values,ctx={},definitionName=''){
     const where=rank===2 ? 'num plano' : rank===1 ? 'numa reta' : 'num ponto';
     r.info.push('det = 0 (fator de volume): o cubo colapsa '+where+' (posto '+rank+')');
   } else {
-    r.info.push('det = '+core.fmt(det)+' (fator de volume)');
-    if(det<0) r.info.push('det < 0: orientação invertida (o volume é multiplicado por |det| = '+core.fmt(-det)+')');
+    r.info.push('det = '+fmtNonzero(det)+' (fator de volume)');
+    if(det<0) r.info.push('det < 0: orientação invertida (o volume é multiplicado por |det| = '+fmtNonzero(-det)+')');
   }
   r.info.push('traço = '+core.fmt(tr));
   const pairs=symmetricEigen3(A);

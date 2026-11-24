@@ -53,6 +53,16 @@ test('matriz: 3×3 notes det < 0 (orientation) and det = 0 (collapse onto plane,
   assert.equal(tiny.matrix.rank,3);
   assert.doesNotMatch(info(tiny),/colapsa/);
   close(tiny.matrix.det,1e-27,1e-40);
+  // A nonsingular matrix never shows det = 0: tiny and huge dets in scientific notation.
+  assert.match(info(tiny),/det = 1e-27 \(fator de volume\)/);
+  assert.doesNotMatch(info(tiny),/det = 0\b/);
+  assert.match(info(tiny),/traço = 3e-9/);
+  assert.match(info(tiny),/autovalores = 1e-9, 1e-9, 1e-9/);
+  const neg=ok(parseGeometryInput('matriz: [-0.00001,0,0; 0,0.00002,0; 0,0,0.00003]'));
+  assert.match(info(neg),/det = -6e-15 \(fator de volume\)/);
+  assert.match(info(neg),/\|det\| = 6e-15/);
+  const huge=ok(parseGeometryInput('matriz: [123456,0,0; 0,1000,0; 0,0,1000]'));
+  assert.match(info(huge),/det = 1\.235e\+11 \(fator de volume\)/);
   // One det line only.
   assert.equal(plane.info.filter(x=>/^det/.test(x)).length,1);
   // A slider can make it singular in the middle of a drag: no exception.

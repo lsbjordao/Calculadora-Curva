@@ -532,6 +532,8 @@ ger: u   ger: u, v   ger: u, v, w   (reta, plano ou ℝ³ pela origem, com o pos
 
 Rótulos dentro dos argumentos (`u=`, `v=`, `w=`, `n=`, `P=`, `Q=`) são palavras do
 comando, não sliders; um escalar livre no valor (`n=(2,-1,k)`) continua sendo slider.
+Um rótulo vale só na própria linha como nome do argumento: para usar `u` em outro
+valor, defina-o numa linha própria (`vetor: u=(1,2,3)` e depois `vetor: v = u*k`).
 `w = vetorial(u,v)`, `V = misto(u,v,w)` e `S = ger(u,v)` definem objetos reutilizáveis.
 
 ### Retas e planos

@@ -330,10 +330,13 @@ export function renderThree3D(primitives,options={}){
   message('Carregando Three.js…');
   loadLibrary().then(T=>{
     const container=root();
-    if(!container||container.style.display==='none')return;
+    if(!container)return;
+    // O carregamento pode terminar durante uma troca de modo: o WebGL deve
+    // ser inicializado mesmo oculto para não ficar preso em "Carregando…".
     three=T;
     ensureEngine(T);
-    renderPending();
+    if(container.style.display!=='none')renderPending();
+    else message('');
   }).catch(error=>{
     lastError=error;
     if(root()?.style.display!=='none')message('Não foi possível iniciar Three.js (WebGL ou conexão indisponível). Use Plotly.js ou Canvas 2D.');

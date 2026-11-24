@@ -2,6 +2,7 @@
 // Scalar graphs z=f(x,y): numerical multivariable calculus and level curves.
 // Supports general differentiable expressions accepted by the Curva parser.
 import {compileXyz} from './implicit-quadric.js';
+import {multivariateDerivativeTexts} from '../symbolic.js';
 
 const vlen=x=>Math.hypot(...x);
 const round=x=>Number(x.toPrecision(6));
@@ -17,7 +18,16 @@ export function compileScalarSurface(raw,params={}){
     if(Math.abs(f3(x,y,0)-f3(x,y,1))>1e-8)
       throw new Error('A expressão f(x,y) não pode depender de z.');
   }
-  return {expr,at:(x,y)=>f3(x,y,0)};
+  const at=(x,y)=>f3(x,y,0);
+  const formulas=multivariateDerivativeTexts(expr);
+  if(formulas){
+    try{
+      at.symbolicFns=Object.fromEntries(Object.entries(formulas)
+        .map(([key,value])=>[key,compileXyz(value,params)]));
+      at.symbolicExpressions=formulas;
+    }catch(_){ /* O parser numérico permanece o fallback seguro. */ }
+  }
+  return {expr,at,symbolic:at.symbolicExpressions||null};
 }
 function numeric(fn,x,y,dx=1e-3){
   const h=dx*Math.max(1,Math.abs(x),Math.abs(y));
@@ -26,7 +36,17 @@ function numeric(fn,x,y,dx=1e-3){
   const fx=(xp-xm)/(2*h),fy=(yp-ym)/(2*h);
   const fxx=(xp-2*z+xm)/(h*h),fyy=(yp-2*z+ym)/(h*h);
   const fxy=(fn(x+h,y+h)-fn(x+h,y-h)-fn(x-h,y+h)+fn(x-h,y-h))/(4*h*h);
-  return {z,fx,fy,fxx,fyy,fxy};
+  // Usa expressões simbólicas quando disponíveis e finitas. Uma exceção de
+  // domínio volta ao método numérico sem interromper o laboratório.
+  if(fn.symbolicFns){
+    try{
+      const d=Object.fromEntries(Object.entries(fn.symbolicFns)
+        .map(([key,evalFn])=>[key,evalFn(x,y,0)]));
+      if(Object.values(d).every(Number.isFinite))
+        return {z,...d,source:'simbólica',expressions:fn.symbolicExpressions};
+    }catch(_){}
+  }
+  return {z,fx,fy,fxx,fyy,fxy,source:'numérica'};
 }
 export function multivariateAt(fn,x=0,y=0,angle=0){
   if(![x,y].every(Number.isFinite))throw new Error('Ponto de cálculo inválido.');
@@ -43,7 +63,7 @@ export function multivariateAt(fn,x=0,y=0,angle=0){
   return {point,gradient,normal,hessian,detHessian:det,direction,directionalDerivative,angle,
     tangentOffset:normal.reduce((a,b,i)=>a+b*point[i],0),
     critical,criticalType:critical?kind:null,
-    derivatives:d};
+    derivatives:d,derivativeSource:d.source,derivativeExpressions:d.expressions||null};
 }
 export function findStationaryPoints(fn,{extent=4}={}){
   const roots=[];

@@ -278,6 +278,11 @@
         <button class="fn" data-ins="matriz: [1,b; 0,1]" title="Sintaxe: matriz: [1,b; 0,1]">cisalhar</button>
         <button class="fn" data-ins="matriz: [0,-1; 1,0]" title="Sintaxe: matriz: [0,-1; 1,0]">girar</button>
         <button class="fn" data-ins="matriz: [2,0; 0,1]" title="Sintaxe: matriz: [sx,0; 0,sy]">escala</button>
+        <button class="fn" data-ins="superficie: x^3+y^3+z^3=1" title="Superfície implícita geral, não necessariamente quádrica">implícita 3D</button>
+        <button class="fn" data-ins="campo: -y,x" title="Campo vetorial plano F(x,y)=(-y,x)">campo 2D</button>
+        <button class="fn" data-ins="campo3d: -y,x,z" title="Campo vetorial tridimensional">campo 3D</button>
+        <button class="fn" data-ins="integrallinha: -y,x,1" title="Circulação ao longo de circunferência anti-horária">∮ linha</button>
+        <button class="fn" data-ins="fluxo: 0,0,1,1" title="Fluxo pelo disco XY orientado em +z">∬ fluxo</button>
       </div>
       <div id="geo-builder" class="geo-builder hidden">
         <div class="geo-builder-head">
@@ -457,6 +462,7 @@
       <div id="table-wrap"></div>
     </section>
     <div id="view3d-bar" role="toolbar" aria-label="Vista 2D | 3D" title="Vista 3D: arraste para girar · Shift+arraste para mover · roda para zoom · duplo clique volta">
+      <button id="math-inspector-toggle" class="small" type="button" aria-pressed="false" title="Inspecionar propriedades matemáticas da camada selecionada; Shift+clique compara dois planos">inspecionar</button>
       <button id="view-mode" class="small" hidden aria-pressed="false" title="Abrir a vista 3D" aria-label="Alternar vista 2D | 3D"><span data-m="2d">2D</span><span data-m="3d">3D</span></button>
       <button id="section-toggle" class="small" hidden type="button" aria-pressed="true" title="Mostrar ou ocultar a seção cônica em 2D">3D + 2D</button>
       <button id="view3d-focus" class="small" hidden type="button" aria-pressed="false" title="Maximizar temporariamente o visor 3D">⛶ 3D</button>
@@ -483,6 +489,13 @@
         </label>
       </span>
     </div>
+    <section id="math-inspector" class="math-inspector" hidden aria-label="Inspetor matemático">
+      <header class="math-inspector-head">
+        <strong id="math-inspector-title">Inspetor matemático</strong>
+        <button id="math-inspector-close" type="button" title="Fechar inspetor" aria-label="Fechar inspetor">×</button>
+      </header>
+      <div id="math-inspector-body" aria-live="polite"></div>
+    </section>
     <div id="tools">
       <button id="theme" title="Ativar tema escuro" aria-label="Alternar tema">◐</button>
       <button id="fullscreen" class="small" title="Tela cheia" aria-label="Tela cheia">⛶</button>

@@ -393,7 +393,23 @@ try{
     return counts.guides>=1&&counts.segments>50?counts:false;
   },null,{timeout:18000});
   const light=await lightHandle.jsonValue();
-  nodeAssert.ok(light.guides>=1&&light.segments>50,'malha de referências deve renderizar no WebGL: '+JSON.stringify(light));
+  if(!(light?.guides>=1&&light?.segments>50)){
+    const diagnostic=await wirePage.evaluate(async()=>{
+      const renderer=await import('/src/space3d/three-renderer.js');
+      const root=document.getElementById('three-3d-container');
+      const status=document.getElementById('three-3d-status');
+      const canvas=document.createElement('canvas');
+      return {stats:renderer.threeSurfaceGuideStats(),status:status?.textContent,
+        rootDisplay:getComputedStyle(root).display,
+        webgl:!!canvas.getContext('webgl2'),
+        canvasCount:root?.querySelectorAll('canvas').length,
+        rows:[...document.querySelectorAll('.row')].map(x=>({name:x.querySelector('.field')?.value,kind:x.dataset.kind,err:x.dataset.err})),
+        mode:document.getElementById('view-mode')?.dataset.mode,
+        lib:document.getElementById('3d-lib-select')?.value};
+    });
+    console.error('THREE GUIDE DEBUG',JSON.stringify(diagnostic));
+  }
+  nodeAssert.ok(light?.guides>=1&&light?.segments>50,'malha de referências deve renderizar no WebGL: '+JSON.stringify(light));
   nodeAssert.equal(await wireToggle.getAttribute('data-mode'),'normal');
   await wirePage.screenshot({path:resolve(screenshots,'threejs-superficie-linhas-leves.png')});
   await wireToggle.click();

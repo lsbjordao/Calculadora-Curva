@@ -45,6 +45,18 @@
     <button id="add">+ nova função</button>
 
     <div id="pad">
+      <div class="pad-head">
+        <div class="pad-titlebar">
+          <strong>teclado</strong>
+          <span id="pad-summary" aria-live="off">123</span>
+        </div>
+        <button id="pad-toggle" class="panel-toggle" type="button" title="Recolher teclado" aria-label="Recolher teclado" aria-expanded="true" aria-controls="pad-content">
+          <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </button>
+      </div>
+      <div id="pad-content">
       <div id="tabs">
         <button class="tab active" data-tab="num" title="Aba de números, operadores e raízes">123</button>
         <button class="tab" data-tab="fn" title="Aba de funções: sin(x), ln(x), piecewise(...)">ƒ(x)</button>
@@ -290,6 +302,7 @@
           <button id="geo-build-convex-hull" type="button" title="Sintaxe gerada: convexo: A,B,C,D,..." disabled>convexo</button>
         </div>
       </div>
+      </div>
     </div>
 
     <section id="presets" aria-label="Presets" data-collapsed="1">
@@ -454,6 +467,7 @@
       <button id="view-mode" class="small" hidden aria-pressed="false" title="Abrir a vista 3D" aria-label="Alternar vista 2D | 3D"><span data-m="2d">2D</span><span data-m="3d">3D</span></button>
       <button id="section-toggle" class="small" hidden type="button" aria-pressed="true" title="Mostrar ou ocultar a seção cônica em 2D">3D + 2D</button>
       <button id="view3d-focus" class="small" hidden type="button" aria-pressed="false" title="Maximizar temporariamente o visor 3D">⛶ 3D</button>
+      <button id="three-surface-lines" class="small" hidden type="button" aria-pressed="true" data-mode="normal" title="Linhas de referência das superfícies no Three.js; clique para alternar a densidade" aria-label="Linhas de referência 3D: leves">linhas: leves</button>
       <button id="plane-drag-mode" class="small" hidden type="button" aria-pressed="false" title="No Three.js, arraste o plano para inclinar/deslocar ou o cone para abrir/elevar (Alt+arrastar também funciona)">Editar 3D</button>
       <span id="view3d-controls" hidden>
         <button id="view-xy" class="small" title="Vista de cima (plano xy)">xy</button>

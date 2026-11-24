@@ -464,6 +464,10 @@
     overflow-wrap:anywhere;
     white-space:normal;
   }
+  /* One mathematical property per line, with the field label visually distinct. */
+  .row-info-line{display:block;line-height:1.5;overflow-wrap:anywhere}
+  .row-info-line+.row-info-line{margin-top:4px}
+  .row-info-key{font-weight:700;color:var(--ink)}
   .row-info:empty{display:none}
   .steps-zone:empty{display:none}
   .steps{
@@ -1937,3 +1941,55 @@
 .surface-point-axis input[type="number"]{min-width:0;width:100%;padding:4px 5px;border-radius:6px;
   background:var(--field);color:var(--ink);border:1px solid var(--field-edge);font-size:12px}
 .surface-point-axis input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Teclado recolhível: mais espaço útil para as camadas sem alterar o gráfico. */
+#pad{flex:0 0 auto;min-width:0}
+.pad-head{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  min-height:42px;padding:7px 10px 7px 15px;
+}
+.pad-titlebar{display:flex;align-items:center;gap:10px;min-width:0}
+.pad-titlebar strong{color:var(--ink);font-size:11.5px;font-weight:650}
+#pad-summary{
+  color:var(--muted);font:10.5px var(--mono);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+#pad[data-collapsed="0"] #pad-summary{display:none}
+#pad[data-collapsed="1"] .pad-head{min-height:40px}
+#pad-content[hidden]{display:none!important}
+#pad-toggle .toggle-icon{pointer-events:none}
+#pad-toggle:hover{color:var(--accent)}
+/* A lista deixa de ficar limitada a 260px. Fechar o teclado amplia ainda
+   mais o visor, sem misturar a rolagem das camadas com a barra lateral. */
+#rows{
+  max-height:clamp(300px,42dvh,500px);
+  min-height:160px;
+}
+#side[data-keyboard-collapsed="1"] #rows{
+  flex:1 1 auto;
+  min-height:min(475px,60dvh);
+  max-height:min(75dvh,690px);
+}
+/* Preserve the wider result panels that were already supported. */
+#side:not([data-keyboard-collapsed="1"]) #rows:has(.algebra-result),
+#side:not([data-keyboard-collapsed="1"]) #rows:has(.transform-controls){
+  max-height:min(55dvh,560px);
+}
+@media(max-width:720px){
+  #side[data-keyboard-collapsed="1"] #rows{
+    flex:1 1 auto;
+    min-height:min(285px,38dvh);
+    max-height:min(65dvh,520px);
+  }
+}
+@media(max-height:640px){
+  #side[data-keyboard-collapsed="1"] #rows{
+    min-height:min(225px,42dvh);
+  }
+}
+
+/* Three.js surface guides: compact density control next to the 3D view. */
+#three-surface-lines{white-space:nowrap;flex:0 0 auto}
+#three-surface-lines[data-mode="detailed"]{border-color:var(--accent);color:var(--accent)}
+#three-surface-lines[data-mode="off"]{opacity:.72}
+#three-surface-lines[hidden]{display:none!important}

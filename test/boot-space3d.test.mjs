@@ -50,14 +50,27 @@ function makeEl(id){
         case 'querySelector': return ()=>makeEl();
         case 'querySelectorAll': return ()=>[];
         case 'closest': return ()=>null;
+        // Real DOM textContent aggregates descendant text nodes. The multiline
+        // info renderer appends strong/span children instead of using a flat
+        // textContent assignment, so the boot stub must model that behavior.
+        case 'textContent': return t.children.map(child=>
+          typeof child==='string'?child:String(child?.textContent??'')).join('');
         case 'appendChild': case 'append': return (...c)=>{ t.children.push(...c); return c[0]; };
-        case 'replaceChildren': return (...c)=>{ t.children=[...c]; };
+        case 'replaceChildren': return (...c)=>{ t.children=[...c]; delete t.textContent; };
         case 'cloneNode': return ()=>makeEl();
         case 'contains': case 'matches': return ()=>false;
         default: return ()=>{};
       }
     },
-    set(t,prop,val){ t[prop]=val; return true; }
+    set(t,prop,val){
+      if(prop==='textContent'){
+        // Writing textContent replaces descendants in browsers.
+        t.children=[{textContent:String(val??'')}];
+        delete t.textContent;
+        return true;
+      }
+      t[prop]=val;return true;
+    }
   });
   return proxy;
 }
@@ -97,6 +110,13 @@ const cv=()=>byId('cv');
 // The persisted state is written by the 120 ms debounced save.
 const settle=()=>wait(220);
 
+const descendantText=node=>{
+  if(node==null)return '';
+  if(typeof node==='string')return node;
+  if(Array.isArray(node.children)&&node.children.length)
+    return node.children.map(descendantText).join('');
+  return typeof node.textContent==='string'?node.textContent:'';
+};
 const fields=()=>created.filter(el=>el.className==='field');
 const scalars=()=>created.filter(el=>el.className==='row-info')
   .flatMap(el=>el.children.filter(child=>child.className==='algebra-scalar').map(child=>child.textContent));
@@ -147,7 +167,7 @@ test('URL executa os comandos na ordem, resolve referências e substitui a cena 
     equations:[mk(0,'ponto: A=(0,0), B=(30,40)')]},urlFor(commands));
   assert.deepEqual(fields().map(el=>el.value),commands);
   assert.deepEqual(scalars(),['1','-1','7']);
-  assert.ok(created.some(el=>el.className==='row-info'&&/d\(A, B\) = 10\b/.test(el.textContent)));
+  assert.ok(created.some(el=>el.className==='row-info-line'&&/d\(A, B\) = 10\b/.test(descendantText(el))));
   assert.ok(created.filter(el=>el.className==='row').every(el=>el.dataset.err==='0'));
   assert.ok(texts().includes('A'),'ponto da URL visível na cena padrão');
   assert.ok(!texts().includes('z'),'vista 3D salva não contamina a URL 2D');
@@ -189,7 +209,7 @@ test('linhas da URL continuam editáveis, recalculam dependentes e salvam normal
   const [points]=fields();
   points.value='ponto: A=(0,0), B=(6,8)';
   points.oninput();
-  assert.ok(created.some(el=>el.className==='row-info'&&/d\(A, B\) = 10\b/.test(el.textContent)));
+  assert.ok(created.some(el=>el.className==='row-info-line'&&/d\(A, B\) = 10\b/.test(descendantText(el))));
   await settle();
   assert.deepEqual(saved.equations.map(eq=>eq.text),['ponto: A=(0,0), B=(6,8)','dist: A,B']);
 });

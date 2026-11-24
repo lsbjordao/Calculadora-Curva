@@ -31,6 +31,7 @@ import {
 import { addGeometryDefinitions, extractGeometryParams, parseGeometryInput } from './geometry.js';
 import { choosePointSourceIndex, constructionExpression, formatPointCommand, nextPointLabel, normalizePoint, updatePoint, usedGeometryNames } from './geometry-builder.js';
 import { describeCanvas, formatMathVisual } from './accessibility.js';
+import { splitInfoLines, infoLabelValue } from './info-format.js';
 import { isStructuredResult, resultInfo, renderAlgebraResult } from './algebra-ui.js';
 import { matrixInfo } from './linear-algebra.js';
 import { algebraDeclaration, createAlgebraSymbols } from './algebra-symbols.js';
@@ -1807,6 +1808,24 @@ function renderRows(){
       if(eq.kind==='geometry') return;
       eq.showAlgebraTransform=transformZone.open; refreshTransform(); draw(); scheduleSave();
     });
+    const renderInformationLines=value=>{
+      info.replaceChildren();
+      for(const line of splitInfoLines(value)){
+        const {label,value:text}=infoLabelValue(line);
+        const item=document.createElement('div');
+        item.className='row-info-line';
+        if(label){
+          const key=document.createElement('strong');
+          key.className='row-info-key';
+          key.textContent=formatMathVisual(label)+':';
+          item.append(key,document.createTextNode(' '));
+        }
+        const detail=document.createElement('span');
+        detail.textContent=formatMathVisual(text);
+        item.appendChild(detail);
+        info.appendChild(item);
+      }
+    };
     const refreshMathInfo=()=>{
       info.classList.remove('algebra-result');
       if(eq.error){info.replaceChildren();info.textContent=eq.errorMessage||eq.geometry?.error||'Expressão inválida.';}
@@ -1816,13 +1835,12 @@ function renderRows(){
       else if(eq.kind==='regression' && eq.showResultTable) renderFitParameterGrid(eq, info);
       else if(eq.kind==='fitcompare' && eq.showResultTable) renderCompareGrid(eq, info);
       else if(eq.kind==='points' && eq.pointLabel==='resid' && eq.showResultTable) renderResidualGrid(eq, info);
-      else info.textContent=formatMathVisual(mathInfo(eq));
+      else renderInformationLines(mathInfo(eq));
       const notice=viewNotice(eq,view3d.mode);
       if(notice){
-        const note=document.createElement('span');
-        note.className='view-notice';
+        const note=document.createElement('div');
+        note.className='row-info-line view-notice';
         note.textContent=notice;
-        if(String(info.textContent||'').trim()) info.append(' · ');
         info.append(note);
       }
       renderStepsZone(eq, stepsZone);
@@ -2796,6 +2814,38 @@ function setPanelToggle(toggle, collapsed, label){
   toggle.setAttribute('aria-expanded',collapsed?'false':'true');
 }
 
+// Layout preference, kept separate from mathematical project/history state.
+// Closing the keyboard must not clear its active tab or any equation.
+function initKeyboardPanel(){
+  const panel=document.getElementById('pad');
+  const content=document.getElementById('pad-content');
+  const toggle=document.getElementById('pad-toggle');
+  const summary=document.getElementById('pad-summary');
+  const side=document.getElementById('side');
+  if(!panel||!content||!toggle||!side)return;
+  const key='curva-keyboard-collapsed';
+  let collapsed=false;
+  try{collapsed=window.localStorage.getItem(key)==='1';}catch(_){}
+  const render=()=>{
+    panel.dataset.collapsed=collapsed?'1':'0';
+    side.dataset.keyboardCollapsed=collapsed?'1':'0';
+    content.hidden=collapsed;
+    setPanelToggle(toggle,collapsed,'teclado');
+    const active=panel.querySelector('#tabs .tab.active');
+    if(summary)summary.textContent=(typeof active?.textContent==='string'?active.textContent.trim():'123');
+  };
+  toggle.addEventListener('click',()=>{
+    collapsed=!collapsed;
+    render();
+    try{window.localStorage.setItem(key,collapsed?'1':'0');}catch(_){}
+  });
+  panel.addEventListener('click',ev=>{
+    if(ev.target.closest?.('#tabs .tab')&&summary)
+      summary.textContent=(panel.querySelector('#tabs .tab.active')?.textContent||'123').toString().trim();
+  });
+  render();
+}
+
 function initPresets(){
   const section=document.getElementById('presets');
   const list=document.getElementById('preset-list');
@@ -3401,6 +3451,30 @@ const stage=document.getElementById('stage');
 const sectionElement=document.getElementById('section2d-panel');
 const sectionToggle=document.getElementById('section-toggle');
 const planeDragButton=document.getElementById('plane-drag-mode');
+const surfaceLinesButton=document.getElementById('three-surface-lines');
+const SURFACE_LINE_MODES=['normal','detailed','off'];
+let threeSurfaceLines='normal';
+try{
+  const stored=localStorage.getItem('curva-three-surface-lines');
+  if(SURFACE_LINE_MODES.includes(stored))threeSurfaceLines=stored;
+}catch(_){}
+function updateSurfaceLinesButton(){
+  if(!surfaceLinesButton)return;
+  surfaceLinesButton.hidden=view3d.mode!=='3d'||getActive3DLibrary()!=='threejs';
+  const labels={normal:'leves',detailed:'densas',off:'sem'};
+  surfaceLinesButton.textContent='linhas: '+labels[threeSurfaceLines];
+  surfaceLinesButton.dataset.mode=threeSurfaceLines;
+  surfaceLinesButton.setAttribute?.('aria-pressed',threeSurfaceLines==='off'?'false':'true');
+  surfaceLinesButton.setAttribute?.('aria-label','Linhas de referência 3D: '+labels[threeSurfaceLines]);
+  surfaceLinesButton.title='Linhas que acompanham as superfícies no giro · clique para alternar entre leves, densas e desativadas';
+}
+surfaceLinesButton?.addEventListener?.('click',()=>{
+  const current=SURFACE_LINE_MODES.indexOf(threeSurfaceLines);
+  threeSurfaceLines=SURFACE_LINE_MODES[(current+1)%SURFACE_LINE_MODES.length];
+  updateSurfaceLinesButton();
+  try{localStorage.setItem('curva-three-surface-lines',threeSurfaceLines);}catch(_){}
+  draw();
+});
 const sectionLinkedMarker=document.getElementById('section-linked-marker');
 let sectionLinkedWorld=null;
 function setSectionLinkedWorld(world){
@@ -3569,6 +3643,7 @@ function activeSectionEquation(){
   return equations.find(eq=>eq?.visible!==false&&!eq.error&&eq.kind==='geometry'&&eq.geometry?.section&&eq.geometry?.scene3d?.length);
 }
 function syncSectionLayout(){
+  updateSurfaceLinesButton();
   for(const item of equations)
     item.showPlaneGizmo=planeDragMode&&item.visible!==false&&item.geometry?.type==='plane';
   const eq=view3d.mode==='3d'?activeSectionEquation():null;
@@ -5678,6 +5753,7 @@ function render3d(){
       range,
       box,
       grid:view3d.grid,
+      surfaceLines:threeSurfaceLines,
       camera:view3d.camera
     });
   } else {
@@ -6186,6 +6262,7 @@ if(initialShare){
   initialCommands.forEach(command=>equations.push(makeEq(command)));
 }else if(!restoreState(initialState)) equations.push(makeEq('sin(x)'));
 initPresets();
+initKeyboardPanel();
 initProjectControls({
   getState:plainState,
   importState:(state)=>{

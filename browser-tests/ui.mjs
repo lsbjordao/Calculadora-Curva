@@ -75,6 +75,39 @@ try{
     nodeAssert.ok(tab.bottom<=layout.stripBottom-6,'aba cortada em '+tab.label);
   }
   nodeAssert.ok(layout.stripBottom<=layout.gridTop+1,'abas não devem invadir o teclado');
+
+  // The mathematical layers receive substantially more vertical room when the
+  // calculator keypad is collapsed. Toggle is accessible, persistent, and
+  // does not reset the selected keyboard tab.
+  const keyboardToggle=page.locator('#pad-toggle');
+  nodeAssert.equal(await keyboardToggle.getAttribute('aria-expanded'),'true');
+  const expandedRowsHeight=await page.locator('#rows').evaluate(el=>el.getBoundingClientRect().height);
+  await page.locator('#tabs .tab[data-tab="fn"]').click();
+  nodeAssert.equal(await page.locator('#grid-fn').isVisible(),true);
+  await keyboardToggle.click();
+  nodeAssert.equal(await keyboardToggle.getAttribute('aria-expanded'),'false');
+  nodeAssert.equal(await page.locator('#pad-content').isVisible(),false);
+  const collapsedRowsHeight=await page.locator('#rows').evaluate(el=>el.getBoundingClientRect().height);
+  nodeAssert.ok(collapsedRowsHeight>expandedRowsHeight+35,
+    'recolher o teclado deve liberar espaço real para as camadas');
+  nodeAssert.equal(await page.locator('#side').getAttribute('data-keyboard-collapsed'),'1');
+  nodeAssert.equal(await page.locator('#pad-summary').innerText(),'ƒ(x)');
+  nodeAssert.equal(await page.evaluate(()=>localStorage.getItem('curva-keyboard-collapsed')),'1');
+  await page.screenshot({path:resolve(screenshots,'desktop-camadas-com-teclado-recolhido.png')});
+  await keyboardToggle.click();
+  nodeAssert.equal(await page.locator('#pad-content').isVisible(),true);
+  nodeAssert.equal(await page.locator('#tabs .tab[data-tab="fn"]').getAttribute('class'),'tab active');
+  await keyboardToggle.click();
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>document.querySelector('#pad-toggle')?.getAttribute('aria-expanded')==='false');
+  nodeAssert.equal(await page.locator('#pad-content').isVisible(),false,
+    'preferência deve sobreviver à atualização da página');
+  await page.locator('#pad-toggle').click();
+  nodeAssert.equal(await page.locator('#pad-content').isVisible(),true);
+  // Presets intentionally start collapsed on each navigation, unlike the
+  // keyboard preference. Restore them for the rest of this long UI scenario.
+  await page.locator('#preset-toggle').click();
+  nodeAssert.equal(await page.locator('#preset-list').isVisible(),true);
   await page.screenshot({path:resolve(screenshots,'desktop-conicas-2d.png')});
   const download=page.waitForEvent('download');
   await page.click('#project-export');
@@ -128,6 +161,17 @@ try{
   // The section preset must expose independent shape, placement and
   // rotation controls; modifying a slider must change the visible 3D scene.
   const firstConic=page.locator('.row').first();
+  // The mathematical explanations are now vertically stacked; each field
+  // before a colon is bold, and expressions remain plain (safe) text.
+  const infoLines=firstConic.locator('.row-info-line');
+  nodeAssert.ok(await infoLines.count()>=6,'descrição do cone deve ocupar linhas separadas');
+  nodeAssert.equal(await infoLines.first().locator('strong.row-info-key').innerText(),'Cone:');
+  nodeAssert.equal(await infoLines.nth(1).locator('strong.row-info-key').innerText(),'Ângulo do plano:');
+  nodeAssert.equal(await infoLines.nth(2).locator('strong.row-info-key').innerText(),'Equação do plano:');
+  nodeAssert.match(await infoLines.nth(2).innerText(),/cos\(q\)\(z/);
+  nodeAssert.equal(await infoLines.nth(4).locator('strong.row-info-key').innerText(),'Interseção:');
+  nodeAssert.equal(await infoLines.first().locator('strong').evaluate(el=>getComputedStyle(el).fontWeight),'700');
+  await page.screenshot({path:resolve(screenshots,'desktop-detalhes-geometricos-em-linhas.png')});
   nodeAssert.equal(await firstConic.locator('.param-control').count(),6);
   nodeAssert.equal(await firstConic.locator('details.param-group').count(),2);
   nodeAssert.equal(await firstConic.locator('button.param-reset').count(),1);
@@ -333,7 +377,59 @@ try{
   await multiPage.screenshot({path:resolve(screenshots,'desktop-calculo-multivariavel-curvas-nivel.png')});
   await multiContext.close();
 
+  // Three.js: sparse mathematical grid lines must actually live in WebGL,
+  // follow the camera, and support three persistent density settings.
+  const {context:wireContext,page:wirePage}=await createPage({width:1440,height:900});
+  await wirePage.locator('#preset-toggle').click();
+  await wirePage.selectOption('#preset-list','quadric-gallery-3d');
+  await wirePage.click('#preset-load');
+  await wirePage.waitForFunction(()=>document.querySelector('#view-mode')?.dataset.mode==='3d');
+  await wirePage.locator('[id="3d-lib-select"]').selectOption('threejs');
+  const wireToggle=wirePage.locator('#three-surface-lines');
+  await wireToggle.waitFor({state:'visible'});
+  const lightHandle=await wirePage.waitForFunction(async()=>{
+    const renderer=await import('/src/space3d/three-renderer.js');
+    const counts=renderer.threeSurfaceGuideStats();
+    return counts.guides>=1&&counts.segments>50?counts:false;
+  },null,{timeout:18000});
+  const light=await lightHandle.jsonValue();
+  nodeAssert.ok(light.guides>=1&&light.segments>50,'malha de referências deve renderizar no WebGL: '+JSON.stringify(light));
+  nodeAssert.equal(await wireToggle.getAttribute('data-mode'),'normal');
+  await wirePage.screenshot({path:resolve(screenshots,'threejs-superficie-linhas-leves.png')});
+  await wireToggle.click();
+  const detailedHandle=await wirePage.waitForFunction(async()=>{
+    const renderer=await import('/src/space3d/three-renderer.js');
+    const counts=renderer.threeSurfaceGuideStats();
+    return document.querySelector('#three-surface-lines')?.dataset.mode==='detailed'&&
+      counts.guides>0&&counts.segments>0?counts:false;
+  });
+  const detailed=await detailedHandle.jsonValue();
+  nodeAssert.ok(detailed.segments>light.segments,'malha densa deve ter mais linhas');
+  await wirePage.screenshot({path:resolve(screenshots,'threejs-superficie-linhas-densas.png')});
+  await wireToggle.click();
+  nodeAssert.equal(await wireToggle.getAttribute('data-mode'),'off');
+  await wirePage.waitForFunction(async()=>{
+    const renderer=await import('/src/space3d/three-renderer.js');
+    return renderer.threeSurfaceGuideStats().guides===0;
+  });
+  nodeAssert.equal(await wireToggle.getAttribute('aria-pressed'),'false');
+  await wireToggle.click();
+  nodeAssert.equal(await wirePage.evaluate(()=>localStorage.getItem('curva-three-surface-lines')),'normal');
+  await wirePage.reload({waitUntil:'domcontentloaded'});
+  await wirePage.waitForFunction(()=>document.querySelector('#three-surface-lines')?.dataset.mode==='normal'&&
+    document.querySelector('[id="3d-lib-select"]')?.value==='threejs');
+  nodeAssert.equal(await wireToggle.isVisible(),true);
+  await wireContext.close();
+
   const {context:mobile,page:phone}=await createPage({width:390,height:844});
+  const mobilePad=phone.locator('#pad-toggle');
+  nodeAssert.equal(await mobilePad.getAttribute('aria-expanded'),'true');
+  await mobilePad.click();
+  nodeAssert.equal(await phone.locator('#pad-content').isVisible(),false);
+  nodeAssert.equal(await phone.locator('#side').getAttribute('data-keyboard-collapsed'),'1');
+  await phone.screenshot({path:resolve(screenshots,'mobile-camadas-com-teclado-recolhido.png')});
+  await mobilePad.click();
+  nodeAssert.equal(await phone.locator('#pad-content').isVisible(),true);
   const tabs=phone.locator('#tabs .tab');
   nodeAssert.equal(await tabs.count(),6);
   const widths=await tabs.evaluateAll(nodes=>nodes.map(n=>({

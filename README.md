@@ -392,6 +392,50 @@ WebGL ainda depende da compatibilidade do dispositivo.
 
 
 
+## Linhas de referência nas superfícies Three.js
+
+Ao selecionar **Motor 3D → Three.js (WebGL)**, as superfícies agora
+exibem linhas finas de referência sobre o volume, que acompanham o
+objeto quando a câmera gira. Elas tornam mais perceptíveis a curvatura,
+o movimento e a orientação do objeto 3D.
+
+O botão **linhas: leves**, na barra da vista 3D, alterna entre três modos:
+
+- **linhas: leves** (padrão): meridianos/paralelos espaçados ou seções esparsas;
+- **linhas: densas**: mais linhas para examinar a geometria;
+- **linhas: sem**: mantém apenas as faces translúcidas.
+
+Nas quádricas parametrizadas (esfera, elipsoide, paraboloide, cilindro,
+hiperboloides e sela), as curvas seguem coordenadas da própria malha,
+sem desenhar as diagonais de triangulação. No cone duplo, cada folha
+possui anéis horizontais e geratrizes. Em superfícies implícitas gerais,
+funções `z=f(x,y)` e malhas recortadas, as linhas são construídas
+por interseção dos triângulos com planos de referência, para evitar o
+padrão triangular excessivamente carregado.
+
+As curvas pertencem à geometria do Three.js; portanto, acompanham
+automaticamente a rotação da câmera, a mudança de parâmetros e
+os cortes. O modo vale exclusivamente para Three.js: os gráficos
+Canvas 2D e Plotly.js continuam com seu próprio estilo.
+A escolha fica salva no navegador como
+`curva-three-surface-lines`, independentemente dos projetos.
+
+## Interface: teclado recolhível e lista de camadas ampliada
+
+Na barra lateral, o bloco **teclado** agora tem um botão de expandir/
+recolher, como os painéis de presets, aulas e ajuda. Ao recolher, as
+seis abas (123, funções, curvas, stats, álgebra e geo) e os botões do
+teclado deixam de ocupar espaço, liberando altura para as **camadas**.
+A lista de camadas mantém sua própria rolagem. A aba selecionada
+continua ativa ao expandir novamente.
+
+A preferência é salva apenas neste navegador em
+`curva-keyboard-collapsed`, independentemente das equações e de
+projetos exportados. Por padrão o teclado continua expandido para
+preservar o fluxo de digitação já conhecido; após o primeiro ajuste,
+a interface restaura o estado escolhido inclusive depois de atualizar
+a página. Em telas estreitas, a ampliação se adapta à altura disponível.
+
 ## Laboratórios avançados: equações livres e cálculo multivariável
 
 A Curva também aceita superfícies diretamente por equação, sem selecionar
@@ -596,6 +640,8 @@ e1, e2, e3 e suas imagens, informa "det = … (fator de volume)", avisa orienta�
 invertida (det < 0) ou colapso num plano, numa reta ou num ponto (det = 0, pelo
 posto) e, se a matriz é simétrica, desenha as três direções próprias com
 "λ = …". A transformação 3D anima A(t) = (1−t)I + tA (ou as etapas da SVD).
+No Three.js, as linhas de referência das superfícies (botão **linhas**) também
+cobrem a imagem do cubo; **linhas: sem** a deixa lisa.
 
 `calc: solveinfo(A,b)` com A 3×3, em **ver planos 3D**, desenha os três planos e a
 solução: o ponto (única), a reta (infinitas, posto 2), o plano destacado (os três

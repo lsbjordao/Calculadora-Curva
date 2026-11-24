@@ -6,6 +6,7 @@
 import { clipPlaneToBox, clipLineToBox } from './scene3d.js';
 import { cameraBasis } from './camera.js';
 import { attachCameraControls } from './view3d.js';
+import { buildMeshSurfaceLines } from './surface-lines.js';
 
 export const THREE_MODULE_URL = new URL('../../assets/vendor/three.module.js',import.meta.url).href;
 const valid3 = p => Array.isArray(p) && p.length===3 && p.every(Number.isFinite);
@@ -200,6 +201,27 @@ function addPrimitive(T,group,p,opts){
     case 'mesh': {
       const obj=meshObject(T,p.vertices,p.faces,color,p.alpha??.55);
       if(p.conicSection)obj.userData.coneEqId=p.sectionEqId;
+      if(opts.surfaceLines!=='off'){
+        const guide=buildMeshSurfaceLines(p,opts.surfaceLines||'normal');
+        if(guide.segmentCount){
+          const geometry=new T.BufferGeometry();
+          geometry.setAttribute('position',new T.BufferAttribute(guide.positions,3));
+          // Subtle orientation guides: keep them close to the surface hue
+          // instead of outlining every curve in high-contrast white/black.
+          const lineColor=new T.Color(color).lerp(
+            new T.Color(opts.dark?'#f2fbff':'#162335'),opts.dark?.32:.28);
+          const material=new T.LineBasicMaterial({
+            color:lineColor,transparent:true,
+            opacity:opts.surfaceLines==='detailed'?(opts.dark?.36:.30):(opts.dark?.46:.38),
+            depthTest:true,depthWrite:false
+          });
+          const lines=new T.LineSegments(geometry,material);
+          lines.name='curva-surface-reference-lines';
+          lines.userData.surfaceGuides=true;
+          lines.renderOrder=2; // after the translucent face; no polygon diagonals
+          obj.add(lines); // same transform and picking parent as the surface
+        }
+      }
       group.add(obj);
       break;
     }
@@ -272,7 +294,7 @@ function setCamera(T,E,opts,width,height){
 }
 function updateScene(T,E,prepared,options){
   disposeGroup(E.group);
-  for(const p of prepared)addPrimitive(T,E.group,p,{dark:options.theme==='dark'});
+  for(const p of prepared)addPrimitive(T,E.group,p,{dark:options.theme==='dark',surfaceLines:options.surfaceLines||'normal'});
   E.sprites=[];
   E.group.traverse(obj=>{if(obj.isSprite)E.sprites.push(obj);});
 }
@@ -284,7 +306,7 @@ function renderPending(){
   if(!rect.width||!rect.height)return;
   const {primitives,options}=pending,box=options.box||defaultBox;
   const prepared=prepareThreePrimitives(primitives,box,{camera:options.camera});
-  const signature=JSON.stringify([prepared,options.theme]); // reuse buffers when only camera moves
+  const signature=JSON.stringify([prepared,options.theme,options.surfaceLines||'normal']); // reuse buffers when only camera moves
   if(signature!==lastSignature){
     updateScene(three,engine,prepared,options);
     lastSignature=signature;
@@ -316,6 +338,18 @@ export function renderThree3D(primitives,options={}){
     lastError=error;
     if(root()?.style.display!=='none')message('Não foi possível iniciar Three.js (WebGL ou conexão indisponível). Use Plotly.js ou Canvas 2D.');
   }).finally(()=>{initializing=false;});
+}
+// Read-only diagnostics for browser regression checks and performance tuning.
+export function threeSurfaceGuideStats(){
+  const counts={meshes:0,guides:0,segments:0};
+  engine?.group?.traverse?.(obj=>{
+    if(obj.isMesh&&obj.geometry?.getAttribute?.('position'))counts.meshes++;
+    if(obj.userData?.surfaceGuides){
+      counts.guides++;
+      counts.segments+=Math.floor((obj.geometry?.getAttribute?.('position')?.count||0)/2);
+    }
+  });
+  return counts;
 }
 export function resizeThree3D(){
   if(engine)engine.width=engine.height=0;

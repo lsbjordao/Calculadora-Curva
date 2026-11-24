@@ -30,14 +30,9 @@ export function compileScalarSurface(raw,params={}){
   return {expr,at,symbolic:at.symbolicExpressions||null};
 }
 function numeric(fn,x,y,dx=1e-3){
-  const h=dx*Math.max(1,Math.abs(x),Math.abs(y));
-  const z=fn(x,y),xp=fn(x+h,y),xm=fn(x-h,y),
-    yp=fn(x,y+h),ym=fn(x,y-h);
-  const fx=(xp-xm)/(2*h),fy=(yp-ym)/(2*h);
-  const fxx=(xp-2*z+xm)/(h*h),fyy=(yp-2*z+ym)/(h*h);
-  const fxy=(fn(x+h,y+h)-fn(x+h,y-h)-fn(x-h,y+h)+fn(x-h,y-h))/(4*h*h);
-  // Usa expressões simbólicas quando disponíveis e finitas. Uma exceção de
-  // domínio volta ao método numérico sem interromper o laboratório.
+  const z=fn(x,y);
+  // Preferir derivadas simbólicas antes da amostragem: evita perturbar pontos
+  // perto de bordas do domínio quando há forma exata calculável.
   if(fn.symbolicFns){
     try{
       const d=Object.fromEntries(Object.entries(fn.symbolicFns)
@@ -46,6 +41,12 @@ function numeric(fn,x,y,dx=1e-3){
         return {z,...d,source:'simbólica',expressions:fn.symbolicExpressions};
     }catch(_){}
   }
+  const h=dx*Math.max(1,Math.abs(x),Math.abs(y));
+  const xp=fn(x+h,y),xm=fn(x-h,y),
+    yp=fn(x,y+h),ym=fn(x,y-h);
+  const fx=(xp-xm)/(2*h),fy=(yp-ym)/(2*h);
+  const fxx=(xp-2*z+xm)/(h*h),fyy=(yp-2*z+ym)/(h*h);
+  const fxy=(fn(x+h,y+h)-fn(x+h,y-h)-fn(x-h,y+h)+fn(x-h,y-h))/(4*h*h);
   return {z,fx,fy,fxx,fyy,fxy,source:'numérica'};
 }
 export function multivariateAt(fn,x=0,y=0,angle=0){

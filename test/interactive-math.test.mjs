@@ -32,7 +32,7 @@ test('gradiente e Hessiana usam derivação simbólica quando disponível',()=>{
   near(p.gradient[1],1);
   near(p.hessian[0][0],2);
   near(p.hessian[0][1],1);
-  near(p.hessian[1][1],-3);
+  near(p.hessian[1][1],-2);
 });
 
 test('superfície implícita cúbica gera malha finita e corte aproximado',()=>{

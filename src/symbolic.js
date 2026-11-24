@@ -310,7 +310,7 @@ function sideChain(items){ return mulN(items.map(g=>g.exp===1?g.base:powN(g.base
 
 // Fractional coefficients that are small rationals render as a fraction
 // (x/3 e 2x/5, não 0.3333333333333333x e 0.4x).
-function coeffParts(mag){
+export function coeffParts(mag){
   if(Number.isInteger(mag)) return {top:mag,bottom:1};
   for(let q=2;q<=64;q++){
     const p=mag*q, r=Math.round(p);

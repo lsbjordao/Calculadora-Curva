@@ -43,6 +43,18 @@ test('matriz: 3×3 notes det < 0 (orientation) and det = 0 (collapse onto plane,
   assert.match(info(plane),/colapsa num plano/);
   assert.match(info(ok(parseGeometryInput('matriz: [1,2,3; 2,4,6; 3,6,9]'))),/colapsa numa reta/);
   assert.match(info(ok(parseGeometryInput('matriz: [0,0,0; 0,0,0; 0,0,0]'))),/colapsa num ponto/);
+  // Singularity follows the rank (scale-aware), not an absolute det threshold.
+  const big=ok(parseGeometryInput('matriz: [1000000,0,0; 0,1000000,0; 0,0,0.000001]'));
+  // det = 1e6·1e6·1e-6 = 1e6 (the old absolute threshold called it 0).
+  close(big.matrix.det,1e6,1e-6);
+  assert.match(info(big),/det = 1e\+6 \(fator de volume\)|det = 1000000 \(fator de volume\)/);
+  assert.doesNotMatch(info(big),/colapsa/);
+  const tiny=ok(parseGeometryInput('matriz: [0.000000001,0,0; 0,0.000000001,0; 0,0,0.000000001]'));
+  assert.equal(tiny.matrix.rank,3);
+  assert.doesNotMatch(info(tiny),/colapsa/);
+  close(tiny.matrix.det,1e-27,1e-40);
+  // One det line only.
+  assert.equal(plane.info.filter(x=>/^det/.test(x)).length,1);
   // A slider can make it singular in the middle of a drag: no exception.
   assert.match(info(ok(parseGeometryInput('matriz: [k,0,0; 0,1,0; 0,0,1]',{params:{k:0}}))),/colapsa num plano/);
 });

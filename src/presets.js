@@ -535,7 +535,116 @@ export const PRESETS=[
       {text:'plano: (1,0,0),(0,1,0),(0,0,1)',name:'Plano pelos três pontos'},
       {text:'reta: (0,0,0),(1,1,1)',name:'Reta concorrente com o plano'},
       {text:'intersecao: plano(x+y+z=1); reta((0,0,0),(1,1,1))',name:'Interseção exata reta–plano'},
-      {text:'distancia: (0,0,0); plano(x+y+z=1)',name:'Distância de um ponto a um plano',visible:false}
+      {text:'distancia: (0,0,0); plano(x+y+z=1)',name:'Distância de um ponto a um plano',visible:false},
+      {text:'angulo: reta((0,0,0),(1,1,1)); plano(x+y+z=1)',name:'Ângulo reta–plano',visible:false},
+      {text:'x + y + z = 3',name:'Plano paralelo sem prefixo (equação em z)',visible:false}
+    ]
+  },
+  {
+    id:'space-vectors-cross',
+    label:'Vetores e produto vetorial',
+    view:{cx:0,cy:0,scale:54},
+    equations:[
+      {text:'vetor: u=(1,2,3)',name:'Vetor u'},
+      {text:'vetor: v=(4,5,6)',name:'Vetor v'},
+      {text:'vetorial: u, v',name:'u × v, paralelogramo e área'},
+      {text:'escalar: u, v',name:'u · v, ângulo e projeção',visible:false},
+      {text:'vetor: w = 2*u',name:'Múltiplo 2u',visible:false}
+    ]
+  },
+  {
+    id:'space-sum',
+    label:'Soma de vetores e paralelogramo',
+    view:{cx:0,cy:0,scale:54},
+    equations:[
+      {text:'vetor: u=(2,0,1)',name:'Vetor u'},
+      {text:'vetor: v=(0,3,1)',name:'Vetor v'},
+      {text:'soma: u, v',name:'Regra do paralelogramo'},
+      {text:'escala: k, u',params:{k:-1.5},name:'Múltiplo k·u (sentido oposto se k < 0)',visible:false}
+    ]
+  },
+  {
+    id:'space-parallelepiped',
+    label:'Paralelepípedo e produto misto',
+    view:{cx:0,cy:0,scale:54},
+    equations:[
+      {text:'misto: u=(a,0,0), v=(1,2,0), w=(0,1,2)',params:{a:2},name:'[u,v,w] = volume orientado'},
+      {text:'paralelepipedo: (1,0,0),(0,1,0),(0,0,1)',name:'Cubo unitário: volume 1',visible:false},
+      {text:'misto: (1,0,0),(0,1,0),(1,1,0)',name:'Vetores coplanares: volume 0',visible:false}
+    ]
+  },
+  {
+    id:'space-three-planes',
+    label:'Três planos: sistemas 3×3',
+    view:{cx:0,cy:0,scale:54},
+    equations:[
+      {text:'calc: solveinfo([[1,1,1],[1,-1,0],[0,0,1]],[6,0,2])',showAlgebraSystem:true,name:'Solução única: um ponto'},
+      {text:'calc: solveinfo([[1,1,1],[2,2,2],[1,-1,0]],[1,2,0])',showAlgebraSystem:true,name:'Infinitas soluções: uma reta',visible:false},
+      {text:'calc: solveinfo([[1,1,1],[2,2,2],[3,3,3]],[1,2,3])',showAlgebraSystem:true,name:'Planos coincidentes',visible:false},
+      {text:'calc: solveinfo([[1,1,1],[1,1,1],[1,-1,0]],[1,2,0])',showAlgebraSystem:true,name:'Sem solução',visible:false}
+    ]
+  },
+  {
+    id:'space-line-positions',
+    label:'Posições de retas: reversas e perpendicular comum',
+    view:{cx:0,cy:0,scale:54},
+    equations:[
+      {text:'r = reta((0,0,0),(1,0,0))',name:'Reta r (eixo x)'},
+      {text:'s = reta((0,1,1),(0,2,1))',name:'Reta s'},
+      {text:'posicao: r, s',name:'Posição relativa: reversas'},
+      {text:'distancia: r, s',name:'Distância e perpendicular comum'},
+      {text:'r2 = reta((0,1,0),(1,1,0))',name:'r2 paralela a r',visible:false},
+      {text:'posicao: r, r2',name:'r e r2: paralelas',visible:false},
+      {text:'angulo: r, s',name:'Ângulo entre r e s',visible:false}
+    ]
+  },
+  {
+    id:'space-quadrics-book',
+    label:'Quádricas pela equação (sintaxe do livro)',
+    view:{cx:0,cy:0,scale:52},
+    equations:[
+      {text:'x^2/4 + y^2/9 + z^2 = 1',name:'Elipsoide (sem prefixo)'},
+      {text:'quadrica: x^2 + y^2 - z^2 = 1',name:'Hiperboloide de uma folha',visible:false},
+      {text:'quadrica: x^2 + y^2 - z^2 = -1',name:'Hiperboloide de duas folhas',visible:false},
+      {text:'z = x^2 + y^2',name:'Paraboloide elíptico',visible:false},
+      {text:'z = x^2 - y^2',name:'Paraboloide hiperbólico (sela)',visible:false},
+      {text:'quadrica: 2*x*y + z^2 = 1',name:'Termo cruzado: eixos principais',visible:false}
+    ]
+  },
+  {
+    id:'space-cone-sections',
+    label:'Seções do cone com corte:',
+    view:{cx:0,cy:0,scale:52},
+    equations:[
+      {text:'Q = superficie(x^2 + y^2 - z^2 = 0)',name:'Cone duplo Q'},
+      {text:'corte: Q, z = 1',name:'Circunferência'},
+      {text:'corte: Q, z = 0.5*y + 1',name:'Elipse',visible:false},
+      {text:'corte: Q, y + z = 1',name:'Parábola',visible:false},
+      {text:'corte: Q, z = 2*y + 1',name:'Hipérbole',visible:false},
+      {text:'corte: Q, x = 0',name:'Par de retas',visible:false}
+    ]
+  },
+  {
+    id:'space-transform-3x3',
+    label:'Transformação 3×3 e direções próprias',
+    view:{cx:0,cy:0,scale:54},
+    equations:[
+      {text:'matriz: [2,1,0; 1,2,0; 0,0,3]',name:'Simétrica: direções próprias λ = 1, 3, 3'},
+      {text:'matriz: [1,k,0; 0,1,0; 0,0,1]',params:{k:1},name:'Cisalhamento: det = 1',visible:false},
+      {text:'matriz: [-1,0,0; 0,1,0; 0,0,1]',name:'Reflexão: orientação invertida',visible:false},
+      {text:'matriz: [1,2,3; 4,5,6; 7,8,9]',name:'Singular: o cubo colapsa num plano',visible:false}
+    ]
+  },
+  {
+    id:'space-span',
+    label:'Espaço gerado ger{…}',
+    view:{cx:0,cy:0,scale:54},
+    equations:[
+      {text:'ger: (1,2,0)',name:'Reta pela origem'},
+      {text:'ger: (1,0,0),(0,1,1)',name:'Plano pela origem',visible:false},
+      {text:'ger: (1,2,3),(2,4,6)',name:'LD: ainda uma reta',visible:false},
+      {text:'ger: (1,0,1),(0,1,1),(1,1,2)',name:'LD: um plano',visible:false},
+      {text:'ger: (1,0,0),(0,1,0),(1,1,1)',name:'Todo o ℝ³',visible:false}
     ]
   },
   {
@@ -768,7 +877,16 @@ const PRESET_DETAILS={
   'quadric-tangents-3d':['Cônicas e quádricas','Explore gradiente, normal e plano tangente a quádricas; altere u e v para mover o ponto sobre a superfície.'],
   'general-equation-surfaces-3d':['Cônicas e quádricas','Equação quadrática geral em x,y,z, inclusive termos mistos; autovalores, eixos principais, cortes por planos e recorte da malha.'],
   'multivariable-calculus-3d':['Cálculo visual','Funções arbitrárias z=f(x,y): derivadas, gradiente, Hessiana, plano tangente, pontos críticos e mapas 2D de curvas de nível.'],
-  'spatial-constructions-3d':['Geometria','Construa um plano por três pontos, interseccione-o com uma reta e calcule distâncias espaciais.'],
+  'spatial-constructions-3d':['Espaço','Reta furando plano: plano por três pontos, interseção com uma reta, distância e ângulo no espaço.'],
+  'space-vectors-cross':['Espaço','Vetores em ℝ³, produto vetorial (paralelogramo e área), produto escalar e múltiplos.'],
+  'space-sum':['Espaço','Soma u + v pela regra do paralelogramo e múltiplo k·u.'],
+  'space-parallelepiped':['Espaço','Produto misto [u,v,w] como volume orientado do paralelepípedo; vetores coplanares.'],
+  'space-three-planes':['Espaço','solveinfo 3×3 em "ver planos 3D": ponto, reta, planos coincidentes e sistema sem solução.'],
+  'space-line-positions':['Espaço','Retas reversas, paralelas, distância e perpendicular comum.'],
+  'space-quadrics-book':['Espaço','Quádricas pela equação, como no livro: sem prefixo ou com quadrica:.'],
+  'space-cone-sections':['Espaço','Cone duplo cortado por planos com corte:: circunferência, elipse, parábola, hipérbole e par de retas.'],
+  'space-transform-3x3':['Espaço','matriz: 3×3 com cubo, imagem, det como fator de volume e direções próprias da simétrica.'],
+  'space-span':['Espaço','ger{…}: reta, plano ou todo o ℝ³, com posto e dependência linear.'],
   'quadric-gallery-3d':['Cônicas e quádricas','Sete superfícies quádricas ajustáveis. Ative uma por vez para comparar elipsoide, paraboloides, hiperboloides e cilindro.'],
   'linear-algebra':['Álgebra linear','Vetores, matrizes 2x2, determinante e transformação do quadrado unitário.'],
   'linear-algebra-advanced':['Álgebra linear','Determinante NxN, cross 3D, linsolve, somatório e sequências.'],

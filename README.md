@@ -505,3 +505,108 @@ gerais; a vista 2D mostra o primeiro corte, embora até
 quatro curvas possam ser desenhadas em 3D.
 A seleção inversa no Plotly.js e tampas para superfícies
 recortadas continuam fora do escopo desta etapa.
+
+## Espaço (ℝ³)
+
+A Curva desenha no espaço com a mesma sintaxe do livro de Geometria Analítica e
+Álgebra Linear. Um objeto é 3D quando tem três coordenadas (ou é 3D por natureza:
+plano, quádrica, `ger` de vetores 3D, matriz 3×3); a vista muda para 3D quando o
+primeiro objeto 3D aparece, e o botão **2D | 3D** alterna manualmente. Todos os
+números aceitam os parâmetros com slider (`a, b, c, d, h, k, m, n, p, q, r, u, v`)
+e nomes definidos em outras linhas. Os presets do grupo **Espaço** e a aula
+**Espaço (ℝ³)** percorrem os exemplos abaixo.
+
+### Pontos, vetores e operações
+
+```text
+ponto: A=(1,2,3), B=(0,1,-1)
+vetor: u=(1,2,3)                 vetor: A, B          vetor: (0,0,0),(1,2,3)
+soma: u, v                       (u, v, u + v e o paralelogramo)
+vetor: 2*u    vetor: u*2    vetor: -u    vetor: u/2    escala: k, u
+escalar: u, v                    (u·v, ângulo e projeção de u sobre v)
+vetorial: u, v                   (u × v, paralelogramo e área)
+misto: u, v, w                   (paralelepipedo: u, v, w; [u,v,w] e volume)
+projecao: u, v
+ger: u   ger: u, v   ger: u, v, w   (reta, plano ou ℝ³ pela origem, com o posto e aviso de LD)
+```
+
+Rótulos dentro dos argumentos (`u=`, `v=`, `w=`, `n=`, `P=`, `Q=`) são palavras do
+comando, não sliders; um escalar livre no valor (`n=(2,-1,k)`) continua sendo slider.
+`w = vetorial(u,v)`, `V = misto(u,v,w)` e `S = ger(u,v)` definem objetos reutilizáveis.
+
+### Retas e planos
+
+```text
+reta: A, B                 r = reta(A, B)
+reta: P=(1,2,3), v=(1,0,-1)
+reta: (1,2,3) + t*(1,0,-1)
+reta: x = 1 + 2t, y = 3, z = t
+reta: (x-1)/2 = (y+1)/3 = z
+plano: 2x - y + z = 3      plano: A, B, C
+plano: P=(1,0,0), n=(2,-1,1)
+plano: P=(0,0,0), u=(1,0,0), v=(0,1,0)
+π1 = plano(x + y + z = 1)
+```
+
+`intersecao`, `distancia`, `angulo` e `posicao` aceitam pontos, retas e planos 3D
+(reta–reta, reta–plano, plano–plano, três planos). `posicao` responde
+"concorrentes / paralelas / coincidentes / reversas", "fura / paralela / contida" e
+"concorrentes / paralelos / coincidentes"; `distancia: r, s` desenha a perpendicular
+comum de retas reversas.
+
+### Equações em z sem prefixo
+
+Uma linha **com a variável z** e sem prefixo vai para o reconhecedor 3D: grau 1 é
+um plano (igual a `plano:`), dois sinais de igual formam uma reta (forma simétrica),
+grau 2 é uma superfície quádrica (o mesmo caminho de `superficie:`, com classificação
+e cortes automáticos pelos planos visíveis) e `z = f(x,y)` não quadrática abre o
+laboratório de funções de duas variáveis. Outros graus dão erro em português.
+Linhas **sem z** seguem exatamente os analisadores 2D.
+
+**Mudança de comportamento (decisão CR4):** na versão anterior, uma linha
+`z = expressão` era desenhada como o gráfico 2D de y = expressão. Agora ela é lida
+como plano ou superfície no espaço (`z = 3` é o plano horizontal; `z = x^2` é um
+cilindro parabólico). Com domínio entre chaves, como `z = 3 {x>0}`, a linha
+continua 2D como antes.
+
+### Quádricas e cortes
+
+```text
+quadrica: x^2/4 + y^2/9 - z^2 = 1      (equação, como no livro)
+quadrica: hiperboloide1,1.2,1,1,0      (família paramétrica: tipo,a,b,c,d)
+Q = superficie(x^2 + y^2 - z^2 = 0)
+corte: Q, z = 1                        corte: Q, π1
+corte: x^2/4 + y^2/9 + z^2 = 1, z = 0
+corte: elipsoide,a,b,c,d,q,p,h         (forma paramétrica com inclinação e azimute)
+```
+
+`quadrica:` com sinal de igual usa a classificação por autovalores de `superficie:`
+(termos cruzados `x*y`, `x*z`, `y*z` permitidos). `corte:` com superfície e plano
+(por nome ou equação) mostra a curva, o tipo da cônica (circunferência, elipse,
+parábola, hipérbole, par de retas, uma reta, um ponto, vazio) e o painel 3D + 2D;
+em plano coordenado (`x = k`, `y = k`, `z = k`) mostra também a equação da cônica
+nas outras duas variáveis e a análise de `conica:`.
+
+### Matrizes 3×3 e sistemas 3×3
+
+`matriz: [2,1,0; 1,2,0; 0,0,3]` desenha o cubo unitário (tracejado) e sua imagem,
+e1, e2, e3 e suas imagens, informa "det = … (fator de volume)", avisa orientação
+invertida (det < 0) ou colapso num plano, numa reta ou num ponto (det = 0, pelo
+posto) e, se a matriz é simétrica, desenha as três direções próprias com
+"λ = …". A transformação 3D anima A(t) = (1−t)I + tA (ou as etapas da SVD).
+
+`calc: solveinfo(A,b)` com A 3×3, em **ver planos 3D**, desenha os três planos e a
+solução: o ponto (única), a reta (infinitas, posto 2), o plano destacado (os três
+coincidem) ou nada ("sem solução").
+
+### Limites
+
+- Arrastar pontos na vista 3D não é possível; use os sliders para animar.
+- Cortes por plano não coordenado mostram o tipo da cônica e sua forma canônica no
+  referencial do plano, não a equação em x, y, z.
+- Superfícies implícitas de grau maior que 2 não são desenhadas (use `funcao3d:`
+  quando a superfície for `z = f(x,y)`); superfícies paramétricas ficam fora.
+- No motor Canvas 2D, planos e retas se estendem até a borda da vista e a ordem de
+  desenho de uma reta contida num plano pode falhar fora do centro do plano; Plotly.js
+  e Three.js usam profundidade real.
+- Autovalores 3×3 só para matrizes simétricas.

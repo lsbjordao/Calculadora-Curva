@@ -9,6 +9,7 @@
 
 import { _geometryCore as core } from '../geometry.js';
 import { compile, setImplicitY } from '../parser.js';
+import { coeffParts } from '../symbolic.js';
 import { makeConicSectionScene, makeAngledConicSectionScene } from './conic-sections.js';
 import { quadricScene } from './quadrics.js';
 import { quadricPlaneSection } from './quadric-sections.js';
@@ -248,13 +249,31 @@ function coordinateConic(poly,plane){
 
 function conicText(q,[u,v],exact=false){
   const num=x=>exact ? String(Number(x.toPrecision(12))) : core.fmt(x);
-  const terms=[[q.A,u+'^2'],[q.B,u+'*'+v],[q.C,v+'^2'],[q.D,u],[q.E,v],[q.F,'']].filter(([c])=>c!==0);
-  if(!terms.length) return '0 = 0';
-  return terms.map(([c,t],idx)=>{
+  if(exact){
+    const terms=[[q.A,u+'^2'],[q.B,u+'*'+v],[q.C,v+'^2'],[q.D,u],[q.E,v],[q.F,'']].filter(([c])=>c!==0);
+    if(!terms.length) return '0 = 0';
+    return terms.map(([c,t],idx)=>{
+      const sign=c<0 ? (idx ? ' - ' : '-') : (idx ? ' + ' : '');
+      const a=Math.abs(c);
+      return sign+(t ? (a===1 ? '' : num(a)+'*')+t : num(a));
+    }).join('')+' = 0';
+  }
+  // Display: small rationals as fractions (x^2/4 + y^2/9 = 1), like symbolic.js;
+  // the constant goes to the right-hand side.
+  const frac=(a,t)=>{
+    const {top,bottom}=coeffParts(a);
+    const exactFrac=Number.isInteger(top)&&Number.isInteger(bottom);
+    if(!exactFrac) return t ? num(a)+t : num(a);
+    if(!t) return bottom===1 ? String(top) : top+'/'+bottom;
+    return (top===1 ? '' : String(top))+t+(bottom===1 ? '' : '/'+bottom);
+  };
+  const terms=[[q.A,u+'^2'],[q.B,u+v],[q.C,v+'^2'],[q.D,u],[q.E,v]].filter(([c])=>c!==0);
+  const rhs=-q.F;
+  const left=terms.length ? terms.map(([c,t],idx)=>{
     const sign=c<0 ? (idx ? ' - ' : '-') : (idx ? ' + ' : '');
-    const a=Math.abs(c);
-    return sign+(t ? (a===1 ? '' : num(a)+(exact ? '*' : ''))+t : num(a));
-  }).join('')+' = 0';
+    return sign+frac(Math.abs(c),t);
+  }).join('') : '0';
+  return left+' = '+(rhs<0 ? '-' : '')+frac(Math.abs(rhs),'');
 }
 
 function bookSliceCommand(parts,ctx){
@@ -479,18 +498,21 @@ export function wants3d(command,body,ctx={}){
 export function matrix3Result(values,ctx={},definitionName=''){
   const A=values.map(row=>row.map(noNegZero));
   const det=noNegZero(matrixDet3(A)), tr=noNegZero(matrixTrace3(A));
-  const scale=Math.max(...A.flat().map(Math.abs));
-  const singular=Math.abs(det)<=1e-12*Math.max(1,scale)**3;
+  // Singular ⇔ rank < 3 (main's scale-aware rank), so diag(1e6,1e6,1e-6) keeps
+  // det = 1 and diag(1e-9,1e-9,1e-9) is invertible (det = 1e-27).
+  const rank=A.flat().some(x=>x!==0) ? matrixRank(A) : 0;
+  const singular=rank<3;
   const r=result3('matrix','matriz 3x3');
-  r.matrix={values:A, det:singular?0:det, trace:tr, eigen:null, size:3};
+  r.matrix={values:A, det:singular?0:det, trace:tr, eigen:null, size:3, rank};
   r.scene3d=buildTransform3DScene(A,{t:1,showUnitBasis:true,showEigen:true}).scene;
-  r.info=['A = ['+A.map(row=>row.map(core.fmt).join(' ')).join('; ')+']',
-    'det = '+core.fmt(singular?0:det)+' (fator de volume)'];
+  r.info=['A = ['+A.map(row=>row.map(core.fmt).join(' ')).join('; ')+']'];
   if(singular){
-    const rank=scale>0 ? matrixRank(A) : 0;
-    const where=rank>=2 ? 'num plano' : rank===1 ? 'numa reta' : 'num ponto';
-    r.info.push('det = 0: o cubo colapsa '+where+' (posto '+rank+')');
-  } else if(det<0) r.info.push('det < 0: orientação invertida (o volume é multiplicado por |det| = '+core.fmt(-det)+')');
+    const where=rank===2 ? 'num plano' : rank===1 ? 'numa reta' : 'num ponto';
+    r.info.push('det = 0 (fator de volume): o cubo colapsa '+where+' (posto '+rank+')');
+  } else {
+    r.info.push('det = '+core.fmt(det)+' (fator de volume)');
+    if(det<0) r.info.push('det < 0: orientação invertida (o volume é multiplicado por |det| = '+core.fmt(-det)+')');
+  }
   r.info.push('traço = '+core.fmt(tr));
   const pairs=symmetricEigen3(A);
   if(pairs){
@@ -558,6 +580,8 @@ export function parseUnprefixed3d(text,ctx={}){
   if(found.kind==='line3') return parse3dCommand('line',src,ctx);
   if(found.kind==='plane') return parse3dCommand('plane',src,ctx);
   if(found.kind==='quadric'||found.kind==='function') return parse3dCommand('surface',src,ctx);
+  if(found.degree===0)
+    throw new Error('equação sem variáveis: os termos em x, y, z se cancelam; a Curva desenha planos (grau 1) e quádricas (grau 2)');
   if(Number.isFinite(found.degree))
     throw new Error('equação em x, y, z de grau '+found.degree+': a Curva desenha planos (grau 1) e quádricas (grau 2)');
   throw new Error('equação em x, y, z não é polinomial: a Curva desenha planos (grau 1) e quádricas (grau 2); para z = f(x,y) use funcao3d:');
@@ -1323,6 +1347,7 @@ function distanceCommand(body,ctx,definitionName){
     }
   }
   r.info=['d('+objs[0].label+', '+objs[1].label+') = '+core.fmt(value),...notes,...promotionWarning(state.promoted)];
+  r.measure={distance:value};
   if(definitionName) core.define(r,definitionName,'scalar',value);
   return r;
 }
@@ -1448,6 +1473,16 @@ function scalarOf(text,what,ctx){
   return noNegZero(value);
 }
 
+// The scale of k·u, u/d: division by zero is reported in plain words.
+function scaleFactor(scaled,what,ctx){
+  if(scaled.div){
+    const d=scalarOf(scaled.div.replace(/^-?\//,''),what,ctx);
+    if(d===0||!Number.isFinite(d)) throw new Error('escala: divisão por zero ('+scaled.vec+scaled.div.replace(/^-/,'')+')');
+    return noNegZero((scaled.div[0]==='-' ? -1 : 1)/d);
+  }
+  return scalarOf(scaled.k,what,ctx);
+}
+
 function scaledLabel(scaled,base){
   const k=scaled.k.trim();
   if(scaled.neg) return '-'+base;
@@ -1460,7 +1495,7 @@ function vecArg(part,ctx,state,fallback){
   const {label,text}=partLabel(part);
   const scaled=scaledVector(text,ctx);
   if(scaled){
-    const k=scalarOf(scaled.k,'escala',ctx);
+    const k=scaleFactor(scaled,'escala',ctx);
     const base=vectorOf(scaled.vec,ctx,state);
     return {v:mul(base.v,k).map(noNegZero), label:label||scaledLabel(scaled,base.label||fallback)};
   }
@@ -1552,7 +1587,7 @@ function scaleArgsCommand(body,ctx,definitionName){
 
 function scaleCommand(scaled,ctx,name,title,register){
   const state={promoted:[]};
-  const k=scalarOf(scaled.k,'escala: o primeiro argumento deve ser um número; em',ctx);
+  const k=scaleFactor(scaled,'escala: o primeiro argumento deve ser um número; em',ctx);
   const base=vecArg(scaled.vec,ctx,state,'u');
   const ku=mul(base.v,k).map(noNegZero);
   const label=name||scaledLabel(scaled,base.label);
@@ -1639,6 +1674,7 @@ function crossCommand(body,ctx,definitionName){
   }
   r.vectors=[vectorValue(u.v,u.label),vectorValue(v.v,v.label),vectorValue(c,label)];
   r.info.push(...promotionWarning(state.promoted));
+  r.measure={area:parallel ? 0 : area, cross:c};
   if(definitionName) core.define(r,definitionName,'vector',r.vectors[2]);
   return r;
 }
@@ -1661,6 +1697,8 @@ function tripleCommand(body,ctx,definitionName,command){
     r.scene3d.unshift(...parallelepipedScene(ORIGIN,u.v,v.v,w.v,0.2,'main'));
   }
   r.info.push(...promotionWarning(state.promoted));
+  // Numbers read by lesson checkpoints (computed-field geometry.measure.*).
+  r.measure={triple:coplanar ? 0 : t, volume:coplanar ? 0 : Math.abs(t)};
   if(definitionName) core.define(r,definitionName,'scalar',coplanar ? 0 : t);
   return r;
 }

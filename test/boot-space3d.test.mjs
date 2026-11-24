@@ -446,3 +446,11 @@ test('matriz: 3×3 abre a transformação 3D e desenha as direções próprias; 
   assert.match(summary.textContent,/infinitas soluções: reta X = /);
   assert.ok(texts().includes('Solução (reta)'));
 });
+
+test('CR4: z = 3 é plano, z = x^2 é superfície (cilindro parabólico), z = 3 {x>0} continua 2D',async()=>{
+  await boot({version:1,theme:'light',view3d:{mode:'3d'},equations:[mk(0,'z = 3'),mk(1,'z = x^2'),mk(2,'z = 3 {x>0}')]});
+  const types=created.filter(el=>el.className==='row-type').slice(-3).map(el=>el.textContent);
+  assert.equal(types[0],'plano');
+  assert.equal(types[1],'Superfície · Cilindro parabólico');
+  assert.equal(types[2],'explícita');
+});

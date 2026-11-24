@@ -1046,6 +1046,116 @@ export const LESSONS=[
     ]
   },
   {
+    id:'space-r3',
+    label:'Espaço (ℝ³)',
+    summary:'Vetores, produto vetorial e misto, reta e plano, quádricas, cortes, matrizes 3×3 e sistemas no espaço.',
+    steps:[
+      {
+        title:'Produto vetorial e área',
+        text:'Em ℝ³ um vetor tem três coordenadas. O produto vetorial u × v é ortogonal a u e a v, e seu comprimento |u × v| é a área do paralelogramo formado por eles.',
+        focus:'Gire a cena: a seta u × v fica perpendicular ao paralelogramo.',
+        checkpoint:{
+          prompt:'Checkpoint: ajuste a até a área do paralelogramo ser 6.',
+          success:'A área calculada é 6.',
+          next:'Com u = (a,0,0) e v = (0,2,0), |u × v| = 2|a|: a área dobra quando u dobra.',
+          check:{type:'computed-field',eq:0,path:'geometry.measure.area',value:6,tol:1e-9}
+        },
+        scene:{view:{cx:0,cy:0,scale:54},equations:[
+          {text:'vetorial: u=(a,0,0), v=(0,2,0)',params:{a:1},name:'u × v e paralelogramo'}
+        ]}
+      },
+      {
+        title:'Produto misto e volume',
+        text:'O produto misto [u,v,w] = u · (v × w) é o volume orientado do paralelepípedo de arestas u, v, w. Ele é zero quando os três vetores são coplanares.',
+        focus:'Compare o sinal de [u,v,w] com a orientação (dextrógira ou levógira).',
+        checkpoint:{
+          prompt:'Checkpoint: ajuste a para que o volume do paralelepípedo seja 1.',
+          success:'Volume 1.',
+          next:'Inclinar w (o 1 em y) não muda o volume: a altura sobre a base continua 1.',
+          check:{type:'computed-field',eq:0,path:'geometry.measure.volume',value:1,tol:1e-9}
+        },
+        scene:{view:{cx:0,cy:0,scale:54},equations:[
+          {text:'misto: u=(a,0,0), v=(0,1,0), w=(0,1,1)',params:{a:2},name:'Paralelepípedo de u, v, w'}
+        ]}
+      },
+      {
+        title:'Reta furando plano',
+        text:'A reta X = t·(1,1,k) fura o plano x + y + z = 3 no ponto em que t(2 + k) = 3. A Curva resolve a interseção exatamente e desenha o ponto.',
+        focus:'Observe o ponto de interseção deslizar sobre o plano quando k muda.',
+        checkpoint:{
+          prompt:'Checkpoint: ajuste k para que a reta fure o plano em (1, 1, 1).',
+          success:'Interseção em (1, 1, 1).',
+          next:'Com k = 1 a reta tem a direção da normal (1,1,1): ela é perpendicular ao plano.',
+          check:{type:'all',checks:[
+            {type:'computed-field',eq:0,path:'geometry.points.0.x',value:1,tol:1e-9},
+            {type:'computed-field',eq:0,path:'geometry.points.0.y',value:1,tol:1e-9},
+            {type:'computed-field',eq:0,path:'geometry.points.0.z',value:1,tol:1e-9}
+          ]}
+        },
+        scene:{view:{cx:0,cy:0,scale:54},equations:[
+          {text:'intersecao: reta((0,0,0),(1,1,k)); plano(x + y + z = 3)',params:{k:2},name:'Reta e plano'}
+        ]}
+      },
+      {
+        title:'Quádricas pela equação',
+        text:'Uma equação de grau 2 em x, y, z é uma quádrica; a Curva classifica pelos autovalores da matriz simétrica 3×3. Digite a equação sem prefixo, como no livro.',
+        focus:'Troque o sinal de c e veja o elipsoide virar hiperboloide.',
+        checkpoint:{
+          prompt:'Checkpoint: ajuste c para obter um hiperboloide de uma folha.',
+          success:'Hiperboloide de uma folha.',
+          next:'Com c < 0 a assinatura passa a (+,+,−) e o segundo membro é positivo: uma folha.',
+          check:{type:'computed-equals',eq:0,path:'geometry.generalQuadric.classification.type',value:'Hiperboloide de uma folha'}
+        },
+        scene:{view:{cx:0,cy:0,scale:52},equations:[
+          {text:'x^2 + y^2 + c*z^2 = 1',params:{c:1},name:'Quádrica com parâmetro c'}
+        ]}
+      },
+      {
+        title:'Seções do cone com corte:',
+        text:'corte: Q, plano mostra a curva de interseção do cone Q com o plano e o tipo da cônica. Inclinando o plano z = k·y + 1 passamos de circunferência a elipse, parábola e hipérbole.',
+        focus:'Compare a inclinação do plano com a das geratrizes do cone (|k| = 1).',
+        checkpoint:{
+          prompt:'Checkpoint: ajuste k para que o corte seja uma parábola.',
+          success:'Parábola: o plano é paralelo a uma geratriz.',
+          next:'Com |k| < 1 o corte é uma elipse; com |k| > 1, uma hipérbole.',
+          check:{type:'computed-equals',eq:1,path:'geometry.section.analysis.type',value:'parabola'}
+        },
+        scene:{view:{cx:0,cy:0,scale:52},equations:[
+          {text:'Q = superficie(x^2 + y^2 - z^2 = 0)',name:'Cone duplo'},
+          {text:'corte: Q, z = k*y + 1',params:{k:0},name:'Plano z = k·y + 1'}
+        ]}
+      },
+      {
+        title:'Matriz 3×3: det como fator de volume',
+        text:'Uma matriz 3×3 leva o cubo unitário num paralelepípedo; o determinante é o fator de volume (com sinal da orientação). Abra a transformação 3D para animar A(t) = (1−t)I + tA.',
+        focus:'Use iniciar para ver o cubo se deformar até a imagem.',
+        checkpoint:{
+          prompt:'Checkpoint: ajuste a para que o volume do cubo seja multiplicado por 6.',
+          success:'det = 6.',
+          next:'O volume da imagem é |det| vezes o volume original; com det < 0 a orientação se inverte.',
+          check:{type:'computed-field',eq:0,path:'geometry.matrix.det',value:6,tol:1e-9}
+        },
+        scene:{view:{cx:0,cy:0,scale:54},equations:[
+          {text:'matriz: [a,0,0; 0,2,0; 0,0,1]',params:{a:1},name:'Transformação 3×3'}
+        ]}
+      },
+      {
+        title:'Sistemas 3×3 como planos',
+        text:'Cada equação de um sistema 3×3 é um plano. Em "ver planos 3D", a solução aparece como ponto, reta ou plano comum; sem solução, os planos não têm ponto em comum.',
+        focus:'Observe o terceiro plano ao zerar a terceira linha de A.',
+        checkpoint:{
+          prompt:'Checkpoint: ajuste a para que o sistema fique sem solução.',
+          success:'Sistema sem solução.',
+          next:'Com a = 0 a terceira equação vira 0 = 2: nenhum ponto satisfaz as três.',
+          check:{type:'computed-equals',eq:0,path:'algebraResult.metadata.classification',value:'inconsistent'}
+        },
+        scene:{view:{cx:0,cy:0,scale:54},equations:[
+          {text:'calc: solveinfo([[1,1,1],[1,-1,0],[0,0,a]],[6,0,2])',params:{a:1},showAlgebraSystem:true,name:'Três planos'}
+        ]}
+      }
+    ]
+  },
+  {
     id:'limits-continuity',
     label:'Limites: tendência',
     summary:'Salto, furo, continuidade e infinito na ordem dos capítulos de limites.',

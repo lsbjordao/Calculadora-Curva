@@ -1149,7 +1149,7 @@ function runCommand(command,body,ctx,definitionName=''){
 // is a keyword of the command (§7a.2), not a slider; its value is still scanned
 // (k above stays a slider). An argument whose value mentions x, y or z, or holds
 // another "=", is an equation (a = x + y keeps a as a slider).
-function stripArgumentLabels(text){
+function stripArgumentLabels(text,labels=new Set()){
   const src=String(text);
   let out='', i=0;
   const argEnd=from=>{
@@ -1169,6 +1169,7 @@ function stripArgumentLabels(text){
       if(m){
         const valueStart=i+m[0].length, value=src.slice(valueStart,argEnd(valueStart));
         if(!/=/.test(value)&&!/(^|[^A-Za-z0-9_])[xyzXYZ](?=$|[^A-Za-z0-9_])/.test(value)){
+          labels.add(m[2]);
           out+=m[1];
           i=valueStart;
           continue;
@@ -1194,13 +1195,16 @@ export function extractGeometryParams(raw,ctx={}){
     const match=text.match(/^([a-zA-Z\u00c0-\u017f][a-zA-Z0-9\u00c0-\u017f]*)\s*:\s*(.+)$/);
     if(match){ text=match[2]; command=COMMAND_ALIASES[asciiCommand(match[1])]||''; }
   }
-  text=stripArgumentLabels(text);
+  // Names labelled in this same line (vetor: u=(1,2,3), v=u*k) are objects too.
+  const labels=new Set();
+  text=stripArgumentLabels(text,labels);
   const names=new Set();
   const re=/(^|[^A-Za-z0-9_])([abcdhkmnpqruv])(?=$|[^A-Za-z0-9_])/g;
   let m;
   while((m=re.exec(text))){
     if(GEOMETRY_PARAM_NAMES.has(m[2])) names.add(m[2]);
   }
+  if(!POSITIONAL_SCALAR_COMMANDS.has(command)) labels.forEach(name=>names.delete(name));
   const registry=ctx?.registry;
   if(registry&&!POSITIONAL_SCALAR_COMMANDS.has(command)){
     for(const name of [...names]){

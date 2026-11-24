@@ -218,3 +218,26 @@ test('corte: plane by name, slider in the plane, errors in Portuguese', ()=>{
 test('COMMAND_NAMES_PT has no gaps for the new forms (errors name the command in Portuguese)', ()=>{
   assert.match(parseGeometryInput('corte: x^2 + y^2 = 1').error,/^Corte: use /);
 });
+
+// ── GC minors ─────────────────────────────────────────────────────────────
+
+test('a name labelled in the same line is an object, not a slider', ()=>{
+  assert.deepEqual(params('vetor: u=(1,2,3), v=u*k'),['k']);
+  assert.deepEqual(params('soma: u=(1,0,0), v=(0,1,0), 2*u'),[]);
+  // main's positional commands keep their u, v.
+  assert.deepEqual(params('tangente: elipsoide,a,b,c,d,u,v'),['a','b','c','d','u','v']);
+});
+
+test('vetor: u/0 says "divisão por zero"; trivial equations say "sem variáveis"', ()=>{
+  const {out}=run(['vetor: u=(1,2,3)','vetor: u/0','vetor: u/k'],{k:0});
+  assert.equal(out[1].error,'escala: divisão por zero (u/0)');
+  assert.equal(out[2].error,'escala: divisão por zero (u/k)');
+  assert.match(parseGeometryInput('x - x + z - z = 1').error,/^equação sem variáveis/);
+});
+
+test('corte: prints the conic with fractions and the constant on the right', ()=>{
+  const lines=text=>info(ok(parseGeometryInput(text)));
+  assert.match(lines('corte: x^2/4 + y^2/9 + z^2 = 1, z = 0'),/no plano z = 0: x\^2\/4 \+ y\^2\/9 = 1/);
+  assert.match(lines('corte: x^2/4 + y^2/9 + z^2 = 1, x = 1'),/no plano x = 1: y\^2\/9 \+ z\^2 = 3\/4/);
+  assert.match(lines('corte: x^2 + y^2 - z^2 = 0, x = 0'),/no plano x = 0: y\^2 - z\^2 = 0/);
+});

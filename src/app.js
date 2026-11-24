@@ -2199,7 +2199,7 @@ function renderRows(){
       controls.innerHTML='';
       if(eq.kind==='result'){
         if(eq.systemScene||eq.systemScene3d){
-          const show=document.createElement('button');show.type='button';show.className='calc';show.textContent=eq.systemScene3d?'ver planos 3D':'ver retas';
+          const show=document.createElement('button');show.type='button';show.className='calc system-toggle';show.textContent=eq.systemScene3d?'ver planos 3D':'ver retas';
           show.dataset.on=eq.showAlgebraSystem?'1':'0';
           const summary=document.createElement('span');summary.className='system-summary';
           const syncSummary=()=>{summary.textContent=eq.showAlgebraSystem&&eq.systemSummary3d?eq.systemSummary3d:'';};

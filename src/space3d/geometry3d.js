@@ -16,6 +16,7 @@ import { tangentScene } from './surface-calculus.js';
 import { generalQuadricFromEquation,analyseGeneralQuadric,meshImplicitQuadric } from './implicit-quadric.js';
 import {scalarSurfaceScene} from './scalar-surfaces.js';
 import {compileImplicitSurface,meshImplicitFunction} from './implicit-surfaces.js';
+import {compileVectorField,fieldDifferentials,vectorFieldScene,lineIntegralCircle,fluxThroughDisk} from './vector-fields.js';
 
 const EPS=1e-9;
 // Object names: identifiers, plus π, π1… for planes (§7).
@@ -111,6 +112,61 @@ function scenePoint(point){
   const prim={kind:'point', p:toVec3(point), role:'main'};
   if(point.label) prim.label=point.label;
   return prim;
+}
+
+function vectorFieldCommand(body,ctx,dimension){
+  const expressions=core.splitTopAny(String(body),',').map(x=>x.trim());
+  if(expressions.length!==dimension||expressions.some(x=>!x))
+    throw new Error('Campo: informe '+dimension+' componentes separadas por vírgulas.');
+  const field=compileVectorField(expressions,ctx.params||{});
+  const diff=fieldDifferentials(field);
+  const r=result3('vector-field','Campo vetorial '+dimension+'D');
+  r.vectorField={field,diff};
+  r.scene3d=vectorFieldScene(field,{count:dimension===2?5:3,extent:2});
+  r.info=['F(x,y'+(dimension===3?',z':'')+') = '+fmtVec(expressions),
+    'F(0) = '+fmtVec(diff.value),
+    'Divergente (0) ≈ '+core.fmt(diff.divergence),
+    'Rotacional (0) ≈ '+fmtVec(diff.curl),
+    'Derivadas aproximadas por diferenças centrais.',
+    'Setas normalizadas visualmente: direção e sentido representam o campo.'];
+  return r;
+}
+function circleSegments(radius){
+  return Array.from({length:96},(_,i)=>{
+    const a=2*Math.PI*i/96,b=2*Math.PI*(i+1)/96;
+    return {kind:'segment',a:[radius*Math.cos(a),radius*Math.sin(a),0],
+      b:[radius*Math.cos(b),radius*Math.sin(b),0],color:'#e85d8b',weight:2};
+  });
+}
+function lineIntegralCommand(body,ctx){
+  const parts=core.splitTopAny(String(body),',').map(x=>x.trim());
+  if(parts.length!==3)throw new Error('Integral de linha: use integrallinha: Fx,Fy,raio.');
+  const field=compileVectorField(parts.slice(0,2),ctx.params||{});
+  const radius=core.evalScalar(parts[2],ctx);
+  const calc=lineIntegralCircle(field,{radius});
+  const r=result3('vector-field','Integral de linha · circunferência');
+  r.scene3d=[...vectorFieldScene(field,{count:5,extent:radius*1.3}),...circleSegments(radius)];
+  r.info=['Campo F = ('+parts.slice(0,2).join(', ')+')',
+    'C: x = '+core.fmt(radius)+' cos(t), y = '+core.fmt(radius)+' sin(t), 0 ≤ t ≤ 2π',
+    '∮ F · dr ≈ '+core.fmt(calc.value),
+    'Estimativa de diferença entre refinamentos = '+core.fmt(calc.errorEstimate),
+    'Orientação anti-horária; quadratura numérica do ponto médio.'];
+  return r;
+}
+function fluxDiskCommand(body,ctx){
+  const parts=core.splitTopAny(String(body),',').map(x=>x.trim());
+  if(parts.length!==4)throw new Error('Fluxo: use fluxo: Fx,Fy,Fz,raio.');
+  const field=compileVectorField(parts.slice(0,3),ctx.params||{});
+  const radius=core.evalScalar(parts[3],ctx);
+  const calc=fluxThroughDisk(field,{radius});
+  const r=result3('vector-field','Fluxo pelo disco XY');
+  r.scene3d=[...vectorFieldScene(field,{count:3,extent:radius*1.2}),...circleSegments(radius)];
+  r.info=['Campo F = ('+parts.slice(0,3).join(', ')+')',
+    'Disco: x²+y² ≤ '+core.fmt(radius*radius)+', z=0',
+    '∬ F · n dS ≈ '+core.fmt(calc.value),
+    'Estimativa de diferença entre refinamentos = '+core.fmt(calc.errorEstimate),
+    'Normal +z; quadratura polar do ponto médio.'];
+  return r;
 }
 
 function generalSurfaceCommand(body,ctx,forceScalar=false){
@@ -347,6 +403,10 @@ function vectorCommand(body,ctx,definitionName){
 
 // Returns a 3D result, or null when the command has no ℝ³ version yet.
 export function parse3dCommand(command,body,ctx={},definitionName=''){
+  if(command==='vector-field')return vectorFieldCommand(body,ctx,2);
+  if(command==='vector-field-3d')return vectorFieldCommand(body,ctx,3);
+  if(command==='line-integral')return lineIntegralCommand(body,ctx);
+  if(command==='flux-disk')return fluxDiskCommand(body,ctx);
   if(command==='surface') return generalSurfaceCommand(body,ctx);
   if(command==='scalar-surface')return generalSurfaceCommand(body,ctx,true);
   if(command==='section') return sectionCommand(body,ctx);
@@ -368,7 +428,7 @@ export function parse3dCommand(command,body,ctx={},definitionName=''){
 // intersecao, distancia and angulo go to ℝ³ when an object is 3D or when an
 // equation (a "=") mentions the variable z (lines without z keep the 2D
 // analyzers, §7a.3). A registered object named z keeps its old meaning.
-const ALWAYS_3D=new Set(['plane','position','section','quadric','quadric-slice','tangent','surface','scalar-surface']);
+const ALWAYS_3D=new Set(['plane','position','section','quadric','quadric-slice','tangent','surface','scalar-surface','vector-field','vector-field-3d','line-integral','flux-disk']);
 const Z_EQUATION_COMMANDS=new Set(['line','intersect','distance','angle']);
 
 function equationWithZ(text,ctx){

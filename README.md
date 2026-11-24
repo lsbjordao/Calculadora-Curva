@@ -136,8 +136,10 @@ de −100 a 100) e `rrefinfo([[1,2],[2,4]])` (forma reduzida e painel de etapas
 de Gauss–Jordan com pivotamento parcial, escalado para estabilidade numérica).
 
 Para sistemas `solveinfo(A,b)` de ordem 3×3, acione **ver planos 3D** no resultado.
-Os planos são desenhados no renderizador nativo ou Plotly da Curva, com o ponto
-de solução somente quando a classificação for de solução única.
+Os três planos são desenhados (Canvas, Three.js ou Plotly) junto com o conjunto
+solução: o ponto, quando a solução é única; a reta ou o plano, quando há infinitas
+soluções. Um resumo ao lado do botão diz o caso e acompanha os sliders. Veja
+também a seção **Espaço (ℝ³)**.
 
 A Curva agora possui um manifesto PWA com ícone próprio e botão de tela cheia.
 Em Chrome/Edge, use a opção **Instalar aplicativo** para abrir em janela própria.
@@ -623,7 +625,7 @@ quadrica: hiperboloide1,1.2,1,1,0      (família paramétrica: tipo,a,b,c,d)
 Q = superficie(x^2 + y^2 - z^2 = 0)
 corte: Q, z = 1                        corte: Q, π1
 corte: x^2/4 + y^2/9 + z^2 = 1, z = 0
-corte: elipsoide,a,b,c,d,q,p,h         (forma paramétrica com inclinação e azimute)
+corte: elipsoide,2,3,1,0,30,0,0.5      (forma paramétrica com inclinação e azimute)
 ```
 
 `quadrica:` com sinal de igual usa a classificação por autovalores de `superficie:`

@@ -128,7 +128,11 @@ function elimination(A,{reduced=false,augmentedAt=null,trackDet=false}={}){
       'Escolha pivôs, normalize as linhas e elimine as demais entradas das colunas de pivô.',
     trackDet?'det A = (−1)^(trocas) × produto dos pivôs da triangular':
       'Uma operação elementar é executada por etapa.',base()));
-  const threshold=rawScale(U)*1e-12;
+  // Uma coluna aumentada (I ou b) não define a escala dos pivôs de A:
+  // uma matriz como 1e-200 I é inversível, embora [A | I] contenha 1.
+  const coefficientScale=rawScale(augmentedAt===null?U:
+    U.map(row=>row.slice(0,augmentedAt)));
+  const threshold=coefficientScale*1e-12;
   for(let col=0;col<end&&pivotRow<m;col++){
     let best=pivotRow;
     for(let r=pivotRow+1;r<m;r++)if(Math.abs(U[r][col])>Math.abs(U[best][col]))best=r;

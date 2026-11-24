@@ -39,6 +39,59 @@ async function createPage(viewport){
   return {context,page};
 }
 try{
+  // WebGL primeiro: evita esgotar a memória da GPU após as cenas pesadas.
+  const {context:wireContext,page:wirePage}=await createPage({width:1440,height:900});
+  await wirePage.locator('#preset-toggle').click();
+  await wirePage.selectOption('#preset-list','quadric-gallery-3d');
+  await wirePage.click('#preset-load');
+  await wirePage.waitForFunction(()=>document.querySelector('#view-mode')?.dataset.mode==='3d');
+  await wirePage.locator('[id="3d-lib-select"]').selectOption('threejs');
+  const wireToggle=wirePage.locator('#three-surface-lines');
+  await wireToggle.waitFor({state:'visible'});
+  // Um runner CI pode não oferecer WebGL 3D estável mesmo com WebGL2
+  // anunciado. Verificamos o renderer integralmente quando inicializa; caso
+  // contrário registramos que a validação WebGL ficou inconclusiva, sem
+  // impedir testes DOM, Canvas e todos os testes matemáticos do pipeline.
+  const lightHandle=await wirePage.waitForFunction(async()=>{
+    const renderer=await import('/src/space3d/three-renderer.js');
+    const counts=renderer.threeSurfaceGuideStats();
+    return counts.guides>=1&&counts.segments>50?counts:false;
+  },null,{timeout:18000});
+  const light=await lightHandle.jsonValue();
+  if(light?.guides>=1&&light?.segments>50){
+    nodeAssert.equal(await wireToggle.getAttribute('data-mode'),'normal');
+    await wirePage.screenshot({path:resolve(screenshots,'threejs-superficie-linhas-leves.png')});
+    await wireToggle.click();
+    const detailedHandle=await wirePage.waitForFunction(async()=>{
+      const renderer=await import('/src/space3d/three-renderer.js');
+      const counts=renderer.threeSurfaceGuideStats();
+      return document.querySelector('#three-surface-lines')?.dataset.mode==='detailed'&&
+        counts.guides>0&&counts.segments>0?counts:false;
+    });
+    const detailed=await detailedHandle.jsonValue();
+    nodeAssert.ok(detailed.segments>light.segments,'malha densa deve ter mais linhas');
+    await wirePage.screenshot({path:resolve(screenshots,'threejs-superficie-linhas-densas.png')});
+    await wireToggle.click();
+    nodeAssert.equal(await wireToggle.getAttribute('data-mode'),'off');
+    await wirePage.waitForFunction(async()=>{
+      const renderer=await import('/src/space3d/three-renderer.js');
+      return renderer.threeSurfaceGuideStats().guides===0;
+    });
+    nodeAssert.equal(await wireToggle.getAttribute('aria-pressed'),'false');
+    await wireToggle.click();
+    nodeAssert.equal(await wirePage.evaluate(()=>localStorage.getItem('curva-three-surface-lines')),'normal');
+    await wirePage.reload({waitUntil:'domcontentloaded'});
+    await wirePage.waitForFunction(()=>document.querySelector('#three-surface-lines')?.dataset.mode==='normal'&&
+      document.querySelector('[id="3d-lib-select"]')?.value==='threejs');
+    nodeAssert.equal(await wireToggle.isVisible(),true);
+  }else{
+    const status=await wirePage.locator('#three-3d-status').textContent();
+    console.warn('SKIP WEBGL: contexto Three.js não inicializou no Chromium CI; '+'status='+status);
+    nodeAssert.equal(await wireToggle.getAttribute('data-mode'),'normal');
+    const mode=await wirePage.locator('#view-mode').getAttribute('data-mode');
+    nodeAssert.equal(mode,'3d');
+  }
+  await wireContext.close();
   const {context,page}=await createPage({width:1440,height:900});
   // The offline Three.js package must execute in the browser without CDN access.
   const vendoredThreeRevision=await page.evaluate(async()=>{
@@ -403,58 +456,7 @@ try{
 
   // Three.js: sparse mathematical grid lines must actually live in WebGL,
   // follow the camera, and support three persistent density settings.
-  const {context:wireContext,page:wirePage}=await createPage({width:1440,height:900});
-  await wirePage.locator('#preset-toggle').click();
-  await wirePage.selectOption('#preset-list','quadric-gallery-3d');
-  await wirePage.click('#preset-load');
-  await wirePage.waitForFunction(()=>document.querySelector('#view-mode')?.dataset.mode==='3d');
-  await wirePage.locator('[id="3d-lib-select"]').selectOption('threejs');
-  const wireToggle=wirePage.locator('#three-surface-lines');
-  await wireToggle.waitFor({state:'visible'});
-  // Um runner CI pode não oferecer WebGL 3D estável mesmo com WebGL2
-  // anunciado. Verificamos o renderer integralmente quando inicializa; caso
-  // contrário registramos que a validação WebGL ficou inconclusiva, sem
-  // impedir testes DOM, Canvas e todos os testes matemáticos do pipeline.
-  const lightHandle=await wirePage.waitForFunction(async()=>{
-    const renderer=await import('/src/space3d/three-renderer.js');
-    const counts=renderer.threeSurfaceGuideStats();
-    return counts.guides>=1&&counts.segments>50?counts:false;
-  },null,{timeout:18000});
-  const light=await lightHandle.jsonValue();
-  if(light?.guides>=1&&light?.segments>50){
-    nodeAssert.equal(await wireToggle.getAttribute('data-mode'),'normal');
-    await wirePage.screenshot({path:resolve(screenshots,'threejs-superficie-linhas-leves.png')});
-    await wireToggle.click();
-    const detailedHandle=await wirePage.waitForFunction(async()=>{
-      const renderer=await import('/src/space3d/three-renderer.js');
-      const counts=renderer.threeSurfaceGuideStats();
-      return document.querySelector('#three-surface-lines')?.dataset.mode==='detailed'&&
-        counts.guides>0&&counts.segments>0?counts:false;
-    });
-    const detailed=await detailedHandle.jsonValue();
-    nodeAssert.ok(detailed.segments>light.segments,'malha densa deve ter mais linhas');
-    await wirePage.screenshot({path:resolve(screenshots,'threejs-superficie-linhas-densas.png')});
-    await wireToggle.click();
-    nodeAssert.equal(await wireToggle.getAttribute('data-mode'),'off');
-    await wirePage.waitForFunction(async()=>{
-      const renderer=await import('/src/space3d/three-renderer.js');
-      return renderer.threeSurfaceGuideStats().guides===0;
-    });
-    nodeAssert.equal(await wireToggle.getAttribute('aria-pressed'),'false');
-    await wireToggle.click();
-    nodeAssert.equal(await wirePage.evaluate(()=>localStorage.getItem('curva-three-surface-lines')),'normal');
-    await wirePage.reload({waitUntil:'domcontentloaded'});
-    await wirePage.waitForFunction(()=>document.querySelector('#three-surface-lines')?.dataset.mode==='normal'&&
-      document.querySelector('[id="3d-lib-select"]')?.value==='threejs');
-    nodeAssert.equal(await wireToggle.isVisible(),true);
-  }else{
-    const status=await wirePage.locator('#three-3d-status').textContent();
-    console.warn('SKIP WEBGL: contexto Three.js não inicializou no Chromium CI; '+'status='+status);
-    nodeAssert.equal(await wireToggle.getAttribute('data-mode'),'normal');
-    const mode=await wirePage.locator('#view-mode').getAttribute('data-mode');
-    nodeAssert.equal(mode,'3d');
-  }
-  await wireContext.close();
+
 
   const {context:mobile,page:phone}=await createPage({width:390,height:844});
   const mobilePad=phone.locator('#pad-toggle');

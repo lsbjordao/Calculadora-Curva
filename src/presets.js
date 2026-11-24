@@ -689,6 +689,17 @@ export const PRESETS=[
     ]
   },
   {
+    id:'matrix-step-lab',label:'Matrizes: resolução passo a passo',
+    view:{cx:0,cy:0,scale:60},
+    equations:[
+      {text:'calc: det([[1,2,3],[0,1,4],[5,6,0]])',name:'Determinante 3×3: Sarrus, cofatores ou Gauss'},
+      {text:'calc: matmul([[1,2],[3,4]],[[2,0],[1,2]])',name:'Produto linha × coluna'},
+      {text:'calc: inv([[2,1],[1,3]])',name:'Inversa com operações por linha'},
+      {text:'calc: solveinfo([[2,1],[1,3]],[5,10])',name:'Sistema por escalonamento'},
+      {text:'calc: transpose([[1,2,3],[4,5,6]])',name:'Transposta passo a passo'}
+    ]
+  },
+  {
     id:'algebra-vectors',label:'Vetores e projeções',view:{cx:1,cy:1,scale:60},
     equations:[
       {text:'calc: dot([a,b],[1,2])',params:{a:3,b:4}},
@@ -737,6 +748,7 @@ export const PRESETS=[
 ];
 
 const PRESET_DETAILS={
+  'matrix-step-lab':['Álgebra linear','Visor de resolução com etapas, realce de entradas, métodos alternativos para determinantes, Gauss–Jordan e multiplicação linha × coluna.'],
   'algebra-vectors':['Álgebra linear','Produto escalar, norma, ângulo em radianos e projeção.'],
   'algebra-matrices':['Álgebra linear','Variáveis reativas, multiplicação, inversa, posto e transposta.'],
   'algebra-systems':['Álgebra linear','Mova as retas pelos parâmetros e compare solução única, infinitas e inconsistência.'],

@@ -1427,6 +1427,18 @@ function renderContextActions(eq, target){
     };
     target.appendChild(button);
   });
+  // Usado tanto na criação da camada quanto em alterações da expressão.
+  if(isMatrixWalkthroughCandidate(eq)){
+    const walk=document.createElement('button');
+    walk.type='button';walk.className='context-action matrix-step-open';
+    walk.textContent='▶ passo a passo';
+    walk.title='Visualizar a conta intermediária de matrizes e determinantes';
+    walk.onclick=event=>{
+      event.preventDefault();event.stopPropagation();
+      selectEquation(eq);matrixWalkthrough?.open(eq);
+    };
+    target.appendChild(walk);
+  }
 }
 
 function renderRows(){
@@ -1564,18 +1576,7 @@ function renderRows(){
       refreshSurfacePointControls();
       refreshOps();
       renderContextActions(eq, contextActions);
-    if(isMatrixWalkthroughCandidate(eq)){
-      const walk=document.createElement('button');walk.type='button';
-      walk.className='context-action matrix-step-open';
-      walk.textContent='▶ passo a passo';
-      walk.title='Mostrar a resolução intermediária desta matriz, com fórmulas e valores destacados';
-      walk.onclick=event=>{
-        event.preventDefault();event.stopPropagation();
-        selectEquation(eq);
-        matrixWalkthrough?.open(eq);
-      };
-      contextActions.appendChild(walk);
-    }
+
       draw();
       scheduleSave();
       resultRefreshers.forEach((refresh,id)=>{if(id!==eq.id)refresh();});

@@ -2028,3 +2028,100 @@
   .math-inspector{right:8px;top:52px;width:min(310px,calc(100% - 16px));
     max-width:calc(100% - 16px);height:min(48dvh,430px);}
 }
+
+
+/* Laboratório didático — visor complementar de cálculo matricial.
+   Convive com o volume 3D, sem tomar o lugar da cena principal. */
+.matrix-walkthrough{
+  position:absolute;z-index:16;left:16px;bottom:16px;
+  width:min(730px,calc(100% - 94px));height:min(63dvh,580px);
+  min-width:310px;min-height:270px;max-width:calc(100% - 32px);max-height:85%;
+  resize:both;overflow:auto;
+  display:flex;flex-direction:column;
+  border:1px solid var(--panel-edge);border-radius:12px;
+  background:var(--glass);color:var(--ink);
+  box-shadow:0 12px 35px rgba(9,18,30,.20);
+  backdrop-filter:blur(13px);
+}
+.matrix-walkthrough[hidden]{display:none!important}
+.matrix-step-head{
+  position:sticky;top:0;z-index:2;flex:0 0 auto;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:10px 13px;border-bottom:1px solid var(--panel-edge);
+  background:var(--panel);
+}
+.matrix-step-headings{min-width:0;display:flex;flex-direction:column;gap:3px}
+.matrix-step-headings small{font-size:10px;color:var(--muted)}
+.matrix-step-headings strong{font-size:14px;font-weight:700}
+.matrix-step-head button{
+  color:var(--ink);border:1px solid var(--field-edge);border-radius:7px;
+  background:var(--field);font-size:18px;cursor:pointer;width:28px;height:28px;flex:0 0 auto;
+}
+.matrix-step-panel-body{display:flex;flex-direction:column;gap:9px;min-height:0;padding:11px 13px}
+.matrix-step-config{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.matrix-step-config label{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted)}
+#matrix-step-method{
+  max-width:180px;padding:5px 8px;border-radius:7px;border:1px solid var(--field-edge);
+  background:var(--field);color:var(--ink);font:600 11px var(--sans);
+}
+#matrix-step-method[hidden]{display:none!important}
+.matrix-step-count{font:600 11px var(--mono);color:var(--muted);white-space:nowrap}
+.matrix-step-explanation{
+  border:1px solid var(--panel-edge);border-radius:9px;padding:11px;
+  background:var(--panel);min-height:105px;
+}
+.matrix-step-explanation h3{font-size:13px;font-weight:700;margin:0 0 6px;color:var(--ink)}
+.matrix-step-explanation p{font-size:11.5px;line-height:1.5;margin:0 0 8px}
+.matrix-step-formula{
+  font:600 12px/1.6 var(--mono);color:var(--accent);overflow-wrap:anywhere;
+  padding-top:7px;border-top:1px solid var(--panel-edge);
+}
+.matrix-step-cards{display:flex;flex-wrap:wrap;align-items:flex-start;gap:13px}
+.matrix-step-card{
+  min-width:120px;max-width:100%;
+  background:var(--field);border:1px solid var(--field-edge);
+  border-radius:9px;padding:9px;display:flex;flex-direction:column;gap:8px;
+}
+.matrix-step-card-title{font-size:11px;color:var(--ink);font-weight:700}
+.matrix-step-grid-scroll{max-width:100%;overflow:auto}
+.matrix-step-table{border-collapse:separate;border-spacing:3px;font:600 12px var(--mono);white-space:nowrap}
+.matrix-step-table td{
+  background:var(--panel);border:1px solid var(--panel-edge);text-align:center;
+  border-radius:5px;min-width:35px;padding:7px 8px;font-variant-numeric:tabular-nums;
+}
+.matrix-step-table td[data-augmented="1"]{border-left:3px solid var(--accent)}
+.matrix-step-table td[data-focus="row"]{background:rgba(60,135,205,.20);border-color:rgba(60,135,205,.60)}
+.matrix-step-table td[data-focus="column"]{background:rgba(213,154,48,.23);border-color:rgba(213,154,48,.70)}
+.matrix-step-table td[data-focus="pivot"],
+.matrix-step-table td[data-focus="intersection"]{
+  background:rgba(48,160,114,.25);border-color:var(--accent);color:var(--ink);
+  box-shadow:0 0 0 1px var(--accent);
+}
+.matrix-step-scalar{font:700 19px var(--mono);color:var(--accent);padding:8px}
+.matrix-step-navigation{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:3px}
+.matrix-step-navigation button{
+  padding:7px 10px;min-height:33px;border:1px solid var(--field-edge);
+  border-radius:7px;background:var(--field);color:var(--ink);font:600 11px var(--sans);
+  cursor:pointer;
+}
+.matrix-step-navigation button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.matrix-step-navigation button:disabled{opacity:.4;cursor:default}
+.matrix-step-scrubber{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--muted)}
+.matrix-step-scrubber input{flex:1 1 auto;accent-color:var(--accent);min-width:90px}
+.matrix-step-status{font-size:11px;color:var(--muted);margin:0;min-height:16px}
+.row[data-matrix-learning="1"] .row-info > *{display:none!important}
+.row[data-matrix-learning="1"] .row-info::after{
+  content:"Cálculo guiado em andamento. Resultado oculto até a última etapa.";
+  display:block;color:var(--accent);font-weight:600;line-height:1.5;
+}
+#matrix-step-global[hidden]{display:none!important}
+@media(max-width:720px){
+  .matrix-walkthrough{left:8px;right:8px;bottom:8px;
+    width:calc(100% - 16px);min-width:0;max-width:calc(100% - 16px);
+    min-height:250px;max-height:70dvh;height:min(57dvh,490px);}
+  .matrix-step-card{min-width:108px}
+  .matrix-step-table td{min-width:30px;padding:5px}
+}
+@media(prefers-reduced-motion:reduce){
+  .matrix-walkthrough *{transition:none!important;animation:none!important}
+}

@@ -1576,7 +1576,12 @@ function renderRows(){
       refreshSurfacePointControls();
       refreshOps();
       renderContextActions(eq, contextActions);
-
+      const globalMatrix=document.getElementById('matrix-step-global');
+      if(globalMatrix)globalMatrix.hidden=!equations.some(isMatrixWalkthroughCandidate);
+      if(matrixWalkthrough?.currentEquation()===eq){
+        if(!isMatrixWalkthroughCandidate(eq))matrixWalkthrough.close();
+        else matrixWalkthrough.refresh();
+      }
       draw();
       scheduleSave();
       resultRefreshers.forEach((refresh,id)=>{if(id!==eq.id)refresh();});

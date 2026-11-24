@@ -884,7 +884,7 @@ const PRESET_DETAILS={
   'space-three-planes':['Espaço','solveinfo 3×3 em "ver planos 3D": ponto, reta, planos coincidentes e sistema sem solução.'],
   'space-line-positions':['Espaço','Retas reversas, paralelas, distância e perpendicular comum.'],
   'space-quadrics-book':['Espaço','Quádricas pela equação, como no livro: sem prefixo ou com quadrica:.'],
-  'space-cone-sections':['Espaço','Cone duplo cortado por planos com corte:: circunferência, elipse, parábola, hipérbole e par de retas.'],
+  'space-cone-sections':['Espaço','Cone duplo cortado por planos com corte: (circunferência, elipse, parábola, hipérbole e par de retas).'],
   'space-transform-3x3':['Espaço','matriz: 3×3 com cubo, imagem, det como fator de volume e direções próprias da simétrica.'],
   'space-span':['Espaço','ger{…}: reta, plano ou todo o ℝ³, com posto e dependência linear.'],
   'quadric-gallery-3d':['Cônicas e quádricas','Sete superfícies quádricas ajustáveis. Ative uma por vez para comparar elipsoide, paraboloides, hiperboloides e cilindro.'],

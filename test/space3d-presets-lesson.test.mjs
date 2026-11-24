@@ -83,3 +83,7 @@ test('the Espaço lesson: 7 steps whose checkpoints fail at the start and pass a
     assert.equal(step.checkpoints.at(-1).check.type,'ack');
   });
 });
+
+test('fix wave: descrições dos presets sem "::" duplicado', ()=>{
+  for(const preset of PRESETS) assert.doesNotMatch(preset.description||'',/::/,preset.id);
+});

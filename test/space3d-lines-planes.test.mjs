@@ -523,3 +523,11 @@ test('plane gizmos exist only while edit mode is on, preserve plane geometry',()
   assert.equal(edited.find(p=>p.kind==='plane').sectionPlane,true);
   assert.equal(JSON.stringify(geometry.scene3d),original);
 });
+
+test('fix wave: plano por três pontos mostra a normal reduzida (mdc e sinal)', ()=>{
+  const r=parseGeometryInput('plano: (1,1,1), (0,0,-3), (2,0,1)');
+  assert.notEqual(r.type,'error',r.error);
+  assert.equal(r.info[0],'π: 2x + 2y - z = 3');
+  assert.deepEqual(prims(r,'plane')[0].n,[2,2,-1]);
+  assert.equal(prims(r,'plane')[0].d,3);
+});

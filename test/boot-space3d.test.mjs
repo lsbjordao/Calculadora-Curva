@@ -510,3 +510,19 @@ test('ver planos 3D: o resumo acompanha o slider (a = 0 → sem solução)',asyn
   range.oninput();
   assert.match(summary().textContent,/^sem solução/);
 });
+
+test('matriz: 3×3 abre a transformação 3D só na primeira vez; fechar é lembrado',async()=>{
+  await boot({version:1,theme:'light',view3d:{mode:'3d'},equations:[mk(0,'matriz: [2,1,0; 1,2,0; 0,0,3]')]});
+  // The zone is the <details> (the summary itself also holds the text).
+  const zone=()=>created.filter(el=>typeof el.open==='boolean'&&el.children?.some(c=>c.textContent==='transformação 3D')).at(-1);
+  const z=zone();
+  assert.equal(z.open,true);
+  const summary=z.children.find(c=>c.textContent==='transformação 3D');
+  summary.fire('click');
+  z.open=false;
+  z.fire('toggle');
+  const input=fields().at(-1);
+  input.value='matriz: [2,1,0; 1,2,0; 0,0,4]';
+  input.oninput();
+  assert.equal(zone().open,false,'o usuário fechou: continua fechado');
+});

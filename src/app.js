@@ -1754,9 +1754,11 @@ function renderRows(){
     const refreshTransform3d=()=>{
       const matrix=!eq.error&&getTransformMatrix3d();
       transform3dZone.hidden=!matrix;
-      // matriz: 3×3 rows always show their controls, like matriz: 2×2.
+      // matriz: 3×3 rows always run their controls, like matriz: 2×2; the zone
+      // opens by itself only the first time, then follows the user's toggle.
       const active=!!matrix&&(eq.kind==='geometry'||!!eq.showAlgebraTransform3d);
-      transform3dZone.open=active;
+      const open=active&&(eq.kind!=='geometry'||eq.transform3dOpen!==false);
+      if(transform3dZone.open!==open) transform3dZone.open=open;
       if(!active){
         transform3dControllers.get(eq.id)?.dispose();
         transform3dControllers.delete(eq.id);
@@ -1776,8 +1778,14 @@ function renderRows(){
       }
       matrix3dSignature=signature;
     };
+    // The summary click is synchronous (the toggle event is not), so a refresh
+    // right after the click cannot reopen a zone the user has just closed.
+    transform3dSummary.addEventListener('click',()=>{
+      if(eq.kind==='geometry')eq.transform3dOpen=!transform3dZone.open;
+    });
     transform3dZone.addEventListener('toggle',()=>{
-      if(eq.kind==='geometry'||!getTransformMatrix3d())return;
+      if(eq.kind==='geometry'){eq.transform3dOpen=transform3dZone.open;return;}
+      if(!getTransformMatrix3d())return;
       eq.showAlgebraTransform3d=transform3dZone.open;
       refreshTransform3d();
       draw();scheduleSave();
@@ -5768,7 +5776,7 @@ function render3d(){
     ctx.restore();
     // Planes and lines end where the axes end (auto or manual ±N), as in
     // Three.js and Plotly.js; the zoom no longer stretches them past the axes.
-    drawScene3d(ctx,buildDrawList(primitives,view3d.camera,{width:W,height:H},{box,systemPlaneBox:box}),colors);
+    drawScene3d(ctx,buildDrawList(primitives,view3d.camera,{width:W,height:H},{box}),colors);
   }
   
   readout.style.display='none';

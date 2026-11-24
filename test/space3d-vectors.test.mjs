@@ -323,3 +323,26 @@ test('chips3d: only the chips that act on a 3D row', ()=>{
   assert.deepEqual(chips3d(row('distancia: (0,0,0), (1,1,1)')),{labels:true,vectors:false,guides:false});
   assert.deepEqual(chips3d(row('ger: (0,0,0)')).vectors,false);
 });
+
+test('fix wave: escala: u, 2 names the form; ger: takes one to three vectors', ()=>{
+  const registry=registryWith('vetor: u=(1,2,3)');
+  assert.equal(parseGeometryInput('escala: u, 2',{registry}).error,'escala: u não é um número (use escala: k, u)');
+  const four=parseGeometryInput('ger: (1,0,0),(0,1,0),(0,0,1),(1,1,1)');
+  assert.equal(four.type,'error');
+  assert.equal(four.error,'ger: use de um a três vetores (ger: u, v, w)');
+  ok(parseGeometryInput('ger: (1,0,0),(0,1,0),(0,0,1)'));
+});
+
+test('fix wave: ger ℝ³ box follows the axis range (±N) in the composed scene', async ()=>{
+  const { scenePrimitives }=await import('../src/space3d/view3d.js');
+  const geometry=parseGeometryInput('ger: (1,0,0),(0,1,0),(0,0,1)');
+  const eqs=[{kind:'geometry',text:'ger: (1,0,0),(0,1,0),(0,0,1)',geometry,visible:true}];
+  for(const N of [3,10]){
+    const box={min:[-N,-N,-N],max:[N,N,N]};
+    const polys=scenePrimitives(eqs,{box}).filter(p=>p.kind==='polygon');
+    assert.equal(polys.length,6);
+    const coords=polys.flatMap(p=>p.points.flat());
+    assert.equal(Math.max(...coords),N);
+    assert.equal(Math.min(...coords),-N);
+  }
+});

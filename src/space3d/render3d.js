@@ -11,8 +11,9 @@ import { clipLineToBox, clipPlaneToBox } from './scene3d.js';
 // first, so an edge lying on a plane stays on top. With perspective, segments,
 // polygons and mesh faces are clipped to the near plane instead of dropped.
 // Infinite objects ({kind:'plane', n, d, alpha} with n·X = d, {kind:'line', p, v})
-// are clipped here against opts.box, by default visibleBox(camera, viewport), so
-// they follow the zoom; their label sits inside a smaller on-screen box.
+// are clipped here against opts.box. The app passes the ±N axis box, so they end
+// where the axes end, as in Three.js and Plotly; without opts.box the fallback is
+// visibleBox(camera, viewport). Their label sits inside a smaller on-screen box.
 
 const finiteVec = p => Array.isArray(p) && p.length === 3 && p.every(Number.isFinite);
 const TIE = 1e-9;

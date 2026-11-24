@@ -955,7 +955,7 @@ function planeSpec(body,ctx,state){
       ]};
     }
     const pts=parts.map(part=>pointOf(part,ctx,state));
-    const plane=planeFromPoints(pts[0].p,pts[1].p,pts[2].p);
+    const plane=reducedPlane(planeFromPoints(pts[0].p,pts[1].p,pts[2].p),pts[0].p);
     return {plane, extras:pts.map(P=>scenePoint({...vecPoint(P.p),label:P.label}))};
   }
   throw new Error(PLANE_FORMS);
@@ -1583,7 +1583,12 @@ function scaleArgsCommand(body,ctx,definitionName){
 
 function scaleCommand(scaled,ctx,name,title,register){
   const state={promoted:[]};
-  const k=scaleFactor(scaled,'escala: o primeiro argumento deve ser um número; em',ctx);
+  let k;
+  try{ k=scaleFactor(scaled,'escala',ctx); }
+  catch(e){
+    if(title==='escala'&&/não é um número$/.test(e.message)) throw new Error(e.message+' (use escala: k, u)');
+    throw e;
+  }
   const base=vecArg(scaled.vec,ctx,state,'u');
   const ku=mul(base.v,k).map(noNegZero);
   const label=name||scaledLabel(scaled,base.label);
@@ -1699,6 +1704,14 @@ function tripleCommand(body,ctx,definitionName,command){
   return r;
 }
 
+// A plane through three points with an integer normal: -6x - 6y + 3z = -9 is
+// shown as 2x + 2y - z = 3 (niceNormal); other normals are kept as computed.
+function reducedPlane(pl,P){
+  if(!pl.n.every(c=>Math.abs(c-Math.round(c))<=1e-9*Math.max(1,Math.abs(c)))) return pl;
+  const n=niceNormal(pl.n);
+  return {n, d:noNegZero(dot3(n,P))};
+}
+
 // Integer normals are divided by their gcd; the first non-zero entry is positive.
 function niceNormal(n){
   const scale=Math.max(...n.map(Math.abs));
@@ -1715,7 +1728,7 @@ function niceNormal(n){
 
 function spanCommand(body,ctx,definitionName){
   const state={promoted:[]};
-  const args=vecArgs(body,ctx,state,[1,8],'ger: use de um a três vetores (ger: u, v, w)');
+  const args=vecArgs(body,ctx,state,[1,3],'ger: use de um a três vetores (ger: u, v, w)');
   const names=args.map(a=>a.label).join(', ');
   const r=result3('span','ger');
   r.scene3d=args.flatMap(a=>arrowPrim(ORIGIN,a.v,a.label));
@@ -1748,9 +1761,10 @@ function spanCommand(body,ctx,definitionName){
     if(definitionName) core.define(r,definitionName,'plane',{n, d:0, label:definitionName, dim:3});
   } else {
     r.info=[head+' = ℝ³ (todo o espaço)','posto 3'];
-    // Light shaded box (aux: lighter fill, dashed outline): a symbol for "all of
-    // space", the ±5 default box.
-    r.scene3d.unshift(...parallelepipedScene([-5,-5,-5],[10,0,0],[0,10,0],[0,0,10],0.08,'').map(f=>({...f, role:'aux'})));
+    // Light shaded box (aux: lighter fill): a symbol for "all of space". The
+    // ±5 faces are flagged spaceBox; scenePrimitives stretches them to the axis
+    // range (±N) that every renderer clips to.
+    r.scene3d.unshift(...parallelepipedScene([-5,-5,-5],[10,0,0],[0,10,0],[0,0,10],0.08,'').map(f=>({...f, role:'aux', spaceBox:true})));
   }
   r.info.push(...ld,...promotionWarning(state.promoted));
   return r;

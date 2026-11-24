@@ -62,7 +62,7 @@ export function autoAxisLimit(equations = [], minimum = 5) {
     if (primitive.kind === 'point' || primitive.kind === 'label') include(primitive.p);
     else if (primitive.kind === 'segment') { include(primitive.a); include(primitive.b); }
     else if (primitive.kind === 'arrow') { include(primitive.from); include(primitive.to); }
-    else if (primitive.kind === 'polygon') (primitive.points || []).forEach(include);
+    else if (primitive.kind === 'polygon' && !primitive.spaceBox) (primitive.points || []).forEach(include);
     else if (primitive.kind === 'mesh') (primitive.vertices || []).forEach(include);
     else if (primitive.kind === 'line') include(primitive.p);
     else if (primitive.kind === 'plane' && Array.isArray(primitive.n)) {
@@ -239,6 +239,12 @@ function styled(prim, eq, color) {
   return out;
 }
 
+// ger{…} = ℝ³ draws a box symbol: its faces follow the current axis range.
+function toSpaceBox(prim, box) {
+  const points = (prim.points || []).map(p => p.map((c, i) => c > 0 ? box.max[i] : c < 0 ? box.min[i] : 0));
+  return {...prim, points};
+}
+
 export function scenePrimitives(equations = [], {colorOf = () => '', box = defaultBox()} = {}) {
   const prims = [];
   for (const eq of equations) {
@@ -251,7 +257,7 @@ export function scenePrimitives(equations = [], {colorOf = () => '', box = defau
     if (!Array.isArray(source) || !source.length) continue;
     const color = colorOf(eq), guides = showsGuides(eq);
     for (const prim of source) {
-      const s = prim && styled(prim, eq, color);
+      const s = prim && styled(prim.spaceBox ? toSpaceBox(prim, box) : prim, eq, color);
       if (!s) continue;
       prims.push(s);
       // Depth cue for 3D points (not for vector tips: only point rows).

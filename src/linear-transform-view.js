@@ -1,4 +1,4 @@
-import { validateMatrix, eye, matmul, det, trace, eiginfo, svd } from './linear-algebra.js';
+import { validateMatrix, eye, matmul, det, trace, eiginfo, svd, cross } from './linear-algebra.js';
 
 const mix = (A,B,t) => A.map((row,i) => row.map((x,j) => (1-t)*x+t*B[i][j]));
 export function transformationMatrix(A, t = 1, decomposition = null) {
@@ -72,7 +72,6 @@ export function buildSystemScene3D(A,b,solution,result=null){
 // Direction of the null space of a rank-2 3×3 matrix: the largest cross product
 // of two rows.
 function nullDirection(A){
-  const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
   let best=null,size=0;
   for(const [i,j] of [[0,1],[0,2],[1,2]]){
     const c=cross(A[i],A[j]),n=Math.hypot(...c);

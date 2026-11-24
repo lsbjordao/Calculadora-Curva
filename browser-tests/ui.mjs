@@ -22,7 +22,11 @@ const server=createServer(async(req,res)=>{
 });
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const url='http://127.0.0.1:'+server.address().port+'/';
-const browser=await chromium.launch({headless:true});
+// Garantir WebGL no Chromium headless do CI (renderização SwiftShader);
+ // os testes continuam verificando efetivamente as geometrias do Three.js.
+const browser=await chromium.launch({headless:true,args:[
+  '--enable-webgl','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'
+]});
 const screenshots=resolve(root,'browser-tests','screenshots');
 await mkdir(screenshots,{recursive:true});
 async function createPage(viewport){

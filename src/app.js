@@ -32,6 +32,7 @@ import { addGeometryDefinitions, extractGeometryParams, parseGeometryInput } fro
 import { choosePointSourceIndex, constructionExpression, formatPointCommand, nextPointLabel, normalizePoint, updatePoint, usedGeometryNames } from './geometry-builder.js';
 import { describeCanvas, formatMathVisual } from './accessibility.js';
 import { splitInfoLines, infoLabelValue } from './info-format.js';
+import { createMathInspector } from './math-inspector.js';
 import { isStructuredResult, resultInfo, renderAlgebraResult } from './algebra-ui.js';
 import { matrixInfo } from './linear-algebra.js';
 import { algebraDeclaration, createAlgebraSymbols } from './algebra-symbols.js';
@@ -90,6 +91,7 @@ const resultRefreshers=new Map();
 const transformControllers=new Map();
 const transform3dControllers=new Map();
 let selectedEquationId=null;
+let mathInspector=null;
 const view={cx:0, cy:0, scale:38};
 // 3D view (§5.1, §7a.10): mode, orbital camera and floor grid. view3dFit is the
 // camera scale that fits the box in the current viewport (zoom is saved relative
@@ -1248,11 +1250,12 @@ function updateRowSelection(){
   });
 }
 
-function selectEquation(eq){
-  if(!eq) return;
+function selectEquation(eq,event=null){
+  if(!eq)return;
   selectedEquationId=eq.id;
   focusedEquation=eq;
   updateRowSelection();
+  mathInspector?.select(eq,!!event?.shiftKey);
 }
 
 function escapeRegExp(text){
@@ -1439,8 +1442,8 @@ function renderRows(){
     row.dataset.selected=selectedEquationId===eq.id?'1':'0';
     row.dataset.hasResultTable=hasResultTable(eq)?'1':'0';
     row.tabIndex=0;
-    row.addEventListener('pointerdown',()=>selectEquation(eq));
-    row.addEventListener('focusin',()=>selectEquation(eq));
+    row.addEventListener('pointerdown',event=>selectEquation(eq,event));
+    row.addEventListener('focusin',()=>{if(!mathInspector?.has(eq.id))selectEquation(eq);});
 
     const head=document.createElement('div');
     head.className='row-head';
@@ -3427,6 +3430,16 @@ function initGeoBuilder(){
 const cv=document.getElementById('cv');
 const ctx=cv.getContext('2d');
 const stage=document.getElementById('stage');
+mathInspector=createMathInspector({
+  panel:document.getElementById('math-inspector'),
+  toggle:document.getElementById('math-inspector-toggle'),
+  getEquations:()=>equations,
+  onInsert:command=>{
+    equations.push(makeEq(command));
+    recompileAllEquations();
+    renderRows();draw();scheduleSave();
+  }
+});
 const sectionElement=document.getElementById('section2d-panel');
 const sectionToggle=document.getElementById('section-toggle');
 const planeDragButton=document.getElementById('plane-drag-mode');
@@ -3524,7 +3537,7 @@ function pickTangentSurface(e){
     if(sheetCount>1)eq.params.r=face;
   }
   recompileAllEquations();resultRefreshers.forEach(refresh=>refresh());
-  renderRows();draw();scheduleSave();
+  renderRows();selectEquation(eq);draw();scheduleSave();
 }
 for(const id of ['cv','three-3d-container']){
   const target=document.getElementById(id);

@@ -8,13 +8,13 @@
 // Absence of `dim` (or dim 2) means a 2D object.
 
 import { _geometryCore as core } from '../geometry.js';
-import { compile, setImplicitY } from '../parser.js';
+import { compile } from '../parser.js';
 import { coeffParts } from '../symbolic.js';
 import { makeConicSectionScene, makeAngledConicSectionScene } from './conic-sections.js';
 import { quadricScene } from './quadrics.js';
 import { quadricPlaneSection } from './quadric-sections.js';
 import { tangentScene } from './surface-calculus.js';
-import { generalQuadricFromEquation,analyseGeneralQuadric,meshImplicitQuadric,intersectGeneralQuadricPlane } from './implicit-quadric.js';
+import { compileXyz,canonical as canonicalXyz,generalQuadricFromEquation,analyseGeneralQuadric,meshImplicitQuadric,intersectGeneralQuadricPlane } from './implicit-quadric.js';
 import {scalarSurfaceScene} from './scalar-surfaces.js';
 import { rank as matrixRank, det as matrixDet3, trace as matrixTrace3 } from '../linear-algebra.js';
 import { buildTransform3DScene, symmetricEigen3 } from './transform3d.js';
@@ -474,7 +474,7 @@ const Z_EQUATION_COMMANDS=new Set(['line','intersect','distance','angle']);
 function equationWithZ(text,ctx){
   const src=String(text||'');
   if(!src.includes('=')||core.refFromRegistry('z',ctx)) return false;
-  for(const m of src.matchAll(/[A-Za-z\u03c0][A-Za-z0-9_\u03c0]*/g)){
+  for(const m of canonicalXyz(src).matchAll(/[A-Za-z\u03c0][A-Za-z0-9_\u03c0]*/g)){
     if(m[0]==='z'||m[0]==='Z') return true;
   }
   return false;
@@ -541,7 +541,7 @@ export function matrix3Result(values,ctx={},definitionName=''){
 // Degree of F = left − right along three generic lines (finite differences of
 // 9 samples detect degree ≤ 7); Infinity when F is not polynomial.
 function equationDegree(left,right,ctx){
-  const L=xyzFunction(left,ctx), R=xyzFunction(right,ctx);
+  const L=xyzSide(left,ctx), R=xyzSide(right,ctx);
   const lines=[[[0.31,-0.47,0.23],[0.83,0.41,-0.62]],[[-0.52,0.18,0.71],[0.27,-0.91,0.36]],[[0.11,0.64,-0.38],[-0.58,0.22,0.79]]];
   let degree=0;
   for(const [p,d] of lines){
@@ -685,10 +685,9 @@ export function planeFromPointDirs(P,u,v){
 }
 
 // ── Equations in x, y, z ──────────────────────────────────────────────────
-// The parser knows x and y (implicit relations) but not z: z is rewritten as
-// the symbol @z and fed through the symbols callback.
-
-let zValue=0;
+// Each side goes through main's compileXyz (z as the symbol @z, implied
+// products 2xy, yz exactly like superficie:); non-finite values are returned.
+const xyzSide=(expr,ctx)=>compileXyz(expr,ctx.params||{},{symbols:ctx.symbols,finite:false});
 
 function splitEquals(text){
   const out=[];
@@ -708,20 +707,9 @@ function splitEquals(text){
   return out.map(part=>part.trim());
 }
 
-function xyzFunction(expr,ctx){
-  const src=String(expr).replace(/[A-Za-z\u03c0][A-Za-z0-9\u03c0]*/g,name=>name==='z'||name==='Z' ? '@z' : name);
-  const fn=compile(src,ctx.params||{},{},name=>{
-    if(name==='z') return zValue;
-    if(typeof ctx.symbols==='function') return ctx.symbols(name);
-    throw new Error('nome desconhecido: @'+name);
-  });
-  if(typeof fn!=='function') throw new Error('equação incompleta');
-  return (x,y,z)=>{ setImplicitY(y); zValue=z; return fn(x); };
-}
-
 // Affine function of one side: c·(x,y,z) + k.
 function affineSide(expr,ctx){
-  const fn=xyzFunction(expr,ctx);
+  const fn=xyzSide(expr,ctx);
   const at=(x,y,z)=>{
     const value=fn(x,y,z);
     if(typeof value!=='number'||!Number.isFinite(value)) throw new Error('equação indefinida: '+String(expr).trim());

@@ -63,6 +63,34 @@ test('a name defined as an object in another line is that object, not a slider',
   assert.deepEqual(params('tangente: elipsoide,1,1,1,0,u,v',registry),['u','v']);
 });
 
+test('a later uppercase name does not steal an exact lowercase one (v then V = misto)', ()=>{
+  const base=['vetor: u=(1,2,3)','vetor: v=(4,5,6)','vetor: w=(0,0,1)','V = misto(u,v,w)'];
+  const {out,registry}=run([...base,'vetorial: u, v']);
+  assert.equal(registry.get('v').kind,'vector');
+  assert.equal(registry.get('V').kind,'scalar');
+  assert.deepEqual(params('vetorial: u, v',registry),[]);
+  ok(out[4]);
+  assert.match(info(out[4]),/u × v/);
+  // Uppercase-only names are still found in lowercase when nothing owns it.
+  const {registry:r2}=run(['B = (1,2,3)']);
+  assert.equal(r2.get('b').name,'B');
+});
+
+test('A and a coexist as point and scalar in either order', ()=>{
+  const vecs=['vetor: u=(1,0,0)','vetor: v=(0,1,0)','vetor: w=(0,0,1)'];
+  // Point a first, scalar A later: a stays the point.
+  let {out,registry}=run([...vecs,'a = (0,0,1)','A = misto(u,v,w)','vetor: a']);
+  assert.equal(registry.get('a').kind,'point');
+  assert.equal(registry.get('A').kind,'scalar');
+  assert.deepEqual(params('vetor: a',registry),[]);
+  assert.deepEqual(ok(out[5]).scene3d.filter(p=>p.kind==='arrow'&&p.role==='main').at(-1).to,[0,0,1]);
+  // Scalar a first, point A later: A is the point and a is not overwritten.
+  ({out,registry}=run([...vecs,'a = misto(u,v,w)','A = (1,2,3)','ponto: A']));
+  assert.equal(registry.get('a').kind,'scalar');
+  assert.equal(registry.get('A').kind,'point');
+  ok(out[5]);
+});
+
 // ── 2. vetor: u*2, -u, u/2 ────────────────────────────────────────────────
 
 test('vetor: u*2, -u, u/2 and (1,2,3)*k scale like k*u', ()=>{
@@ -113,6 +141,17 @@ test('unprefixed degree 2 in z uses the superficie: path (classification and aut
   // Explicit z = f(x,y) that is not quadratic: main's function-of-two-variables lab.
   const f=ok(parseGeometryInput('z = sin(x)*cos(y)'));
   assert.ok(f.multivar,'função de duas variáveis');
+});
+
+test('unprefixed quadrics accept implied products (2xy, yz) exactly like superficie:', ()=>{
+  const r=ok(parseGeometryInput('x^2+2xy+3y^2+z^2=9'));
+  const s=ok(parseGeometryInput('superficie: x^2+2xy+3y^2+z^2=9'));
+  assert.equal(r.type,'surface');
+  assert.deepEqual(r.info,s.info);
+  assert.ok(r.generalQuadric?.polynomial,'generalQuadric');
+  assert.match(info(ok(parseGeometryInput('2xy + z^2 = 1'))),/Hiperboloide de uma folha/i);
+  assert.equal(ok(parseGeometryInput('x^2 + 2yz = 1')).type,'surface');
+  assert.equal(ok(parseGeometryInput('2x + 3y - z = 1')).type,'plane');
 });
 
 test('unprefixed other degrees give the Portuguese error; lines without z are untouched', ()=>{

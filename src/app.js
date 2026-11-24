@@ -1534,6 +1534,8 @@ function renderRows(){
     const wrap=document.createElement('div'); wrap.className='field-wrap';
     const input=document.createElement('input');
     let refreshControls=()=>{};
+    // Set by refreshControls on a 3×3 system row; sliders re-sync the summary.
+    let syncSystemSummary=()=>{};
     input.className='field'; input.value=eq.text;
     input.dataset.lessonField='text';
     input.spellcheck=false; input.autocomplete='off';
@@ -1847,7 +1849,7 @@ function renderRows(){
       refreshTransform();
       refreshTransform3d();
     };
-    resultRefreshers.set(eq.id,()=>{row.dataset.err=eq.error?'1':'0';row.dataset.kind=eq.kind;refreshMathInfo();renderCurveSummary(summary,eq);});
+    resultRefreshers.set(eq.id,()=>{row.dataset.err=eq.error?'1':'0';row.dataset.kind=eq.kind;refreshMathInfo();renderCurveSummary(summary,eq);syncSystemSummary();});
     const refreshOps=()=>opControls.render(eq, opTools, ()=>{
       refreshMathInfo();
       renderCurveSummary(summary,eq);
@@ -2226,6 +2228,7 @@ function renderRows(){
     };
     refreshControls=()=>{
       controls.innerHTML='';
+      syncSystemSummary=()=>{};
       if(eq.kind==='result'){
         if(eq.systemScene||eq.systemScene3d){
           const show=document.createElement('button');show.type='button';show.className='calc system-toggle';show.textContent=eq.systemScene3d?'ver planos 3D':'ver retas';
@@ -2233,6 +2236,7 @@ function renderRows(){
           const summary=document.createElement('span');summary.className='system-summary';
           const syncSummary=()=>{summary.textContent=eq.showAlgebraSystem&&eq.systemSummary3d?eq.systemSummary3d:'';};
           syncSummary();
+          syncSystemSummary=syncSummary;
           show.onclick=()=>{eq.showAlgebraSystem=!eq.showAlgebraSystem;show.dataset.on=eq.showAlgebraSystem?'1':'0';syncSummary();draw();scheduleSave();};
           controls.appendChild(show);
           if(eq.systemScene3d) controls.appendChild(summary);

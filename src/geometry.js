@@ -129,7 +129,10 @@ export function addGeometryDefinitions(registry,geometry){
   geometry.definitions.forEach(def=>{
     if(!def?.name) return;
     registry.set(def.name,def);
-    registry.set(String(def.name).toLowerCase(),def);
+    // The lowercase alias never overrides a name defined exactly in lowercase
+    // (vetor: v=(4,5,6) followed by V = misto(u,v,w) keeps v the vector).
+    const lower=String(def.name).toLowerCase();
+    if(lower!==def.name&&registry.get(lower)?.name!==lower) registry.set(lower,def);
   });
   return registry;
 }

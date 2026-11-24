@@ -489,3 +489,24 @@ test('Canvas: planos terminam nos eixos (±N) mesmo afastando o zoom; dica "gire
   assert.equal(far.hint.textContent,'gire a vista para ver u×v');
   assert.equal(far.hint.hidden,false);
 });
+
+test('v vetor, depois V = misto(u,v,w): vetorial: u, v usa o vetor v, sem slider v',async()=>{
+  const lines=['vetor: u=(1,2,3)','vetor: v=(4,5,6)','vetor: w=(0,0,1)','V = misto(u,v,w)','vetorial: u, v'];
+  await boot({version:1,theme:'light',view3d:{mode:'3d'},equations:lines.map((text,i)=>mk(i,text))});
+  const rows=created.filter(el=>el.className==='row').slice(-lines.length);
+  assert.deepEqual(rows.map(el=>el.dataset.err),['0','0','0','0','0']);
+  byId('theme').onclick();
+  await settle();
+  assert.deepEqual(saved.equations.map(eq=>Object.keys(eq.params||{})),[[],[],[],[],[]]);
+});
+
+test('ver planos 3D: o resumo acompanha o slider (a = 0 → sem solução)',async()=>{
+  await boot({version:1,theme:'light',view3d:{mode:'3d'},equations:[{...mk(0,'calc: solveinfo([[1,1,1],[1,-1,0],[0,0,a]],[6,0,2])'),params:{a:1},showAlgebraSystem:true}]});
+  const summary=()=>created.filter(el=>el.className==='system-summary').at(-1);
+  assert.match(summary().textContent,/^solução única/);
+  const range=created.filter(el=>el.type==='range').at(-1);
+  assert.ok(range,'slider a');
+  range.value=0;
+  range.oninput();
+  assert.match(summary().textContent,/^sem solução/);
+});

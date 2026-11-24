@@ -12,21 +12,24 @@ const scale=(a,k)=>a.map(x=>x*k);
 const fmt=x=>String(Number((Math.abs(x)<1e-10?0:x).toPrecision(5)));
 const finite=a=>a.every(Number.isFinite);
 const TYPES=['x','y','z'];
-const canonical=raw=>String(raw).trim()
+export const canonical=raw=>String(raw).trim()
   .replace(/([xyz])([xyz])/gi,'$1*$2')
   .replace(/\u00d7/g,'*');
-export function compileXyz(raw,params={}){
+// options.symbols resolves other @names (algebra symbols); options.finite=false
+// returns non-finite values instead of throwing (callers that classify them).
+export function compileXyz(raw,params={},{symbols=null,finite=true}={}){
   const source=canonical(raw).replace(/[A-Za-z\u03c0][A-Za-z0-9\u03c0]*/g,name=>name.toLowerCase()==='z'?'@z':name);
   let zValue=0;
   const fn=compile(source,params,{},name=>{
     if(name==='z')return zValue;
+    if(typeof symbols==='function')return symbols(name);
     throw new Error('Símbolo não definido na superfície: @'+name);
   });
   if(!fn)throw new Error('Equação vazia de superfície.');
   return (x,y,z)=>{
     setImplicitY(y);zValue=z;
     const v=fn(x);
-    if(typeof v!=='number'||!Number.isFinite(v))throw new Error('Equação de superfície não definida neste domínio.');
+    if(finite&&(typeof v!=='number'||!Number.isFinite(v)))throw new Error('Equação de superfície não definida neste domínio.');
     return v;
   };
 }

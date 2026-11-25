@@ -302,6 +302,21 @@ function parseConicSpec(spec,ctx={}){
   return {type:'conic', source:body, coeffs:q, implicitF:sampled.implicitF, analysis:analyzeConic(q)};
 }
 
+const NONDEGENERATE_CONIC=/^(circunfer|elipse|hip[eé]rbole|par[aá]bola)/;
+
+// For a plain implicit relation, returns the `conica:` command that analyses
+// it when it is a non-degenerate conic, or null otherwise.
+export function conicSuggestion(raw,ctx={}){
+  const text=String(raw==null?'':raw).trim();
+  if(!text) return null;
+  try{
+    const {analysis}=parseConicSpec(text,ctx);
+    return analysis.info.some(line=>NONDEGENERATE_CONIC.test(line)) ? 'conica: '+text : null;
+  }catch(_){
+    return null;
+  }
+}
+
 function parsePointCommand(body,ctx={},definitionName=''){
   const r=result('point','ponto');
   r.points=parsePointList(body,ctx);

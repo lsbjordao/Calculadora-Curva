@@ -95,7 +95,7 @@ Declarações `let` aceitam vetores e matrizes. Referências `@nome` são indepe
 
 ## Cônicas
 
-`conica: equação` identifica circunferência, elipse, hipérbole e parábola e mostra centro ou vértice, semieixos, focos e diretrizes. Para elipse e hipérbole, informa também a orientação do eixo maior ou real, a semidistância focal `c` com a relação notável e a excentricidade `e = c/a`; a circunferência tem `e = 0` e a parábola, `e = 1`, com a direção de abertura. Toda cônica recebe o indicador `b^2 - 4ac` e o gênero (elíptico, parabólico ou hiperbólico).
+`conica: equação` identifica circunferência, elipse, hipérbole e parábola e mostra centro ou vértice, semieixos, focos e diretrizes. Para elipse e hipérbole, informa também a orientação do eixo maior ou real, a semidistância focal `c` com a relação notável e a excentricidade `e = c/a`; a circunferência tem `e = 0` e a parábola, `e = 1`, com a direção de abertura. Toda cônica recebe o indicador `b^2 - 4ac` e o gênero (elíptico, parabólico ou hiperbólico). Ao digitar uma equação implícita de 2º grau sem prefixo, como `x² + y² - 8x + 4y - 29 = 0`, a camada selecionada oferece o botão **◎ analisar cônica**, que cria a camada `conica:` correspondente com centro, raio, focos e eixos.
 
 Com termo `xy` (escreva `x*y`), a cônica é rotacionada: a análise mostra o tipo pelo discriminante e pelo determinante da matriz 3×3 da cônica (hipérbole, par de retas concorrentes, elipse, cônica sem pontos reais, parábola ou retas paralelas) e o ângulo de rotação dos eixos, `cot 2θ = (a − c)/b`. Focos e eixos de cônicas rotacionadas não são desenhados.
 

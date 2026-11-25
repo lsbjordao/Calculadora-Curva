@@ -28,7 +28,7 @@ import {
   normalizeLessonProgress,
   setLessonCheckpointProgress
 } from './lessons.js';
-import { addGeometryDefinitions, extractGeometryParams, parseGeometryInput } from './geometry.js';
+import { addGeometryDefinitions, conicSuggestion, extractGeometryParams, parseGeometryInput } from './geometry.js';
 import { choosePointSourceIndex, constructionExpression, formatPointCommand, nextPointLabel, normalizePoint, updatePoint, usedGeometryNames } from './geometry-builder.js';
 import { describeCanvas, formatMathVisual } from './accessibility.js';
 import { splitInfoLines, infoLabelValue } from './info-format.js';
@@ -1427,6 +1427,22 @@ function renderContextActions(eq, target){
     };
     target.appendChild(button);
   });
+  const conicCommand=eq.kind==='implicit'&&!eq.error
+    ? conicSuggestion(eq.text,{params:eq.params,symbols:algebraSymbols.resolve})
+    : null;
+  if(conicCommand){
+    const conic=document.createElement('button');
+    conic.type='button';conic.className='context-action conic-suggest';
+    conic.textContent='◎ analisar cônica';
+    conic.title='É uma cônica: criar a camada "'+conicCommand+'" com tipo, centro, raio, focos e eixos';
+    conic.onclick=event=>{
+      event.preventDefault();event.stopPropagation();
+      selectEquation(eq);
+      addDerivedEquation(eq,conicCommand,{style:'dashed'});
+      notifyLessonAction('input');
+    };
+    target.appendChild(conic);
+  }
   // Usado tanto na criação da camada quanto em alterações da expressão.
   if(isMatrixWalkthroughCandidate(eq)){
     const walk=document.createElement('button');

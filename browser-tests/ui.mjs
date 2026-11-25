@@ -130,6 +130,23 @@ try{
   await matrixPage.screenshot({path:resolve(screenshots,'matrizes-passo-a-passo-mobile.png')});
   await matrixContext.close();
 
+  // Uma relação implícita de 2º grau oferece a análise por `conica:`.
+  const {context:conicContext,page:conicPage}=await createPage({width:1440,height:900});
+  const firstRow=conicPage.locator('.row').first();
+  await firstRow.locator('.field').fill('x^3 + y^3 = 1');
+  await firstRow.click();
+  nodeAssert.equal(await firstRow.locator('.conic-suggest').count(),0,'relação cúbica não é cônica');
+  await firstRow.locator('.field').fill('x² + y² - 8x +4y - 29 = 0');
+  const suggest=firstRow.locator('.conic-suggest');
+  await suggest.waitFor({state:'visible'});
+  await suggest.click();
+  const conicRow=conicPage.locator('.row').nth(1);
+  nodeAssert.equal(await conicRow.locator('.field').inputValue(),'conica: x² + y² - 8x +4y - 29 = 0');
+  await conicPage.waitForFunction(()=>document.querySelectorAll('.row')[1]?.textContent.includes('raio = 7'));
+  nodeAssert.match(await conicRow.innerText(),/centro C = \(4, -2\)/);
+  await conicPage.screenshot({path:resolve(screenshots,'conica-sugestao-centro-raio.png')});
+  await conicContext.close();
+
   const {context,page}=await createPage({width:1440,height:900});
   // The offline Three.js package must execute in the browser without CDN access.
   const vendoredThreeRevision=await page.evaluate(async()=>{

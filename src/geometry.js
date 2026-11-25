@@ -841,12 +841,33 @@ function parseMatrixCommand(body,ctx={},definitionName=''){
   return r;
 }
 
-function lineX(x,label,style='dotted'){
-  return {a:1,b:0,c:-x,label,style};
+function lineX(x,label,style='dotted',anchor=null){
+  return anchor ? {a:1,b:0,c:-x,label,style,anchor} : {a:1,b:0,c:-x,label,style};
 }
 
-function lineY(y,label,style='dotted'){
-  return {a:0,b:1,c:-y,label,style};
+function lineY(y,label,style='dotted',anchor=null){
+  return anchor ? {a:0,b:1,c:-y,label,style,anchor} : {a:0,b:1,c:-y,label,style};
+}
+
+// Lines whose angle with the x-axis carries meaning. A circle's auxiliary
+// axes are arbitrary diameters, so they opt out with xAxisAngle:false.
+export function xAxisAngleLines(geometry){
+  return (geometry?.lines||[]).filter(line=>line.xAxisAngle!==false);
+}
+
+// Where to draw a line's x-axis angle mark, in world coordinates. Prefers the
+// line's own anchor (a conic center or vertex), then its crossing with the
+// visible x-axis; otherwise the line's point nearest the origin, which stays
+// fixed while the view pans.
+export function xAxisAngleAnchor(line,view){
+  if(line.anchor) return {x:line.anchor.x,y:line.anchor.y};
+  const {xmin,xmax,ymin,ymax}=view;
+  if(Math.abs(line.a)>1e-12&&ymin<=0&&ymax>=0){
+    const x=-line.c/line.a;
+    if(x>=xmin&&x<=xmax) return {x,y:0};
+  }
+  const n2=line.a*line.a+line.b*line.b;
+  return {x:-line.a*line.c/n2,y:-line.b*line.c/n2};
 }
 
 const coeffScale=q=>Math.max(1,...['A','B','C','D','E','F'].map(key=>Math.abs(q[key])));
@@ -877,7 +898,7 @@ function analyzeRotatedConic(q){
   const mul=(v,t)=>v.map(x=>x*t);
   const lineThrough=(origin,direction,label,style='dotted')=>{
     const n=[-direction[1],direction[0]];
-    return {a:n[0],b:n[1],c:-(n[0]*origin[0]+n[1]*origin[1]),label,style};
+    return {a:n[0],b:n[1],c:-(n[0]*origin[0]+n[1]*origin[1]),label,style,anchor:p(origin)};
   };
   const perpendicularAt=(point,axis,label)=>({
     a:axis[0],b:axis[1],c:-(axis[0]*point[0]+axis[1]*point[1]),label,style:'dashed'
@@ -973,12 +994,13 @@ function analyzeAlignedConic(q){
     const k=-q.E/(2*q.C);
     const K=-q.F+q.D*q.D/(4*q.A)+q.E*q.E/(4*q.C);
     points.push({x:h,y:k,label:'C'});
-    lines.push(lineX(h,'eixo x=C','dotted'),lineY(k,'eixo y=C','dotted'));
+    lines.push(lineX(h,'eixo x=C','dotted',{x:h,y:k}),lineY(k,'eixo y=C','dotted',{x:h,y:k}));
     const sx=K/q.A, sy=K/q.C;
     if(q.A*q.C>0){
       if(!(sx>0&&sy>0)) return {info:['conica sem pontos reais'],points,lines,segments};
       const rx=Math.sqrt(sx), ry=Math.sqrt(sy);
       if(Math.abs(rx-ry)<=1e-7*Math.max(1,rx,ry)){
+        lines.forEach(line=>{ line.xAxisAngle=false; });
         info.push('circunferencia');
         info.push('centro C = '+fmtPoint({x:h,y:k}));
         info.push('raio = '+fmt(rx));
@@ -1051,7 +1073,7 @@ function analyzeAlignedConic(q){
     const vertex={x:h,y:k,label:'V'};
     const focus={x:h,y:k+p,label:'F'};
     points.push(vertex,focus);
-    lines.push(lineX(h,'eixo','dotted'),lineY(k-p,'diretriz','dashed'));
+    lines.push(lineX(h,'eixo','dotted',{x:h,y:k}),lineY(k-p,'diretriz','dashed'));
     info.push('parabola');
     info.push('vertice V = '+fmtPoint(vertex));
     info.push('foco F = '+fmtPoint(focus));
@@ -1068,7 +1090,7 @@ function analyzeAlignedConic(q){
     const vertex={x:h,y:k,label:'V'};
     const focus={x:h+p,y:k,label:'F'};
     points.push(vertex,focus);
-    lines.push(lineY(k,'eixo','dotted'),lineX(h-p,'diretriz','dashed'));
+    lines.push(lineY(k,'eixo','dotted',{x:h,y:k}),lineX(h-p,'diretriz','dashed'));
     info.push('parabola');
     info.push('vertice V = '+fmtPoint(vertex));
     info.push('foco F = '+fmtPoint(focus));

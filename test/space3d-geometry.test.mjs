@@ -138,12 +138,14 @@ test('ponto: A=(1,2) stays 2D: dim 2, no scene3d, same points and info', ()=>{
   assert.deepEqual(r.info,['A = (1, 2)']);
 });
 
-// The only change allowed on 2D lines is the `dim: 2` tag on their points.
+// The only changes allowed on 2D lines are the `dim: 2` tag on their points
+// and the display-only `anchor`/`xAxisAngle` hints for the "ang x" mark.
 test('2D geometry results match the snapshot taken before ℝ³ support', ()=>{
   const expected=JSON.parse(readFileSync(new URL('./fixtures/geometry-2d-snapshot.json',import.meta.url),'utf8'));
   let tagged=0;
   const strip=(key,value)=>{
     if(key==='dim'){ assert.equal(value,2,'2D points are tagged dim 2'); tagged++; return undefined; }
+    if(key==='anchor'||key==='xAxisAngle') return undefined;
     return value;
   };
   const actual=JSON.parse(JSON.stringify(runGeometry2dCases(),strip));

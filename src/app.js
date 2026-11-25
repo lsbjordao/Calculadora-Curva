@@ -28,7 +28,7 @@ import {
   normalizeLessonProgress,
   setLessonCheckpointProgress
 } from './lessons.js';
-import { addGeometryDefinitions, conicSuggestion, extractGeometryParams, parseGeometryInput } from './geometry.js';
+import { addGeometryDefinitions, conicSuggestion, extractGeometryParams, parseGeometryInput, xAxisAngleAnchor, xAxisAngleLines } from './geometry.js';
 import { choosePointSourceIndex, constructionExpression, formatPointCommand, nextPointLabel, normalizePoint, updatePoint, usedGeometryNames } from './geometry-builder.js';
 import { describeCanvas, formatMathVisual } from './accessibility.js';
 import { splitInfoLines, infoLabelValue } from './info-format.js';
@@ -2098,8 +2098,7 @@ function renderRows(){
       const hasAngles=!!eq.geometry?.angles?.length;
       const hasSegments=!!eq.geometry?.segments?.length;
       const hasVectors=!!eq.geometry?.vectors?.length;
-      const hasLines=!!eq.geometry?.lines?.length;
-      const hasXAxisAngle=hasLines||hasVectors;
+      const hasXAxisAngle=xAxisAngleLines(eq.geometry).length>0||hasVectors;
 
       const typeBtn=document.createElement('button');
       typeBtn.className='calc';
@@ -2209,7 +2208,7 @@ function renderRows(){
       const xAxisAngleBtn=document.createElement('button');
       xAxisAngleBtn.className='calc';
       xAxisAngleBtn.textContent='ang x';
-      xAxisAngleBtn.title=hasXAxisAngle ? 'Mostrar ângulo em relação ao eixo x' : 'Esta construção não tem retas ou vetores';
+      xAxisAngleBtn.title=hasXAxisAngle ? 'Mostrar ângulo em relação ao eixo x' : 'Esta construção não tem retas ou vetores com direção definida (os eixos de uma circunferência são arbitrários)';
       xAxisAngleBtn.disabled=!hasXAxisAngle;
       xAxisAngleBtn.dataset.on=hasXAxisAngle&&eq.showGeoXAxisAngles?'1':'0';
       xAxisAngleBtn.onclick=()=>{
@@ -2685,8 +2684,9 @@ function geometryInfo(eq){
   if(eq.showGeoVectorLengths&&g.vectors?.length){
     parts.push('vetores: '+g.vectors.map(vectorMeasureText).join(' · '));
   }
-  if(eq.showGeoXAxisAngles&&g.lines?.length){
-    const lineParts = g.lines.map(line => {
+  const angleLines=xAxisAngleLines(g);
+  if(eq.showGeoXAxisAngles&&angleLines.length){
+    const lineParts = angleLines.map(line => {
       let angleRad = Math.atan2(-line.a, line.b);
       if(angleRad < 0) angleRad += Math.PI;
       const deg = angleRad * 180 / Math.PI;
@@ -5189,18 +5189,8 @@ function drawGeometryLine(line,color,eq){
   ctx.stroke();
   ctx.restore();
 
-  if(eq && eq.showGeoXAxisAngles){
-    let drawPt = null;
-    if(Math.abs(line.a) > 1e-12){
-      const xi = -line.c / line.a;
-      if(xi >= xmin && xi <= xmax && ymin <= 0 && ymax >= 0){
-        drawPt = {x: xi, y: 0};
-      }
-    }
-    if(!drawPt){
-      drawPt = {x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2};
-    }
-
+  if(eq && eq.showGeoXAxisAngles && line.xAxisAngle!==false){
+    const drawPt = xAxisAngleAnchor(line,{xmin,xmax,ymin,ymax});
     const vx = w2px(drawPt.x);
     const vy = w2py(drawPt.y);
 

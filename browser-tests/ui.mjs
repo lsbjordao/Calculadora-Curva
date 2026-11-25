@@ -144,6 +144,8 @@ try{
   nodeAssert.equal(await conicRow.locator('.field').inputValue(),'conica: x² + y² - 8x +4y - 29 = 0');
   await conicPage.waitForFunction(()=>document.querySelectorAll('.row')[1]?.textContent.includes('raio = 7'));
   nodeAssert.match(await conicRow.innerText(),/centro C = \(4, -2\)/);
+  // Os eixos de uma circunferência são diâmetros arbitrários: sem "ang x".
+  nodeAssert.equal(await conicRow.locator('button.calc',{hasText:'ang x'}).isDisabled(),true);
   await conicPage.screenshot({path:resolve(screenshots,'conica-sugestao-centro-raio.png')});
   await conicContext.close();
 

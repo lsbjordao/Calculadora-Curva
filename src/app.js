@@ -638,11 +638,14 @@ function pointSourceSignature(points){
   return points.map(p=>fmt(p.x)+','+fmt(p.y)).join(';');
 }
 
-function compilePointSource(src, params){
+// Params are set up before compiling so a fresh line (e.g. seq(i,1,n,...))
+// already sees n's default instead of evaluating with n undefined.
+function compilePointSource(src, eq){
   const explicit=parsePoints(src);
   if(explicit) return {names:[], points:explicit, getPoints:()=>explicit};
   const names=extractParams(src);
-  const fn=compile(src, params);
+  setupParams(eq, names);
+  const fn=compile(src, eq.params);
   const getPoints=()=>{
     const points=fn(0);
     return validPoints(points) ? points : null;
@@ -651,7 +654,7 @@ function compilePointSource(src, params){
   return points ? {names, points, getPoints} : null;
 }
 
-function compileHistogramValues(src, params){
+function compileHistogramValues(src, eq){
   const nums=[];
   let allNumeric=true;
   for(const piece of splitTop(src, ',')){
@@ -661,7 +664,8 @@ function compileHistogramValues(src, params){
   }
   if(nums.length && allNumeric) return {names:[], values:nums, getValues:()=>nums};
   const names=extractParams(src);
-  const fn=compile(src, params);
+  setupParams(eq, names);
+  const fn=compile(src, eq.params);
   const getValues=()=>{
     const value=fn(0);
     if(validPoints(value)) return value.map(p=>p.y);
@@ -858,7 +862,7 @@ function recompileEq(eq, geometryRegistry=null){
     if(fm){
       const spec=fm[1].toLowerCase();
       if(spec==='histogram' || spec==='hist'){
-        const source=compileHistogramValues(fm[2], eq.params);
+        const source=compileHistogramValues(fm[2], eq);
         if(!source){ eq.fn=null; eq.error=true; eq.paramNames=[]; return; }
         setupParams(eq, source.names);
         const nums=source.getValues();
@@ -904,7 +908,7 @@ function recompileEq(eq, geometryRegistry=null){
           updateDynamicStats(eq);
           eq.error=!eq.statsInfo; eq.fn=null; return;
         }
-        const source=compileHistogramValues(fm[2], eq.params);
+        const source=compileHistogramValues(fm[2], eq);
         if(!source){ eq.fn=null; eq.error=true; eq.paramNames=[]; return; }
         setupParams(eq, source.names);
         eq.kind='stats'; eq.statsKind='1var';
@@ -913,7 +917,7 @@ function recompileEq(eq, geometryRegistry=null){
         eq.error=!eq.statsInfo; eq.fn=null; return;
       }
       if(spec==='compare'||spec==='comparar'){
-        const source=compilePointSource(fm[2], eq.params);
+        const source=compilePointSource(fm[2], eq);
         if(!source){ eq.fn=null; eq.error=true; eq.paramNames=[]; return; }
         setupParams(eq, source.names);
         eq.kind='fitcompare';
@@ -926,7 +930,7 @@ function recompileEq(eq, geometryRegistry=null){
         const model=(parts.shift()||'').trim().toLowerCase();
         const sourceText=parts.join(',').trim();
         if(!isFitSpec(model)||!sourceText){ eq.fn=null; eq.error=true; eq.paramNames=[]; return; }
-        const source=compilePointSource(sourceText, eq.params);
+        const source=compilePointSource(sourceText, eq);
         if(!source){ eq.fn=null; eq.error=true; eq.paramNames=[]; return; }
         setupParams(eq, source.names);
         eq.pointSource=()=>{
@@ -943,7 +947,7 @@ function recompileEq(eq, geometryRegistry=null){
         eq.kind='points'; eq.pointLabel='resid';
         eq.error=false; return;
       }
-      const source=compilePointSource(fm[2], eq.params);
+      const source=compilePointSource(fm[2], eq);
       if(!source){ eq.fn=null; eq.error=true; eq.paramNames=[]; return; }
       setupParams(eq, source.names);
       const points=source.getPoints();
@@ -3229,7 +3233,7 @@ document.getElementById('pad').addEventListener('click',ev=>{
   if(b.dataset.geoTool) setGeoTool(b.dataset.geoTool);
   else if(b.dataset.act==='back') backspaceFocused();
   else if(b.dataset.act==='clear') clearFocused();
-  else if(b.dataset.algebra){const field=targetField();if(field){field.setSelectionRange(0,field.value.length);insertAtFocused(b.dataset.ins,0);}}
+  else if(b.dataset.algebra||b.dataset.example){const field=targetField();if(field){field.setSelectionRange(0,field.value.length);insertAtFocused(b.dataset.ins,0);}}
   else if(b.dataset.ins!==undefined) insertAtFocused(b.dataset.ins, b.dataset.caret?+b.dataset.caret:0);
 });
 

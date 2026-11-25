@@ -149,6 +149,23 @@ try{
   await conicPage.screenshot({path:resolve(screenshots,'conica-sugestao-centro-raio.png')});
   await conicContext.close();
 
+  // Botões de stats trocam a linha por um exemplo com dados e o plotam.
+  // `fit2 seq` numa linha nova precisa já enxergar o n padrão (n=10).
+  const {context:statsContext,page:statsPage}=await createPage({width:1440,height:900});
+  const statsRow=statsPage.locator('.row').first();
+  await statsRow.locator('.field').fill('x^2');
+  await statsPage.locator('#tabs .tab[data-tab="stats"]').click();
+  for(const label of ['fitexp','fit2 seq','hist']){
+    await statsRow.locator('.field').focus();
+    await statsPage.locator('#grid-stats button[data-example]').filter({hasText:new RegExp('^'+label+'$')}).click();
+    nodeAssert.notEqual(await statsRow.locator('.field').inputValue(),'x^2','exemplo deve substituir a linha');
+    nodeAssert.equal(await statsRow.getAttribute('data-err'),'0',label+' deve plotar sem erro');
+  }
+  await statsPage.locator('#grid-stats button[data-example]').filter({hasText:/^fit2 seq$/}).click();
+  nodeAssert.equal(await statsRow.getAttribute('data-kind'),'regression');
+  nodeAssert.match(await statsRow.innerText(),/R²=0\.9/);
+  await statsContext.close();
+
   const {context,page}=await createPage({width:1440,height:900});
   // The offline Three.js package must execute in the browser without CDN access.
   const vendoredThreeRevision=await page.evaluate(async()=>{

@@ -42,6 +42,10 @@ function equationValid(text, geometryRegistry=null, params={}, symbols=null){
         return false;
       }
     }
+    if(spec==='stats'){
+      const nums=splitTop(fm[2], ',').map(piece=>Number(piece.trim()));
+      if(nums.length>0 && nums.every(Number.isFinite)) return true;
+    }
     if(spec==='seq') return Array.isArray(compile('seq('+fm[2]+')',params)(0));
     if(spec==='intersec'){
       const parts=splitTop(fm[2], ',');
@@ -322,6 +326,29 @@ test('calculator pad buttons expose syntax-oriented tooltips',()=>{
   );
   const missingSyntax=syntaxButtons.filter(button=>!/title="Sintaxe/.test(button.attrs));
   assert.deepEqual(missingSyntax.map(button=>button.label), []);
+});
+
+test('stats pad buttons load complete, plottable examples',async()=>{
+  const { polyFit, expFit, powFit, logFit, sigmoidFit } = await import('../src/regress.js');
+  const html=readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const grid=html.match(/<div id="grid-stats"[^>]*>([\s\S]*?)<\/div>/);
+  assert.ok(grid, 'stats grid not found');
+  const buttons=[...grid[1].matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)]
+    .map(m=>({attrs:m[1], label:m[2].trim(), ins:m[1].match(/data-ins="([^"]*)"/)?.[1]}))
+    .filter(b=>b.ins!==undefined && !['n',','].includes(b.label));
+  assert.ok(buttons.length>=18, 'expected stats example buttons');
+  const notExample=buttons.filter(b=>!/\sdata-example=/.test(b.attrs)).map(b=>b.label);
+  assert.deepEqual(notExample, [], 'stats buttons must replace the line with an example');
+  const invalid=buttons.filter(b=>!equationValid(b.ins, null, {n:10})).map(b=>b.label+': '+b.ins);
+  assert.deepEqual(invalid, []);
+  const fitters={fitexp:expFit, fitpow:powFit, fitlog:logFit, fitsig:sigmoidFit};
+  for(const b of buttons){
+    const m=b.ins.match(/^(fit\d*|fitexp|fitpow|fitlog|fitsig)\s*:\s*(\(.+)$/);
+    if(!m) continue;
+    const pts=parsePoints(m[2]);
+    const fit=fitters[m[1]] ? fitters[m[1]](pts) : polyFit(pts, m[1]==='fit' ? 1 : Number(m[1].slice(3)));
+    assert.ok(fit && fit.r2>0.9, b.label+' example should produce a good fit');
+  }
 });
 
 test('fit comparison and residual commands validate point sources',()=>{

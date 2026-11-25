@@ -178,30 +178,30 @@
       </div>
 
       <div id="grid-stats" class="grid hidden">
-        <button class="fn" data-ins="points: (0,1),(1,2),(2,3)" title="Sintaxe: points: (x1,y1),(x2,y2), por exemplo points: (0,1),(1,2)">points</button>
-        <button class="fn" data-ins="stats: 4,8,15,16,23,42" title="Sintaxe: stats: 4,8,15 ou stats: (0,1),(1,3)">stats</button>
-        <button class="fn" data-ins="seq: i,1,n," title="Sintaxe: seq: i, início, fim, expressão, por exemplo seq: i,1,n,i^2">seq</button>
-        <button class="fn" data-ins="hist: " title="Sintaxe: hist: 1,2,2,3 ou hist: seq(i,1,n,expr)">hist</button>
-        <button class="fn" data-ins="sum(i,1,n," title="Sintaxe: sum(i, início, fim, expressão), por exemplo sum(i,1,n,i^2)">Σ</button>
+        <button class="fn" data-example="1" data-ins="points: (0,1),(1,3),(2,2),(3,5),(4,4),(5,6)" title="Sintaxe: points: (x1,y1),(x2,y2), por exemplo points: (0,1),(1,3),(2,2)">points</button>
+        <button class="fn" data-example="1" data-ins="stats: 4,8,15,16,23,42" title="Sintaxe: stats: 4,8,15 ou stats: (0,1),(1,3)">stats</button>
+        <button class="fn" data-example="1" data-ins="seq: i,1,n,i^2" title="Sintaxe: seq: i, início, fim, expressão, por exemplo seq: i,1,n,i^2">seq</button>
+        <button class="fn" data-example="1" data-ins="hist: 2,3,3,4,4,4,5,5,5,5,6,6,6,7,7,8" title="Sintaxe: hist: 1,2,2,3 ou hist: seq(i,1,n,expr)">hist</button>
+        <button class="fn" data-example="1" data-ins="sum(i,1,n,sin((2i-1)x)/(2i-1))" title="Sintaxe: sum(i, início, fim, expressão), por exemplo sum(i,1,n,i^2); o exemplo soma n termos da série de Fourier da onda quadrada">Σ</button>
         <button class="fn" data-ins="n" title="Sintaxe: use n como parâmetro, por exemplo seq: i,1,n,i^2">n</button>
 
-        <button class="fn" data-ins="fit: " title="Sintaxe: fit: (x1,y1),(x2,y2) ou fit: seq(i,1,n,expr)">fit</button>
-        <button class="fn" data-ins="fit2: " title="Sintaxe: fit2: (x1,y1),(x2,y2),(x3,y3) ou fit2: seq(i,1,n,expr)">fit2</button>
-        <button class="fn" data-ins="fit3: " title="Sintaxe: fit3: pontos ou seq(i,1,n,expr)">fit3</button>
-        <button class="fn" data-ins="fit4: " title="Sintaxe: fit4: pontos ou seq(i,1,n,expr)">fit4</button>
-        <button class="fn" data-ins="fitexp: " title="Sintaxe: fitexp: pontos com y&gt;0, por exemplo fitexp: (0,1),(1,2),(2,4)">fitexp</button>
+        <button class="fn" data-example="1" data-ins="fit: (0,1.1),(1,2.9),(2,5.2),(3,6.8),(4,9.1),(5,10.9)" title="Sintaxe: fit: (x1,y1),(x2,y2) ou fit: seq(i,1,n,expr) — ajuste linear">fit</button>
+        <button class="fn" data-example="1" data-ins="fit2: (-2,4.2),(-1,1.1),(0,0.2),(1,0.9),(2,4.1),(3,9.2)" title="Sintaxe: fit2: (x1,y1),(x2,y2),(x3,y3) ou fit2: seq(i,1,n,expr) — ajuste quadrático">fit2</button>
+        <button class="fn" data-example="1" data-ins="fit3: (-2,-4.1),(-1,1.9),(0,1.1),(1,0.2),(2,2.1),(3,13.8)" title="Sintaxe: fit3: pontos ou seq(i,1,n,expr) — ajuste cúbico">fit3</button>
+        <button class="fn" data-example="1" data-ins="fit4: (-2,5.1),(-1.5,-0.6),(-1,-1.1),(-0.5,0.4),(0,0.9),(0.5,0.2),(1,-0.9),(1.5,-0.8),(2,5)" title="Sintaxe: fit4: pontos ou seq(i,1,n,expr) — ajuste de grau 4">fit4</button>
+        <button class="fn" data-example="1" data-ins="fitexp: (0,1),(1,2.1),(2,3.9),(3,8.2),(4,15.8)" title="Sintaxe: fitexp: pontos com y&gt;0, por exemplo fitexp: (0,1),(1,2),(2,4)">fitexp</button>
 
-        <button class="fn" data-ins="fitpow: " title="Sintaxe: fitpow: pontos com x&gt;0 e y&gt;0">fitpow</button>
-        <button class="fn" data-ins="fitlog: " title="Sintaxe: fitlog: pontos com x&gt;0">fitlog</button>
-        <button class="fn" data-ins="fitsig: " title="Sintaxe: fitsig: pontos de uma curva sigmoidal">fitsig</button>
-        <button class="fn" data-ins="fit2: seq(i,1,n," title="Sintaxe: fit2: seq(i,1,n,expressão)">fit2 seq</button>
-        <button class="fn" data-ins="hist: seq(i,1,n," title="Sintaxe: hist: seq(i,1,n,expressão)">hist seq</button>
+        <button class="fn" data-example="1" data-ins="fitpow: (1,2),(2,5.6),(3,10.4),(4,16.1),(5,22.3)" title="Sintaxe: fitpow: pontos com x&gt;0 e y&gt;0">fitpow</button>
+        <button class="fn" data-example="1" data-ins="fitlog: (1,0.1),(2,1.5),(4,2.8),(8,4.2),(16,5.6)" title="Sintaxe: fitlog: pontos com x&gt;0">fitlog</button>
+        <button class="fn" data-example="1" data-ins="fitsig: (-4,0.02),(-2,0.12),(-1,0.27),(0,0.5),(1,0.73),(2,0.88),(4,0.98)" title="Sintaxe: fitsig: pontos de uma curva sigmoidal">fitsig</button>
+        <button class="fn" data-example="1" data-ins="fit2: seq(i,1,n,0.5i^2-3i+4+sin(3i))" title="Sintaxe: fit2: seq(i,1,n,expressão)">fit2 seq</button>
+        <button class="fn" data-example="1" data-ins="hist: seq(i,1,n,round(5+3sin(i)))" title="Sintaxe: hist: seq(i,1,n,expressão)">hist seq</button>
 
-        <button class="fn" data-ins="fit(seq(i,1,n,2i+1),x)" title="Sintaxe: fit(dados, x), por exemplo fit(seq(i,1,n,2i+1),x)">fit(...)</button>
-        <button class="fn" data-ins="fit2(seq(i,1,n,i^2),x)" title="Sintaxe: fit2(dados, x), por exemplo fit2(seq(i,1,n,i^2),x)">fit2(...)</button>
-        <button class="fn" data-ins="compare: seq(i,1,n,i^2+sin(i)/3)" title="Sintaxe: compare: pontos ou compare: seq(i,1,n,expr)">compare</button>
-        <button class="fn" data-ins="resid: fit2, seq(i,1,n,i^2+sin(i)/3)" title="Sintaxe: resid: modelo, dados, por exemplo resid: fit2, seq(i,1,n,i^2)">resid</button>
-        <button class="fn" data-ins="sum(i,1,n,(i^2-fit2(seq(j,1,n,j^2),i))^2)" title="Sintaxe: sum(i,1,n,(y_i-fit2(dados,i))^2)">SSE</button>
+        <button class="fn" data-example="1" data-ins="fit(seq(i,1,n,2i+1),x)" title="Sintaxe: fit(dados, x), por exemplo fit(seq(i,1,n,2i+1),x)">fit(...)</button>
+        <button class="fn" data-example="1" data-ins="fit2(seq(i,1,n,i^2),x)" title="Sintaxe: fit2(dados, x), por exemplo fit2(seq(i,1,n,i^2),x)">fit2(...)</button>
+        <button class="fn" data-example="1" data-ins="compare: seq(i,1,n,i^2+sin(i)/3)" title="Sintaxe: compare: pontos ou compare: seq(i,1,n,expr)">compare</button>
+        <button class="fn" data-example="1" data-ins="resid: fit2, seq(i,1,n,i^2+sin(i)/3)" title="Sintaxe: resid: modelo, dados, por exemplo resid: fit2, seq(i,1,n,i^2)">resid</button>
+        <button class="fn" data-example="1" data-ins="sum(i,1,n,(i^2-fit2(seq(j,1,n,j^2),i))^2)" title="Sintaxe: sum(i,1,n,(y_i-fit2(dados,i))^2)">SSE</button>
         <button class="op" data-ins=", " title="Sintaxe: separa argumentos, por exemplo resid: fit2, dados">,</button>
         <button class="util" data-act="back" title="Apaga o caractere anterior">⌫</button>
       </div>

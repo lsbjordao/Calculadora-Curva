@@ -38,7 +38,10 @@ const state={ version:1, theme:'light', view:{cx:0,cy:0,scale:38}, equations:[
   mk(1,'stats: (1,2.1),(2,3.9),(3,6.2),(4,7.8),(5,10.1)'),
   mk(2,'hist: 1,2,2,3,3,3,4,4,5,5,6', {histBins:5, histDensity:true, histNormal:true}),
   mk(3,'stats: seq(i,1,n,i^2)', {params:{n:5}}),
-  mk(4,'fit: (0,1),(1,2.1),(2,2.9),(3,4.2)')
+  mk(4,'fit: (0,1),(1,2.1),(2,2.9),(3,4.2)'),
+  mk(5,'box: 12,15,17,18,19,20,21,22,23,25,26,28,45'),
+  mk(6,'box: seq(i,1,n,i^2)', {params:{n:8}}),
+  mk(7,'compare: (1,2.2),(2,4.9),(3,10.1),(4,17.2),(5,25.8),(6,37.1)')
 ]};
 globalThis.localStorage={ getItem:k=>k==='curva-state-v1'?JSON.stringify(state):null, setItem(){}, removeItem(){} };
 

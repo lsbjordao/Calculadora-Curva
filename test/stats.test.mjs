@@ -85,3 +85,24 @@ test('pearson returns null for nullish input',()=>{
   assert.equal(pearson(undefined), null);
   assert.equal(pearson([]), null);
 });
+
+test('boxplot: whiskers stop at the last value inside the 1.5·IQR fences',async()=>{
+  const { boxplot } = await import('../src/stats.js');
+  const b=boxplot([1,2,3,4,5,6,7,8,30]);
+  assert.equal(b.n, 9);
+  assert.equal(b.q1, 3); assert.equal(b.median, 5); assert.equal(b.q3, 7);
+  assert.equal(b.lowerFence, -3); assert.equal(b.upperFence, 13);
+  assert.equal(b.whiskerLow, 1); assert.equal(b.whiskerHigh, 8);
+  assert.deepEqual(b.outliers, [30]);
+});
+
+test('boxplot: no outliers, single value and empty input',async()=>{
+  const { boxplot } = await import('../src/stats.js');
+  const b=boxplot([2,3,3,4,4,4,5,5,5,5,6,6,6,7,7,8]);
+  assert.deepEqual(b.outliers, []);
+  assert.equal(b.whiskerLow, 2); assert.equal(b.whiskerHigh, 8);
+  const one=boxplot([5]);
+  assert.equal(one.median, 5); assert.equal(one.whiskerLow, 5); assert.equal(one.whiskerHigh, 5);
+  assert.equal(boxplot([]), null);
+  assert.deepEqual(boxplot([-50,1,2,3,4]).outliers, [-50]);
+});

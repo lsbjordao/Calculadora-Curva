@@ -150,20 +150,47 @@ try{
   await conicContext.close();
 
   // Botões de stats trocam a linha por um exemplo com dados e o plotam.
-  // `fit2 seq` numa linha nova precisa já enxergar o n padrão (n=10).
   const {context:statsContext,page:statsPage}=await createPage({width:1440,height:900});
   const statsRow=statsPage.locator('.row').first();
   await statsRow.locator('.field').fill('x^2');
   await statsPage.locator('#tabs .tab[data-tab="stats"]').click();
-  for(const label of ['fitexp','fit2 seq','hist']){
+  nodeAssert.deepEqual(await statsPage.locator('#grid-stats .pad-group').allTextContents(),['Dados','Ajustes','Diagnóstico']);
+  for(const label of ['exp','resíduos','hist','sigmoide']){
     await statsRow.locator('.field').focus();
     await statsPage.locator('#grid-stats button[data-example]').filter({hasText:new RegExp('^'+label+'$')}).click();
     nodeAssert.notEqual(await statsRow.locator('.field').inputValue(),'x^2','exemplo deve substituir a linha');
     nodeAssert.equal(await statsRow.getAttribute('data-err'),'0',label+' deve plotar sem erro');
   }
-  await statsPage.locator('#grid-stats button[data-example]').filter({hasText:/^fit2 seq$/}).click();
-  nodeAssert.equal(await statsRow.getAttribute('data-kind'),'regression');
-  nodeAssert.match(await statsRow.innerText(),/R²=0\.9/);
+  nodeAssert.doesNotMatch(await statsRow.innerText(),/--|e-1\d/,'rótulo do fitsig sem sinal duplo nem ruído numérico');
+  await statsPage.screenshot({path:resolve(screenshots,'stats-teclado-agrupado.png')});
+  // box: boxplot com outlier; a linha oferece converter para histograma.
+  await statsRow.locator('.field').focus();
+  await statsPage.locator('#grid-stats button[data-example]').filter({hasText:/^box$/}).click();
+  nodeAssert.equal(await statsRow.getAttribute('data-kind'),'box');
+  nodeAssert.equal(await statsRow.getAttribute('data-err'),'0');
+  nodeAssert.match(await statsRow.innerText(),/1 outlier|outliers\s*13/);
+  nodeAssert.equal(await statsRow.locator('.context-action',{hasText:/^hist$/}).count(),1);
+  // O exemplo é enquadrado: a vista passa a cobrir de 2 a 13.
+  await statsPage.waitForFunction(()=>{
+    const v=JSON.parse(localStorage.getItem('curva-state-v1')||'{}').view;
+    return v && v.cx>4 && v.cx<11;
+  },null,{timeout:5000});
+  await statsPage.screenshot({path:resolve(screenshots,'stats-boxplot.png')});
+  // comparar: ordena por AICc e desenha o vencedor.
+  await statsRow.locator('.field').focus();
+  await statsPage.locator('#grid-stats button[data-example]').filter({hasText:/^comparar$/}).click();
+  nodeAssert.equal(await statsRow.getAttribute('data-kind'),'fitcompare');
+  nodeAssert.match(await statsRow.innerText(),/menor AICc|Ordenado por AICc/);
+  nodeAssert.match(await statsRow.innerText(),/fit2\s+0\.9\d+\s+\S+\s+\S+\s+0\b/,'grau 2 vence com ΔAICc = 0');
+  await statsPage.screenshot({path:resolve(screenshots,'stats-comparar-aicc.png')});
+  // `fit2: seq(...)` numa linha nova já enxerga o n padrão (n=10).
+  const {context:seqContext,page:seqPage}=await createPage({width:1440,height:900});
+  const seqRow=seqPage.locator('.row').first();
+  await seqRow.locator('.field').fill('fit2: seq(i,1,n,i^2-3i+4+sin(3i))');
+  nodeAssert.equal(await seqRow.getAttribute('data-err'),'0');
+  nodeAssert.equal(await seqRow.getAttribute('data-kind'),'regression');
+  nodeAssert.match(await seqRow.innerText(),/i²-3i\+4/,'expoente não engole o resto da expressão');
+  await seqContext.close();
   await statsContext.close();
 
   const {context,page}=await createPage({width:1440,height:900});

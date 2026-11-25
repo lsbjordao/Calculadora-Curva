@@ -1,5 +1,7 @@
 "use strict";
 
+import { fmt } from './coords.js';
+
 // Least-squares fitting. Pure: takes arrays of {x,y} points, returns the model
 // coefficients, a predict(x) function and the coefficient of determination R².
 
@@ -125,4 +127,40 @@ export function sigmoidFit(points){
     if(!best || fit.r2>best.r2) best=fit;
   }
   return best;
+}
+
+// Values this close to zero are floating-point noise from the fit (e.g. a
+// sigmoid centre of -6e-17), not information worth printing.
+export const cleanNoise=v=>Math.abs(v)<1e-9 ? 0 : v;
+const clean=cleanNoise;
+const plus=v=>(v<0 ? ' - ' : ' + ')+fmt(Math.abs(v));
+
+// Display label for the non-polynomial models; null for polynomial specs.
+export function modelLabel(spec, fit){
+  if(spec==='fitexp') return 'y ≈ '+fmt(fit.a)+'·e^('+fmt(clean(fit.b))+'x)';
+  if(spec==='fitpow') return 'y ≈ '+fmt(fit.a)+'·x^'+fmt(clean(fit.b));
+  if(spec==='fitlog') return 'y ≈ '+fmt(clean(fit.a))+plus(clean(fit.b))+'·ln(x)';
+  if(spec==='fitsig'){
+    const y0=clean(fit.y0), k=clean(fit.k), x0=clean(fit.x0);
+    const shift=x0===0 ? 'x' : '(x'+plus(-x0)+')';
+    const exponent=(k>0 ? '-' : '')+fmt(Math.abs(k))+shift;
+    return 'y ≈ '+(y0===0 ? '' : fmt(y0)+' + ')+fmt(fit.L)+'/(1+e^('+exponent+'))';
+  }
+  return null;
+}
+
+// Free parameters of each model, for information criteria.
+export function modelParamCount(spec){
+  if(spec==='fitsig') return 4;                       // y0, L, k, x0
+  if(['fitexp','fitpow','fitlog'].includes(spec)) return 2;
+  const degree=spec==='fit' ? 1 : Number(String(spec).slice(3));
+  return Number.isFinite(degree) && degree>0 ? degree+1 : null;
+}
+
+// Corrected Akaike criterion: lower is better. Unlike RMSE or R², it charges
+// for every extra parameter, so a degree-4 polynomial only wins when it fits
+// clearly better. Undefined (null) when n ≤ k+1.
+export function aicc(sse, n, k){
+  if(!(n>k+1) || !(sse>=0)) return null;
+  return n*Math.log(Math.max(sse, 1e-300)/n) + 2*k + 2*k*(k+1)/(n-k-1);
 }

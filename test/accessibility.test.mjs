@@ -10,6 +10,16 @@ test('converte sintaxe comum em notação matemática sem alterar a fonte',()=>{
   assert.equal(formatMathVisual("f′(x) = 4x^3 · f′(0) ≈ 0"), "f′(x) = 4x³ · f′(0) ≈ 0");
 });
 
+test('expoente sem parênteses termina no primeiro operador',()=>{
+  assert.equal(formatMathVisual('i^2-3i+4'), 'i²-3i+4');
+  assert.equal(formatMathVisual('(i-4)^2+sin(3i)'), '(i-4)²+sin(3i)');
+  assert.equal(formatMathVisual('x^-1 + 2'), 'x⁻¹ + 2');
+  assert.equal(formatMathVisual('2^n-1'), '2ⁿ-1');
+  assert.equal(formatMathVisual('x^1.5'), 'x^1.5');
+  assert.equal(formatMathVisual('x^(n+1)'), 'xⁿ⁺¹');
+  assert.equal(formatMathVisual('x^2x'), 'x²x');
+});
+
 test('descreve janela, grade e apenas equações visíveis válidas',()=>{
   const text=describeCanvas({
     gridMode:'linear', view:{cx:0,cy:1,scale:10}, width:200, height:100,

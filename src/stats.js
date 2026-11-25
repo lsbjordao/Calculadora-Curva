@@ -65,3 +65,21 @@ export function pearson(points){
   const slope=sxy/sxx;
   return { r:sxy/Math.sqrt(sxx*syy), covariance:sxy/(n-1), slope, intercept:my-slope*mx };
 }
+
+// Tukey boxplot: whiskers reach the most extreme values inside the fences
+// Q1 − 1.5·IQR and Q3 + 1.5·IQR; anything beyond is an outlier.
+export function boxplot(values){
+  const data=sortedFinite(values);
+  if(!data.length) return null;
+  const q1=quantile(data,0.25), median=quantile(data,0.5), q3=quantile(data,0.75);
+  const iqr=q3-q1;
+  const lowerFence=q1-1.5*iqr, upperFence=q3+1.5*iqr;
+  const inside=data.filter(v=>v>=lowerFence && v<=upperFence);
+  return {
+    n:data.length, min:data[0], max:data[data.length-1],
+    q1, median, q3, iqr, lowerFence, upperFence,
+    whiskerLow:inside[0], whiskerHigh:inside[inside.length-1],
+    outliers:data.filter(v=>v<lowerFence || v>upperFence),
+    mean:data.reduce((s,v)=>s+v,0)/data.length
+  };
+}

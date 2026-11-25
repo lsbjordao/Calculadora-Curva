@@ -1464,6 +1464,14 @@
   color:var(--ink);
   font-weight:650;
 }
+.fit-compare-row[data-tie="1"]{
+  background:rgba(47,125,91,0.07);
+}
+.fit-compare-note{
+  margin-top:4px;
+  color:var(--muted);
+  font-size:10.5px;
+}
 .fit-compare-row span{
   min-width:0;
   overflow:hidden;
@@ -1524,6 +1532,9 @@
 .data-table .dt-add{ align-self:flex-start; padding:2px 8px; font-size:12px; margin-top:2px; }
 
 /* Linear algebra uses the calculator's existing colors and compact rows. */
+.stats-pad { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.stats-pad .pad-group { grid-column: 1 / -1; font-size: .72rem; opacity: .7; padding: .4rem .2rem 0; }
+.stats-pad .pad-group:first-child { padding-top: 0; }
 .algebra-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .algebra-grid .algebra-group { grid-column: 1 / -1; font-size: .72rem; opacity: .7; padding: .6rem .2rem .2rem; }
 .algebra-grid button { min-width: 0; font-size: .72rem; }

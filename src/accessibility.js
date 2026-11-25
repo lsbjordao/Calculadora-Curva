@@ -38,7 +38,9 @@ export function formatMathVisual(source){
     const body=text.slice(open+1,close);
     text=text.slice(0,match.index)+root+compactRadical(body)+text.slice(close+1);
   }
-  text=text.replace(/\^\s*\(([-+\d=ni]+)\)|\^\s*([-+\d=ni]+)/g,(whole,group,bare)=>{
+  // A bare exponent is one (optionally negative) integer or n/i: `i^2-3i` is
+  // i²-3i, not i²⁻³ⁱ. Decimals (x^1.5) and longer names stay as typed.
+  text=text.replace(/\^\s*\(([-+\d=ni]+)\)|\^\s*(-?(?:\d+(?![\d.])|[ni](?![\p{L}\d_(])))/gu,(whole,group,bare)=>{
     return superscript(group??bare) ?? whole;
   });
   return text

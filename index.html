@@ -177,32 +177,29 @@
         <button class="fn" data-ins="intersec: sin(x), cos(x)" title="Sintaxe: intersec: f(x), g(x), por exemplo intersec: sin(x), cos(x)">intersec</button>
       </div>
 
-      <div id="grid-stats" class="grid hidden">
-        <button class="fn" data-example="1" data-ins="points: (0,1),(1,3),(2,2),(3,5),(4,4),(5,6)" title="Sintaxe: points: (x1,y1),(x2,y2), por exemplo points: (0,1),(1,3),(2,2)">points</button>
-        <button class="fn" data-example="1" data-ins="stats: 4,8,15,16,23,42" title="Sintaxe: stats: 4,8,15 ou stats: (0,1),(1,3)">stats</button>
-        <button class="fn" data-example="1" data-ins="seq: i,1,n,i^2" title="Sintaxe: seq: i, início, fim, expressão, por exemplo seq: i,1,n,i^2">seq</button>
+      <div id="grid-stats" class="grid stats-pad hidden">
+        <span class="pad-group">Dados</span>
+        <button class="fn" data-example="1" data-ins="points: (0,1),(1,3),(2,2),(3,5),(4,4),(5,6)" title="Sintaxe: points: (x1,y1),(x2,y2), por exemplo points: (0,1),(1,3),(2,2)">pontos</button>
+        <button class="fn" data-example="1" data-ins="stats: 4,8,15,16,23,42" title="Sintaxe: stats: 4,8,15 ou stats: (0,1),(1,3)">resumo</button>
         <button class="fn" data-example="1" data-ins="hist: 2,3,3,4,4,4,5,5,5,5,6,6,6,7,7,8" title="Sintaxe: hist: 1,2,2,3 ou hist: seq(i,1,n,expr)">hist</button>
+        <button class="fn" data-example="1" data-ins="box: 2,3,3.5,4,4.5,5,5,5.5,6,6.5,7,8,13" title="Sintaxe: box: 1,2,2,3 ou box: seq(i,1,n,expr) — boxplot com quartis; pontos fora de Q1 − 1,5·IQR e Q3 + 1,5·IQR aparecem como outliers">box</button>
+        <button class="fn" data-example="1" data-ins="seq: i,1,n,i^2" title="Sintaxe: seq: i, início, fim, expressão, por exemplo seq: i,1,n,i^2">seq</button>
         <button class="fn" data-example="1" data-ins="sum(i,1,n,sin((2i-1)x)/(2i-1))" title="Sintaxe: sum(i, início, fim, expressão), por exemplo sum(i,1,n,i^2); o exemplo soma n termos da série de Fourier da onda quadrada">Σ</button>
         <button class="fn" data-ins="n" title="Sintaxe: use n como parâmetro, por exemplo seq: i,1,n,i^2">n</button>
-
-        <button class="fn" data-example="1" data-ins="fit: (0,1.1),(1,2.9),(2,5.2),(3,6.8),(4,9.1),(5,10.9)" title="Sintaxe: fit: (x1,y1),(x2,y2) ou fit: seq(i,1,n,expr) — ajuste linear">fit</button>
-        <button class="fn" data-example="1" data-ins="fit2: (-2,4.2),(-1,1.1),(0,0.2),(1,0.9),(2,4.1),(3,9.2)" title="Sintaxe: fit2: (x1,y1),(x2,y2),(x3,y3) ou fit2: seq(i,1,n,expr) — ajuste quadrático">fit2</button>
-        <button class="fn" data-example="1" data-ins="fit3: (-2,-4.1),(-1,1.9),(0,1.1),(1,0.2),(2,2.1),(3,13.8)" title="Sintaxe: fit3: pontos ou seq(i,1,n,expr) — ajuste cúbico">fit3</button>
-        <button class="fn" data-example="1" data-ins="fit4: (-2,5.1),(-1.5,-0.6),(-1,-1.1),(-0.5,0.4),(0,0.9),(0.5,0.2),(1,-0.9),(1.5,-0.8),(2,5)" title="Sintaxe: fit4: pontos ou seq(i,1,n,expr) — ajuste de grau 4">fit4</button>
-        <button class="fn" data-example="1" data-ins="fitexp: (0,1),(1,2.1),(2,3.9),(3,8.2),(4,15.8)" title="Sintaxe: fitexp: pontos com y&gt;0, por exemplo fitexp: (0,1),(1,2),(2,4)">fitexp</button>
-
-        <button class="fn" data-example="1" data-ins="fitpow: (1,2),(2,5.6),(3,10.4),(4,16.1),(5,22.3)" title="Sintaxe: fitpow: pontos com x&gt;0 e y&gt;0">fitpow</button>
-        <button class="fn" data-example="1" data-ins="fitlog: (1,0.1),(2,1.5),(4,2.8),(8,4.2),(16,5.6)" title="Sintaxe: fitlog: pontos com x&gt;0">fitlog</button>
-        <button class="fn" data-example="1" data-ins="fitsig: (-4,0.02),(-2,0.12),(-1,0.27),(0,0.5),(1,0.73),(2,0.88),(4,0.98)" title="Sintaxe: fitsig: pontos de uma curva sigmoidal">fitsig</button>
-        <button class="fn" data-example="1" data-ins="fit2: seq(i,1,n,0.5i^2-3i+4+sin(3i))" title="Sintaxe: fit2: seq(i,1,n,expressão)">fit2 seq</button>
-        <button class="fn" data-example="1" data-ins="hist: seq(i,1,n,round(5+3sin(i)))" title="Sintaxe: hist: seq(i,1,n,expressão)">hist seq</button>
-
-        <button class="fn" data-example="1" data-ins="fit(seq(i,1,n,2i+1),x)" title="Sintaxe: fit(dados, x), por exemplo fit(seq(i,1,n,2i+1),x)">fit(...)</button>
-        <button class="fn" data-example="1" data-ins="fit2(seq(i,1,n,i^2),x)" title="Sintaxe: fit2(dados, x), por exemplo fit2(seq(i,1,n,i^2),x)">fit2(...)</button>
-        <button class="fn" data-example="1" data-ins="compare: seq(i,1,n,i^2+sin(i)/3)" title="Sintaxe: compare: pontos ou compare: seq(i,1,n,expr)">compare</button>
-        <button class="fn" data-example="1" data-ins="resid: fit2, seq(i,1,n,i^2+sin(i)/3)" title="Sintaxe: resid: modelo, dados, por exemplo resid: fit2, seq(i,1,n,i^2)">resid</button>
-        <button class="fn" data-example="1" data-ins="sum(i,1,n,(i^2-fit2(seq(j,1,n,j^2),i))^2)" title="Sintaxe: sum(i,1,n,(y_i-fit2(dados,i))^2)">SSE</button>
         <button class="op" data-ins=", " title="Sintaxe: separa argumentos, por exemplo resid: fit2, dados">,</button>
+        <span class="pad-group">Ajustes</span>
+        <button class="fn" data-example="1" data-ins="fit: (0,1.1),(1,2.9),(2,5.2),(3,6.8),(4,9.1),(5,10.9)" title="Sintaxe: fit: (x1,y1),(x2,y2) ou fit: seq(i,1,n,expr) — ajuste linear">linear</button>
+        <button class="fn" data-example="1" data-ins="fit2: (-2,4.2),(-1,1.1),(0,0.2),(1,0.9),(2,4.1),(3,9.2)" title="Sintaxe: fit2: (x1,y1),(x2,y2),(x3,y3) ou fit2: seq(i,1,n,expr) — ajuste quadrático">grau 2</button>
+        <button class="fn" data-example="1" data-ins="fit3: (-2,-4.1),(-1,1.9),(0,1.1),(1,0.2),(2,2.1),(3,13.8)" title="Sintaxe: fit3: pontos ou seq(i,1,n,expr) — ajuste cúbico">grau 3</button>
+        <button class="fn" data-example="1" data-ins="fit4: (-2,5.1),(-1.5,-0.6),(-1,-1.1),(-0.5,0.4),(0,0.9),(0.5,0.2),(1,-0.9),(1.5,-0.8),(2,5)" title="Sintaxe: fit4: pontos ou seq(i,1,n,expr) — ajuste de grau 4">grau 4</button>
+        <button class="fn" data-example="1" data-ins="fitexp: (0,1),(1,2.1),(2,3.9),(3,8.2),(4,15.8)" title="Sintaxe: fitexp: pontos com y&gt;0, por exemplo fitexp: (0,1),(1,2),(2,4)">exp</button>
+        <button class="fn" data-example="1" data-ins="fitpow: (1,2),(2,5.6),(3,10.4),(4,16.1),(5,22.3)" title="Sintaxe: fitpow: pontos com x&gt;0 e y&gt;0">potência</button>
+        <button class="fn" data-example="1" data-ins="fitlog: (1,0.1),(2,1.5),(4,2.8),(8,4.2),(16,5.6)" title="Sintaxe: fitlog: pontos com x&gt;0">log</button>
+        <button class="fn" data-example="1" data-ins="fitsig: (-4,0.02),(-2,0.12),(-1,0.27),(0,0.5),(1,0.73),(2,0.88),(4,0.98)" title="Sintaxe: fitsig: pontos de uma curva sigmoidal">sigmoide</button>
+        <span class="pad-group">Diagnóstico</span>
+        <button class="fn" data-example="1" data-ins="compare: seq(i,1,n,i^2/2-2i+3+sin(9i^2))" title="Sintaxe: compare: pontos ou compare: seq(i,1,n,expr)">comparar</button>
+        <button class="fn" data-example="1" data-ins="resid: fit2, seq(i,1,n,i^2/2-2i+3+sin(9i^2))" title="Sintaxe: resid: modelo, dados, por exemplo resid: fit2, seq(i,1,n,i^2)">resíduos</button>
+        <button class="fn" data-example="1" data-ins="sum(i,1,n,(i^2-fit2(seq(j,1,n,j^2),i))^2)" title="Sintaxe: sum(i,1,n,(y_i-fit2(dados,i))^2)">SSE</button>
         <button class="util" data-act="back" title="Apaga o caractere anterior">⌫</button>
       </div>
 
@@ -404,7 +401,7 @@
         </div>
         <div class="help-block">
           <strong>dados e geometria</strong>
-          <p>Dados: <code>points: (0,1),(1,3)</code>, <code>hist: 1,2,2,3</code>, <code>stats: 4,8,15</code>, <code>seq: i,1,n,i^2</code>. Ajustes: <code>fit:</code>, <code>fit2:</code>, <code>fitexp:</code>, <code>fitpow:</code>, <code>fitlog:</code>, <code>fitsig:</code>, <code>fit2: seq(i,1,n,i^2)</code>, <code>compare: seq(i,1,n,i^2)</code>, <code>resid: fit2, seq(i,1,n,i^2)</code> e <code>sum(i,1,n,(i^2-fit2(seq(j,1,n,j^2),i))^2)</code>. Álgebra: use a aba <strong>álgebra</strong> para inserir exemplos completos. <code>calc: dot([1,2],[3,4])</code> calcula sem traçar uma curva. Matrizes aceitam <code>[[1,2],[3,4]]</code> ou <code>[1,2;3,4]</code>. Use <code>let M = [[1,2],[3,4]]</code> e <code>calc: inv(@M)</code> para reutilizar valores. <code>scale(2,A)</code> multiplica matriz por escalar; <code>matmul(A,[3,4])</code> trata o vetor como coluna. Resultados matriciais mostram o tipo (simétrica, antissimétrica, ortogonal, triangular...). Ângulos são retornados em radianos. Em resultados 2×2, abra transformação 2D para animar a malha e as etapas da SVD. Limites: 20×20 para operações gerais, 12×12 para decomposições; autovalores reais 2×2. <code>sum(i,1,n,i)</code>, <code>det([[1,2],[3,4]])</code>, <code>cross([1,0,0],[0,1,0])</code>, <code>linsolve([[2,1],[1,3]],[5,10])</code>. Geometria: <code>A = ponto(0,0)</code>, <code>vetor: A,B</code>, <code>dist: A,B</code>, <code>M = medio(A,B)</code>, <code>r = reta(A,B)</code>, <code>angulo: A,B,C</code>, <code>triangulo: A,B,C</code>, <code>quadrilatero: A,B,C,D</code>, <code>poligono: A,B,C,D,E</code>, <code>convexo: A,B,C,D,E</code>, <code>produto: A,B; C,D</code>, <code>proj: A,B; C,D</code>, <code>intersecao: line((0,0),(1,1)); line((0,1),(1,0))</code>, <code>intersec: sin(x), cos(x)</code>, <code>conica: x^2 + y^2 = 4</code> (mostra excentricidade, orientação e <code>b^2 - 4ac</code>; com termo <code>x*y</code>, classifica a cônica rotacionada), <code>matriz: [1,b; 0,1]</code>.</p>
+          <p>Dados: <code>points: (0,1),(1,3)</code>, <code>hist: 1,2,2,3</code>, <code>box: 1,2,2,3,9</code> (boxplot com outliers), <code>stats: 4,8,15</code>, <code>seq: i,1,n,i^2</code>. <code>compare:</code> ordena os modelos por AICc. Ajustes: <code>fit:</code>, <code>fit2:</code>, <code>fitexp:</code>, <code>fitpow:</code>, <code>fitlog:</code>, <code>fitsig:</code>, <code>fit2: seq(i,1,n,i^2)</code>, <code>compare: seq(i,1,n,i^2)</code>, <code>resid: fit2, seq(i,1,n,i^2)</code> e <code>sum(i,1,n,(i^2-fit2(seq(j,1,n,j^2),i))^2)</code>. Álgebra: use a aba <strong>álgebra</strong> para inserir exemplos completos. <code>calc: dot([1,2],[3,4])</code> calcula sem traçar uma curva. Matrizes aceitam <code>[[1,2],[3,4]]</code> ou <code>[1,2;3,4]</code>. Use <code>let M = [[1,2],[3,4]]</code> e <code>calc: inv(@M)</code> para reutilizar valores. <code>scale(2,A)</code> multiplica matriz por escalar; <code>matmul(A,[3,4])</code> trata o vetor como coluna. Resultados matriciais mostram o tipo (simétrica, antissimétrica, ortogonal, triangular...). Ângulos são retornados em radianos. Em resultados 2×2, abra transformação 2D para animar a malha e as etapas da SVD. Limites: 20×20 para operações gerais, 12×12 para decomposições; autovalores reais 2×2. <code>sum(i,1,n,i)</code>, <code>det([[1,2],[3,4]])</code>, <code>cross([1,0,0],[0,1,0])</code>, <code>linsolve([[2,1],[1,3]],[5,10])</code>. Geometria: <code>A = ponto(0,0)</code>, <code>vetor: A,B</code>, <code>dist: A,B</code>, <code>M = medio(A,B)</code>, <code>r = reta(A,B)</code>, <code>angulo: A,B,C</code>, <code>triangulo: A,B,C</code>, <code>quadrilatero: A,B,C,D</code>, <code>poligono: A,B,C,D,E</code>, <code>convexo: A,B,C,D,E</code>, <code>produto: A,B; C,D</code>, <code>proj: A,B; C,D</code>, <code>intersecao: line((0,0),(1,1)); line((0,1),(1,0))</code>, <code>intersec: sin(x), cos(x)</code>, <code>conica: x^2 + y^2 = 4</code> (mostra excentricidade, orientação e <code>b^2 - 4ac</code>; com termo <code>x*y</code>, classifica a cônica rotacionada), <code>matriz: [1,b; 0,1]</code>.</p>
         </div>
         <div class="help-block">
           <strong>controles</strong>

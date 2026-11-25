@@ -53,3 +53,31 @@ test('sigmoidFit approximates a logistic curve',()=>{
   close(r.predict(4), 1/(1+Math.exp(-4)), 0.04);
   assert.ok(r.r2>0.995);
 });
+
+test('modelLabel writes signs once and drops numerical noise',async()=>{
+  const { modelLabel } = await import('../src/regress.js');
+  assert.equal(modelLabel('fitsig',{y0:0.0008,L:0.9984,k:0.986677,x0:-6e-17}),'y ≈ 0.0008 + 0.9984/(1+e^(-0.986677x))');
+  assert.equal(modelLabel('fitsig',{y0:0,L:2,k:1.5,x0:-3}),'y ≈ 2/(1+e^(-1.5(x + 3)))');
+  assert.equal(modelLabel('fitsig',{y0:-1,L:2,k:-0.5,x0:4}),'y ≈ -1 + 2/(1+e^(0.5(x - 4)))');
+  assert.equal(modelLabel('fitlog',{a:2,b:-3}),'y ≈ 2 - 3·ln(x)');
+  assert.equal(modelLabel('fitlog',{a:2,b:3}),'y ≈ 2 + 3·ln(x)');
+  assert.equal(modelLabel('fitexp',{a:1.5,b:-0.2}),'y ≈ 1.5·e^(-0.2x)');
+  assert.equal(modelLabel('fitpow',{a:2,b:1.5}),'y ≈ 2·x^1.5');
+  assert.equal(modelLabel('fit2',{coeffs:[1,2,3]}),null);
+});
+
+test('aicc penalises extra parameters and needs n > k+1',async()=>{
+  const { aicc, modelParamCount } = await import('../src/regress.js');
+  assert.equal(modelParamCount('fit'), 2);
+  assert.equal(modelParamCount('fit4'), 5);
+  assert.equal(modelParamCount('fitexp'), 2);
+  assert.equal(modelParamCount('fitsig'), 4);
+  // same SSE: the model with fewer parameters scores lower (better)
+  assert.ok(aicc(1, 10, 3) < aicc(1, 10, 5));
+  // n ln(SSE/n) + 2k + 2k(k+1)/(n-k-1)
+  assert.ok(Math.abs(aicc(2, 10, 2) - (10*Math.log(0.2)+4+12/7)) < 1e-12);
+  assert.equal(aicc(1, 4, 3), null);
+  // a perfect fit stays finite so ties are broken by k
+  assert.ok(Number.isFinite(aicc(0, 10, 3)));
+  assert.ok(aicc(0, 10, 3) < aicc(0, 10, 4));
+});

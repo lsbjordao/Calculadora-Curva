@@ -1,8 +1,8 @@
 "use strict";
 
 import { compile, extractParams, parseEquationInput, compileCondition, compilePiecewise, splitTop, parsePoints, setImplicitY, setUserFunctions, isDefinitionLhs } from './parser.js';
-import { polyFit, expFit, powFit, logFit, sigmoidFit } from './regress.js';
-import { describe, pearson } from './stats.js';
+import { polyFit, expFit, powFit, logFit, sigmoidFit, modelLabel, cleanNoise, aicc, modelParamCount } from './regress.js';
+import { describe, pearson, boxplot } from './stats.js';
 import { configureNumeric, derivAt, derivInfo, secondDeriv, integ, integralAt, limitAt, limitAtInfinity, safeEval, segmentIntegral } from './numeric.js';
 import { derivativeText } from './symbolic.js';
 import { derivativeSteps } from './steps.js';
@@ -73,7 +73,7 @@ const SIDE_WIDTH_MAX=620;
 let theme='light';
 let sideWidth=DEFAULT_SIDE_WIDTH;
 const GRID_MODES=['linear','log','polar'];
-const DATA_COMMAND_RE=/^(points|fit\d*|fitexp|fitpow|fitlog|fitsig|histogram|hist|seq|intersec|stats|compare|comparar|resid|residual)\s*:\s*(.+)$/i;
+const DATA_COMMAND_RE=/^(points|fit\d*|fitexp|fitpow|fitlog|fitsig|histogram|hist|boxplot|box|seq|intersec|stats|compare|comparar|resid|residual)\s*:\s*(.+)$/i;
 const FIT_COMPARE_SPECS=['fit','fit2','fit3','fit4','fitexp','fitpow','fitlog','fitsig'];
 let gridMode='linear';
 let annotations=[];
@@ -155,7 +155,7 @@ function makeEq(text){
             colorOverride:null, style:'solid', lw:2, params:{}, paramNames:[], analysisCache:null, intCache:null,
             kind:'function', ineqOp:null, domain:null, xFn:null, yFn:null, rFn:null,
             points:null, pointSource:null, pointLabel:null, histSource:null, valueFn:null, fitInfo:null, fitSpec:null, fitSource:null, regInfo:null, implicitF:null, defName:null, geometry:null,
-            statsInfo:null, statsSource:null, statsKind:null};
+            statsInfo:null, statsSource:null, statsKind:null, boxSource:null, boxInfo:null};
   applyOpFields(eq);
   recompileEq(eq);
   return eq;
@@ -452,10 +452,8 @@ function fitForSpec(spec, points){
     fit=polyFit(points,deg);
   }
   if(!fit) return null;
-  if(spec==='fitexp') fit.label='y ≈ '+fmt(fit.a)+'·e^('+fmt(fit.b)+'x)';
-  else if(spec==='fitpow') fit.label='y ≈ '+fmt(fit.a)+'·x^'+fmt(fit.b);
-  else if(spec==='fitlog') fit.label='y ≈ '+fmt(fit.a)+' + '+fmt(fit.b)+'·ln(x)';
-  else if(spec==='fitsig') fit.label='y ≈ '+fmt(fit.y0)+' + '+fmt(fit.L)+'/(1+e^(-'+fmt(fit.k)+'(x-'+fmt(fit.x0)+')))';
+  const label=modelLabel(spec, fit);
+  if(label) fit.label=label;
   else {
     fit.label=polyLabel(fit.coeffs);
     if(spec==='fit'||spec==='fit1'){
@@ -504,17 +502,28 @@ function fitMetrics(points, fit){
 export function compareFitModels(points, specs=FIT_COMPARE_SPECS){
   const data=finiteDataPoints(points);
   if(data.length<2) return [];
+  // SSE below this is rounding noise; flooring it keeps a perfect fit from
+  // "beating" an equally perfect simpler one by 1e-28 vs 1e-27.
+  const meanY=data.reduce((s,p)=>s+p.y,0)/data.length;
+  const sst=data.reduce((s,p)=>s+(p.y-meanY)**2,0);
+  const sseFloor=1e-12*Math.max(sst,1);
   const rows=[];
   for(const spec of specs){
     const fit=fitForSpec(spec, data);
     const metrics=fitMetrics(data, fit);
     if(!metrics) continue;
-    rows.push({spec, fit, ...metrics});
+    const k=modelParamCount(spec);
+    rows.push({spec, fit, ...metrics, k, aicc:aicc(Math.max(metrics.sse,sseFloor), metrics.n, k)});
   }
+  // Rank by AICc (lower wins); models without enough points for it go last.
   rows.sort((a,b)=>{
+    if((a.aicc==null)!==(b.aicc==null)) return a.aicc==null ? 1 : -1;
+    if(a.aicc!=null && a.aicc!==b.aicc) return a.aicc-b.aicc;
     if(a.rmse!==b.rmse) return a.rmse-b.rmse;
     return (b.r2 ?? -Infinity)-(a.r2 ?? -Infinity);
   });
+  const best=rows.find(row=>row.aicc!=null)?.aicc;
+  rows.forEach(row=>{ row.deltaAicc=row.aicc!=null && best!=null ? row.aicc-best : null; });
   return rows;
 }
 
@@ -612,16 +621,16 @@ export function fitParameterRows(spec, fit, metrics=null){
   }
   if(Array.isArray(fit.coeffs)){
     fit.coeffs.forEach((value,index)=>{
-      rows.push({item:'a'+index, value, detail:polyTermLabel(index)});
+      rows.push({item:'a'+index, value:cleanNoise(value), detail:polyTermLabel(index)});
     });
   } else if(model==='fitexp'||model==='fitpow'||model==='fitlog'){
-    rows.push({item:'a', value:fit.a, detail:model==='fitlog'?'intercepto':'escala'});
-    rows.push({item:'b', value:fit.b, detail:model==='fitpow'?'expoente':(model==='fitexp'?'taxa no expoente':'coeficiente de ln(x)')});
+    rows.push({item:'a', value:cleanNoise(fit.a), detail:model==='fitlog'?'intercepto':'escala'});
+    rows.push({item:'b', value:cleanNoise(fit.b), detail:model==='fitpow'?'expoente':(model==='fitexp'?'taxa no expoente':'coeficiente de ln(x)')});
   } else if(model==='fitsig'){
-    rows.push({item:'y0', value:fit.y0, detail:'assíntota inferior'});
+    rows.push({item:'y0', value:cleanNoise(fit.y0), detail:'assíntota inferior'});
     rows.push({item:'L', value:fit.L, detail:'amplitude'});
-    rows.push({item:'k', value:fit.k, detail:'inclinação'});
-    rows.push({item:'x0', value:fit.x0, detail:'centro'});
+    rows.push({item:'k', value:cleanNoise(fit.k), detail:'inclinação'});
+    rows.push({item:'x0', value:cleanNoise(fit.x0), detail:'centro'});
   }
   return rows.filter(row=>row.value!==undefined && row.value!==null &&
     (typeof row.value!=='number' || Number.isFinite(row.value)));
@@ -827,7 +836,7 @@ function recompileEq(eq, geometryRegistry=null){
   eq.kind='function'; eq.ineqOp=null; eq.domain=null;
   eq.fn=null; eq.xFn=null; eq.yFn=null; eq.rFn=null; eq.points=null; eq.pointSource=null; eq.pointLabel=null; eq.histSource=null; eq.valueFn=null; eq.fitInfo=null; eq.fitSpec=null; eq.fitSource=null; eq.regInfo=null; eq.defName=null; eq.geometry=null;
   eq.deriv1=null; eq.deriv2=null; eq.antider=null;
-  eq.statsInfo=null; eq.statsSource=null; eq.statsKind=null; eq.compareInfo=null; eq.compareSource=null; eq.residualInfo=null;
+  eq.statsInfo=null; eq.statsSource=null; eq.statsKind=null; eq.compareInfo=null; eq.compareSource=null; eq.residualInfo=null; eq.boxSource=null; eq.boxInfo=null;
   const raw=eq.text.trim();
   // Named function definition: name(var) = body → registered for use elsewhere.
   const defM=raw.match(/^([a-zA-Z][a-zA-Z0-9]*)\s*\(\s*[a-zA-Z][a-zA-Z0-9]*\s*\)\s*=\s*.+$/);
@@ -871,6 +880,14 @@ function recompileEq(eq, geometryRegistry=null){
         eq.kind='histogram'; eq.histSource=source.getValues; eq.points=bars;
         eq.regInfo={label:'n='+nums.length+' bins='+bins.length+(eq.histDensity?' · freq':''), r2:null};
         eq.error=false; return;
+      }
+      if(spec==='box' || spec==='boxplot'){
+        const source=compileHistogramValues(fm[2], eq);
+        if(!source){ eq.fn=null; eq.error=true; eq.paramNames=[]; return; }
+        setupParams(eq, source.names);
+        eq.kind='box'; eq.boxSource=source.getValues;
+        updateDynamicBox(eq);
+        eq.error=!eq.boxInfo; eq.fn=null; return;
       }
       if(spec==='seq'){
         const src='seq('+fm[2]+')';
@@ -1176,6 +1193,7 @@ function defaultEqName(eq){
     case 'regression': return 'Ajuste '+n;
     case 'points': return 'Dados '+n;
     case 'histogram': return 'Histograma '+n;
+    case 'box': return 'Boxplot '+n;
     case 'stats': return 'Estatística '+n;
     case 'fitcompare': return 'Comparação '+n;
     case 'result': return 'Resultado '+n;
@@ -1194,6 +1212,7 @@ function curveTypeLabel(eq){
     case 'regression': return 'ajuste';
     case 'points': return 'dados';
     case 'histogram': return 'histograma';
+    case 'box': return 'boxplot';
     case 'stats': return 'estatística';
     case 'fitcompare': return 'modelos';
     case 'result': return 'resultado';
@@ -1203,7 +1222,7 @@ function curveTypeLabel(eq){
 }
 
 function hasResultTable(eq){
-  return eq.kind==='stats' || eq.kind==='histogram' || eq.kind==='regression' || eq.kind==='fitcompare' || (eq.kind==='points' && eq.pointLabel==='resid');
+  return eq.kind==='stats' || eq.kind==='histogram' || eq.kind==='box' || eq.kind==='regression' || eq.kind==='fitcompare' || (eq.kind==='points' && eq.pointLabel==='resid');
 }
 
 function curveSummaryBadges(eq){
@@ -1319,6 +1338,7 @@ function explicitPointSource(eq){
 }
 
 function histogramSourceForContext(ctx){
+  if(ctx.values) return ctx.values;
   if(ctx.series) return seriesSource(ctx.series);
   if(validPoints(ctx.points)) return ctx.points.map(p=>fmt(p.y)).join(',');
   return null;
@@ -1342,9 +1362,12 @@ function statsContext(eq){
       const points=parsePoints(command.body) || (series ? null : null);
       return {kind:'fit', model:command.name, series, points, source:series ? seriesSource(series) : command.body, canFit:true};
     }
-    if(command.name==='hist'||command.name==='histogram'){
+    if(['hist','histogram','box','boxplot','stats'].includes(command.name)){
       const series=parseSeriesCall(command.body,'seq');
-      return series ? {kind:'hist', series, source:seriesSource(series), canFit:true} : null;
+      if(series) return {kind:'hist', from:command.name, series, source:seriesSource(series), canFit:true};
+      const values=splitTop(command.body, ',').map(piece=>piece.trim());
+      const numeric=values.length>0 && values.every(piece=>piece!=='' && Number.isFinite(Number(piece)));
+      return numeric ? {kind:'values', from:command.name, values:values.join(','), source:values.join(',')} : null;
     }
   }
   const sumSeries=parseSeriesCall(raw,'sum');
@@ -1401,8 +1424,10 @@ function contextActionsForEq(eq){
     push('fitsig','Criar ajuste sigmoidal','fitsig: '+ctx.source);
   }
   const histSource=histogramSourceForContext(ctx);
-  if(histSource) push('hist','Criar histograma dos valores','hist: '+histSource,'solid');
-  if(ctx.source && (ctx.kind==='points'||ctx.kind==='hist'||ctx.kind==='seq')){
+  const from=ctx.from==='histogram' ? 'hist' : ctx.from==='boxplot' ? 'box' : ctx.from;
+  if(histSource && from!=='hist') push('hist','Criar histograma dos valores','hist: '+histSource,'solid');
+  if(histSource && from!=='box') push('box','Criar boxplot dos valores (outliers por 1,5·IQR)','box: '+histSource,'solid');
+  if(ctx.source && from!=='stats' && (ctx.kind==='points'||ctx.kind==='hist'||ctx.kind==='seq'||ctx.kind==='values')){
     push('stats','Resumo estatístico dos valores','stats: '+ctx.source,'solid');
   }
   if(ctx.source&&ctx.canFit){
@@ -1874,6 +1899,7 @@ function renderRows(){
       else if(eq.kind==='result' && eq.algebraResult) renderAlgebraResult(info,eq.algebraResult);
       else if(eq.kind==='stats' && eq.showResultTable) renderStatsGrid(eq, info);
       else if(eq.kind==='histogram' && eq.showResultTable) renderHistogramGrid(eq, info);
+      else if(eq.kind==='box' && eq.showResultTable) renderBoxGrid(eq, info);
       else if(eq.kind==='regression' && eq.showResultTable) renderFitParameterGrid(eq, info);
       else if(eq.kind==='fitcompare' && eq.showResultTable) renderCompareGrid(eq, info);
       else if(eq.kind==='points' && eq.pointLabel==='resid' && eq.showResultTable) renderResidualGrid(eq, info);
@@ -2348,9 +2374,51 @@ function updateDynamicCompare(eq){
   const points=eq.compareSource();
   const rows=compareFitModels(points);
   if(!rows.length){ eq.compareInfo=null; eq.regInfo=null; return; }
-  eq.compareInfo={rows, n:finiteDataPoints(points).length};
+  const data=finiteDataPoints(points);
+  eq.compareInfo={rows, n:data.length};
+  eq.points=data;
   const best=rows[0];
-  eq.regInfo={label:'melhor '+best.spec+' · '+fitMetricsLabel(best), r2:best.r2};
+  const criterion=best.aicc!=null ? ' (menor AICc)' : ' (menor RMSE)';
+  eq.regInfo={label:'melhor '+best.spec+criterion+' · '+fitMetricsLabel(best), r2:best.r2};
+}
+
+function boxLabel(b){
+  const out=b.outliers.length ? b.outliers.length+(b.outliers.length===1?' outlier':' outliers') : 'sem outliers';
+  return 'n='+b.n+' · Q1='+fmt(b.q1)+' · med='+fmt(b.median)+' · Q3='+fmt(b.q3)+' · '+out;
+}
+function updateDynamicBox(eq){
+  const values=typeof eq.boxSource==='function' ? eq.boxSource() : null;
+  eq.boxInfo=Array.isArray(values) ? boxplot(values) : null;
+  eq.regInfo=eq.boxInfo ? {label:boxLabel(eq.boxInfo), r2:null} : null;
+}
+
+function renderBoxGrid(eq, container){
+  updateDynamicBox(eq);
+  container.innerHTML='';
+  const b=eq.boxInfo;
+  if(!b) return;
+  const grid=document.createElement('div');
+  grid.className='stats-grid';
+  const cell=(label,value,title)=>{
+    const c=document.createElement('div'); c.className='stats-cell';
+    if(title) c.title=title;
+    const k=document.createElement('span'); k.className='stats-k'; k.textContent=label;
+    const v=document.createElement('span'); v.className='stats-v'; v.textContent=value;
+    c.append(k,v); grid.appendChild(c);
+  };
+  cell('n', String(b.n));
+  cell('mín', fmt(b.min));
+  cell('Q1', fmt(b.q1));
+  cell('mediana', fmt(b.median));
+  cell('Q3', fmt(b.q3));
+  cell('máx', fmt(b.max));
+  cell('x̄', fmt(b.mean), 'média (marcada com ×)');
+  cell('IQR', fmt(b.iqr), 'amplitude interquartil Q3 − Q1');
+  cell('cerca inf.', fmt(b.lowerFence), 'Q1 − 1,5·IQR');
+  cell('cerca sup.', fmt(b.upperFence), 'Q3 + 1,5·IQR');
+  cell('bigodes', fmt(b.whiskerLow)+' a '+fmt(b.whiskerHigh), 'valores mais extremos dentro das cercas');
+  cell('outliers', b.outliers.length ? b.outliers.map(fmt).join(', ') : '—', 'valores fora das cercas');
+  container.appendChild(grid);
 }
 
 // Linear label as a degree-1 polynomial, so a `stats:` regression line reads
@@ -2529,24 +2597,39 @@ function renderCompareGrid(eq, container){
   wrap.className='fit-compare-table';
   const header=document.createElement('div');
   header.className='fit-compare-row fit-compare-head';
-  ['modelo','R²','RMSE','MAE','SSE'].forEach(label=>{
+  [
+    ['modelo','Modelo ajustado; ordenado do melhor para o pior'],
+    ['R²','Coeficiente de determinação'],
+    ['RMSE','Raiz do erro quadrático médio'],
+    ['MAE','Erro absoluto médio'],
+    ['ΔAICc','Diferença de AICc para o melhor modelo. O AICc pune parâmetros extras: abaixo de 2 é praticamente empate; acima de 10, o modelo é claramente pior.']
+  ].forEach(([label,title])=>{
     const cell=document.createElement('span');
     cell.textContent=label;
+    cell.title=title;
     header.appendChild(cell);
   });
   wrap.appendChild(header);
   rows.slice(0,8).forEach((row,index)=>{
     const line=document.createElement('div');
     line.className='fit-compare-row';
+    line.title=fitModelName(row.spec)+' · '+row.k+' parâmetros';
     if(index===0) line.dataset.best='1';
-    [row.spec, row.r2==null?'—':fmt(row.r2), fmt(row.rmse), fmt(row.mae), fmt(row.sse)].forEach(value=>{
+    else if(row.deltaAicc!=null && row.deltaAicc<2) line.dataset.tie='1';
+    const delta=row.deltaAicc==null ? '—' : fmt(Math.round(row.deltaAicc*10)/10);
+    [row.spec, row.r2==null?'—':fmt(row.r2), fmt(row.rmse), fmt(row.mae), delta].forEach(value=>{
       const cell=document.createElement('span');
       cell.textContent=value;
       line.appendChild(cell);
     });
     wrap.appendChild(line);
   });
-  container.appendChild(wrap);
+  const note=document.createElement('div');
+  note.className='fit-compare-note';
+  note.textContent=rows[0].aicc!=null
+    ? 'Ordenado por AICc: um modelo com mais parâmetros só vence se reduzir o erro o bastante.'
+    : 'Poucos pontos para o AICc; ordenado por RMSE.';
+  container.append(wrap, note);
 }
 
 function renderResidualGrid(eq, container){
@@ -2600,6 +2683,10 @@ function mathInfo(eq){
   }
   if(eq.kind==='fitcompare'){
     updateDynamicCompare(eq);
+    return eq.regInfo ? eq.regInfo.label : '';
+  }
+  if(eq.kind==='box'){
+    updateDynamicBox(eq);
     return eq.regInfo ? eq.regInfo.label : '';
   }
   if(eq.kind==='regression'||eq.kind==='points'||eq.kind==='histogram'){
@@ -3233,7 +3320,15 @@ document.getElementById('pad').addEventListener('click',ev=>{
   if(b.dataset.geoTool) setGeoTool(b.dataset.geoTool);
   else if(b.dataset.act==='back') backspaceFocused();
   else if(b.dataset.act==='clear') clearFocused();
-  else if(b.dataset.algebra||b.dataset.example){const field=targetField();if(field){field.setSelectionRange(0,field.value.length);insertAtFocused(b.dataset.ins,0);}}
+  else if(b.dataset.algebra||b.dataset.example){
+    const field=targetField();
+    if(field){
+      field.setSelectionRange(0,field.value.length);
+      insertAtFocused(b.dataset.ins,0);
+      // Data examples often fall outside the current window: frame them.
+      if(b.dataset.example && view3d.mode!=='3d') fitToView();
+    }
+  }
   else if(b.dataset.ins!==undefined) insertAtFocused(b.dataset.ins, b.dataset.caret?+b.dataset.caret:0);
 });
 
@@ -4102,6 +4197,45 @@ function restoreAnnotations(saved){
   });
 }
 
+// World points that frame a data line (points, fits, histograms, boxplots,
+// comparisons), or null for lines framed by sampling their function. A fit
+// is framed by its data plus its curve over the data's x-range, not over
+// whatever window happens to be visible.
+function dataExtentPoints(eq){
+  if(eq.kind==='box'){
+    updateDynamicBox(eq);
+    const b=eq.boxInfo;
+    return b ? [{x:b.min,y:0},{x:b.max,y:0}] : null;
+  }
+  if(eq.kind==='histogram'){
+    updateDynamicHistogram(eq);
+    return (eq.points||[]).flatMap(bar=>[
+      {x:Number.isFinite(bar.min)?bar.min:bar.x, y:0},
+      {x:Number.isFinite(bar.max)?bar.max:bar.x, y:bar.y}
+    ]).filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y));
+  }
+  let pts=null, curve=null;
+  if(eq.kind==='fitcompare'){
+    updateDynamicCompare(eq);
+    pts=eq.points; curve=eq.compareInfo?.rows?.[0]?.fit?.predict;
+  } else if(eq.kind==='regression'){
+    pts=typeof eq.fitSource==='function' ? eq.fitSource() : eq.points; curve=eq.fn;
+  } else if(eq.kind==='points'){
+    updateDynamicPoints(eq); pts=eq.points;
+  }
+  pts=finiteDataPoints(pts||[]);
+  if(!pts.length) return null;
+  const out=pts.map(p=>({x:p.x,y:p.y}));
+  if(curve){
+    const xs=pts.map(p=>p.x), lo=Math.min(...xs), hi=Math.max(...xs);
+    for(let i=0;i<=40;i++){
+      const x=lo+(hi-lo)*i/40, y=safeEval(curve,x);
+      if(Number.isFinite(y)) out.push({x,y});
+    }
+  }
+  return out;
+}
+
 function fitToView(){
   if(view3d.mode==='3d'){
     const actual=finiteSceneBounds(equations);
@@ -4116,7 +4250,17 @@ function fitToView(){
   const pad=60;
   let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity,any=false;
   equations.forEach(eq=>{
-    if(!eq.visible || !eq.fn || eq.geometry?.dim===3) return;
+    if(!eq.visible || eq.error || eq.geometry?.dim===3) return;
+    const data=dataExtentPoints(eq);
+    if(data?.length){
+      any=true;
+      data.forEach(p=>{
+        if(p.x<minX) minX=p.x; if(p.x>maxX) maxX=p.x;
+        if(p.y<minY) minY=p.y; if(p.y>maxY) maxY=p.y;
+      });
+      return;
+    }
+    if(!eq.fn) return;
     any=true;
     for(let px=0;px<=W;px+=Math.max(1,Math.floor(W/400))){
       const wx=px2wx(px);
@@ -5427,6 +5571,56 @@ function drawPoints(eq){
   drawDataPoints(eq);
 }
 
+// box: horizontal Tukey boxplot. Values run along x (world units); the box
+// sits a fixed number of pixels below the x-axis so it stays readable at any
+// zoom, and several box lines stack instead of overlapping.
+function drawBoxplot(eq){
+  if(!eq.visible) return;
+  updateDynamicBox(eq);
+  const b=eq.boxInfo;
+  if(!b) return;
+  const stack=equations.filter(other=>other.kind==='box' && other.visible && !other.error);
+  const slot=Math.max(0, stack.indexOf(eq));
+  const axis=Math.min(Math.max(w2py(0), 0), H-40);
+  const cy=Math.min(axis+30+slot*44, H-16);
+  const half=12;
+  const color=eqColor(eq);
+  const X=w2px;
+  ctx.save();
+  ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=Math.max(1.5, eq.lw||2);
+  ctx.beginPath();
+  ctx.moveTo(X(b.whiskerLow), cy); ctx.lineTo(X(b.q1), cy);
+  ctx.moveTo(X(b.q3), cy); ctx.lineTo(X(b.whiskerHigh), cy);
+  ctx.moveTo(X(b.whiskerLow), cy-half*0.6); ctx.lineTo(X(b.whiskerLow), cy+half*0.6);
+  ctx.moveTo(X(b.whiskerHigh), cy-half*0.6); ctx.lineTo(X(b.whiskerHigh), cy+half*0.6);
+  ctx.stroke();
+  const left=X(b.q1), width=Math.max(X(b.q3)-left, 1);
+  ctx.globalAlpha=0.22; ctx.fillRect(left, cy-half, width, half*2);
+  ctx.globalAlpha=1; ctx.strokeRect(left, cy-half, width, half*2);
+  ctx.lineWidth=Math.max(2.5, (eq.lw||2)+1);
+  ctx.beginPath(); ctx.moveTo(X(b.median), cy-half); ctx.lineTo(X(b.median), cy+half); ctx.stroke();
+  ctx.lineWidth=1.5;
+  const mx=X(b.mean);
+  ctx.beginPath(); ctx.moveTo(mx-4, cy-4); ctx.lineTo(mx+4, cy+4); ctx.moveTo(mx-4, cy+4); ctx.lineTo(mx+4, cy-4); ctx.stroke();
+  ctx.fillStyle=getCss('--bg');
+  for(const v of b.outliers){
+    ctx.beginPath(); ctx.arc(X(v), cy, 3.5, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// compare: the data plus the winning model's curve.
+function drawCompare(eq){
+  if(!eq.visible) return;
+  updateDynamicCompare(eq);
+  const best=eq.compareInfo?.rows?.[0];
+  if(best?.fit?.predict){
+    const dash = eq.style==='dashed'?[7,5] : eq.style==='dotted'?[1,4] : null;
+    plotPath(best.fit.predict, {color:eqColor(eq), width:eq.lw, dash});
+  }
+  drawDataPoints(eq);
+}
+
 export function computeHistogramBins(data, targetBins=12, exact=false){
   if(!data.length) return [];
   const n = exact
@@ -5837,6 +6031,8 @@ function render(){
     else if(eq.kind==='regression') drawRegression(eq);
     else if(eq.kind==='points') drawPoints(eq);
     else if(eq.kind==='histogram') drawHistogram(eq);
+    else if(eq.kind==='fitcompare') drawCompare(eq);
+    else if(eq.kind==='box') drawBoxplot(eq);
     else if(eq.kind==='implicit') drawImplicit(eq);
     else if(eq.kind==='implicit-ineq') drawImplicitRegion(eq);
     else if(eq.kind==='geometry') drawGeometry(eq);

@@ -18,7 +18,7 @@ function equationValid(text, geometryRegistry=null, params={}, symbols=null){
   const declaration=algebraDeclaration(raw), calc=raw.match(/^calc\s*:\s*(.+)$/i);
   if(declaration) return !!resultInfo(symbols(declaration.name));
   if(calc) return !!resultInfo(compile(calc[1],params,{},symbols)(0));
-  const fm=raw.match(/^(points|fit\d*|fitexp|fitpow|fitlog|fitsig|histogram|hist|seq|intersec|stats|compare|comparar|resid|residual)\s*:\s*(.+)$/i);
+  const fm=raw.match(/^(points|fit\d*|fitexp|fitpow|fitlog|fitsig|histogram|hist|boxplot|box|seq|intersec|stats|compare|comparar|resid|residual)\s*:\s*(.+)$/i);
   if(!fm){
     const geometry=parseGeometryInput(raw,{registry:geometryRegistry,params,symbols});
     if(geometry){
@@ -28,7 +28,7 @@ function equationValid(text, geometryRegistry=null, params={}, symbols=null){
   }
   if(fm){
     const spec=fm[1].toLowerCase();
-    if(spec==='histogram' || spec==='hist'){
+    if(spec==='histogram' || spec==='hist' || spec==='box' || spec==='boxplot'){
       const nums=[];
       for(const piece of splitTop(fm[2], ',')){
         const v=Number(piece.trim());
@@ -336,7 +336,7 @@ test('stats pad buttons load complete, plottable examples',async()=>{
   const buttons=[...grid[1].matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)]
     .map(m=>({attrs:m[1], label:m[2].trim(), ins:m[1].match(/data-ins="([^"]*)"/)?.[1]}))
     .filter(b=>b.ins!==undefined && !['n',','].includes(b.label));
-  assert.ok(buttons.length>=18, 'expected stats example buttons');
+  assert.ok(buttons.length>=17, 'expected stats example buttons');
   const notExample=buttons.filter(b=>!/\sdata-example=/.test(b.attrs)).map(b=>b.label);
   assert.deepEqual(notExample, [], 'stats buttons must replace the line with an example');
   const invalid=buttons.filter(b=>!equationValid(b.ins, null, {n:10})).map(b=>b.label+': '+b.ins);
@@ -409,6 +409,16 @@ test('fit parameter rows expose model metrics and coefficients',async()=>{
   assert.ok(expRows.some(row=>row.item==='b'));
   close(expRows.find(row=>row.item==='a').value, 1);
   close(expRows.find(row=>row.item==='b').value, 1);
+});
+
+test('fit parameter rows show floating-point noise as zero',async()=>{
+  ensureAppDomStub();
+  const {fitParameterRows}=await import('../src/app.js');
+  const sig=fitParameterRows('fitsig', {y0:0.0008, L:0.9984, k:0.98, x0:-6e-17, label:'y'});
+  assert.equal(sig.find(row=>row.item==='x0').value, 0);
+  const poly=fitParameterRows('fit2', {coeffs:[3e-15, 2, 1], label:'y'});
+  assert.equal(poly.find(row=>row.item==='a0').value, 0);
+  assert.equal(poly.find(row=>row.item==='a1').value, 2);
 });
 
 test('linearLabel: negative intercept renders as "- abs" not "+-"', async ()=>{
@@ -520,4 +530,23 @@ test('computeHistogramBins exact honors requested count', async ()=>{
   assert.equal(computeHistogramBins(data, 999, true).length, 50); // clamped
   // auto rule unchanged
   assert.ok(computeHistogramBins(data, 12, false).length <= 12);
+});
+
+test('compare ranks models by AICc so extra parameters must earn their place',async()=>{
+  ensureAppDomStub();
+  const {compareFitModels}=await import('../src/app.js');
+  const noise=[0.3,-0.2,0.1,-0.4,0.25,-0.1,0.35,-0.3,0.05,-0.15];
+  const noisy=noise.map((e,k)=>({x:k+1, y:(k+1)**2+e}));
+  const rows=compareFitModels(noisy);
+  assert.equal(rows[0].spec, 'fit2');
+  assert.equal(rows[0].deltaAicc, 0);
+  assert.ok(rows.every((row,i)=>i===0 || row.aicc==null || row.deltaAicc>=0));
+  assert.ok(rows.find(row=>row.spec==='fit4').rmse < rows[0].rmse, 'fit4 has lower RMSE but loses');
+
+  const exact=Array.from({length:7},(_,x)=>({x, y:x*x+1}));
+  assert.equal(compareFitModels(exact)[0].spec, 'fit2');
+
+  const tiny=compareFitModels([{x:0,y:1},{x:1,y:2},{x:2,y:5}]);
+  assert.ok(tiny.length>0);
+  assert.ok(tiny.every((row,i)=>i===0 || row.rmse>=tiny[i-1].rmse || row.aicc!=null), 'no AICc: falls back to RMSE');
 });
